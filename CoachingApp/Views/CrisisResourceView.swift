@@ -7,17 +7,9 @@
 
 import SwiftUI
 
-// MARK: - Crisis Resource Model
-struct CrisisResource {
-    let name: String
-    let phone: String?
-    let textNumber: String?
-    let available: String
-}
-
 // MARK: - Crisis Resource View
 struct CrisisResourceView: View {
-    let resources: [CrisisResource]
+    let resources: [CrisisResourceModel]
     @Binding var isPresented: Bool
 
     var body: some View {
@@ -61,7 +53,7 @@ struct CrisisResourceView: View {
     }
 
     // MARK: - Resource Row
-    private func resourceRow(for resource: CrisisResource) -> some View {
+    private func resourceRow(for resource: CrisisResourceModel) -> some View {
         HStack(alignment: .center, spacing: 12) {
             // Resource info
             VStack(alignment: .leading, spacing: 4) {
@@ -125,13 +117,13 @@ struct CrisisResourceView: View {
 #Preview {
     CrisisResourceView(
         resources: [
-            CrisisResource(
+            CrisisResourceModel(
                 name: "National Suicide Prevention Lifeline",
                 phone: "988",
                 textNumber: nil,
                 available: "Available 24/7"
             ),
-            CrisisResource(
+            CrisisResourceModel(
                 name: "Crisis Text Line",
                 phone: nil,
                 textNumber: "741741",

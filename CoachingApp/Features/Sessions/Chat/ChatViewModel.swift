@@ -14,6 +14,13 @@ final class ChatViewModel {
     var errorMessage: String?
     var isVoiceMode: Bool = false
 
+    // MARK: - Handoff & Crisis State
+
+    var showHandoffOptions: Bool = false
+    var showCrisisResources: Bool = false
+    var hasSubscription: Bool = false
+    var showQuickRepliesFor: String?
+
     // MARK: - Dependencies
 
     private let chatService: ChatServiceProtocol
@@ -23,6 +30,15 @@ final class ChatViewModel {
 
     private var timerTask: Task<Void, Never>?
     private var streamingTask: Task<Void, Never>?
+    private var voiceInputManager: VoiceInputManager?
+
+    // Quick reply suggestions based on context
+    private let quickReplySuggestions: [QuickReply] = [
+        QuickReply(id: "1", text: "Tell me more", type: .clarification),
+        QuickReply(id: "2", text: "What should I do next?", type: .action),
+        QuickReply(id: "3", text: "How can I improve?", type: .guidance),
+        QuickReply(id: "4", text: "I'd like to talk to a human coach", type: .reflection)
+    ]
 
     // MARK: - Init
 
@@ -244,4 +260,122 @@ final class ChatViewModel {
             self.streamingTask = nil
         }
     }
+
+    // MARK: - Quick Reply Support
+
+    func shouldShowQuickReplies(for messageId: String) -> Bool {
+        // Show quick replies for the last AI message
+        guard let lastMessage = messages.last,
+              lastMessage.id == messageId,
+              lastMessage.isFromCoach else { return false }
+        return showQuickRepliesFor == nil || showQuickRepliesFor == messageId
+    }
+
+    func getQuickReplies(for messageId: String) -> [QuickReply] {
+        return quickReplySuggestions
+    }
+
+    func handleQuickReply(_ quickReply: QuickReply) {
+        currentInput = quickReply.text
+        showQuickRepliesFor = nil
+        Task {
+            await sendMessage()
+        }
+    }
+
+    // MARK: - Human Handoff Support
+
+    func requestHumanCoach() {
+        // Check for crisis keywords in recent messages
+        let recentContent = messages.suffix(3).map { $0.content.lowercased() }.joined(separator: " ")
+        let crisisKeywords = ["suicide", "kill myself", "end it", "hurt myself", "hopeless", "want to die"]
+
+        for keyword in crisisKeywords {
+            if recentContent.contains(keyword) {
+                showCrisisResources = true
+                return
+            }
+        }
+
+        // Not a crisis - show handoff options
+        showHandoffOptions = true
+    }
+
+    func dismissHandoffOptions() {
+        showHandoffOptions = false
+    }
+
+    func navigateToSubscription() {
+        // TODO: Navigate to subscription view
+        showHandoffOptions = false
+    }
+
+    func openCoachChat() {
+        // TODO: Open in-app chat with human coach
+        showHandoffOptions = false
+    }
+
+    func openCalendly() {
+        // TODO: Open Calendly scheduling
+        // Could use UIApplication.shared.open(URL(string: "https://calendly.com/coaching-career")!)
+        showHandoffOptions = false
+    }
+
+    // MARK: - Voice Input Support
+
+    @MainActor
+    func startVoiceInput() {
+        isVoiceMode = true
+        voiceInputManager = VoiceInputManager()
+        Task {
+            do {
+                try await voiceInputManager?.startVoiceInput()
+            } catch {
+                self.errorMessage = error.localizedDescription
+                isVoiceMode = false
+            }
+        }
+    }
+
+    @MainActor
+    func endVoiceInput() {
+        voiceInputManager?.stopVoiceInput()
+        // Get final transcription
+        if let transcript = voiceInputManager?.transcribedText, !transcript.isEmpty {
+            currentInput = transcript
+        }
+        isVoiceMode = false
+        // Auto-send if there's content
+        if !currentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            Task {
+                await sendMessage()
+            }
+        }
+    }
+}
+
+// MARK: - Quick Reply Model
+
+enum QuickReplyType {
+    case goalOriented
+    case clarification
+    case guidance
+    case action
+    case reflection
+}
+
+struct QuickReply: Identifiable {
+    let id: String
+    let text: String
+    let type: QuickReplyType
+}
+
+// MARK: - Crisis Resource Model
+
+struct CrisisResourceModel: Identifiable {
+    let id = UUID()
+    let name: String
+    let phone: String?
+    let textNumber: String?
+    let available: String
 }

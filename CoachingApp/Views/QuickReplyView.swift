@@ -74,11 +74,11 @@ struct QuickReplyView: View {
 #Preview {
     QuickReplyView(
         suggestions: [
-            QuickReply(text: "Set a goal", type: .goalOriented),
-            QuickReply(text: "I need clarification", type: .clarification),
-            QuickReply(text: "Show me guidance", type: .guidance),
-            QuickReply(text: "Take action", type: .action),
-            QuickReply(text: "Reflect on this", type: .reflection)
+            QuickReply(id: "1", text: "Set a goal", type: .goalOriented),
+            QuickReply(id: "2", text: "I need clarification", type: .clarification),
+            QuickReply(id: "3", text: "Show me guidance", type: .guidance),
+            QuickReply(id: "4", text: "Take action", type: .action),
+            QuickReply(id: "5", text: "Reflect on this", type: .reflection)
         ],
         onSelect: { suggestion in
             print("Selected: \(suggestion.text)")

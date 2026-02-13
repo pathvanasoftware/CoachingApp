@@ -9,10 +9,11 @@ import SwiftUI
 
 // MARK: - ChatScreen View
 struct ChatScreen: View {
-    @StateObject private var viewModel = ChatViewModel()
+    @Environment(AppState.self) private var appState
+    @State private var viewModel: ChatViewModel
 
-    init() {
-        _viewModel = StateObject(wrappedValue: ChatViewModel())
+    init(viewModel: ChatViewModel = ChatViewModel()) {
+        _viewModel = State(initialValue: viewModel)
     }
 
     var body: some View {
@@ -57,6 +58,14 @@ struct ChatScreen: View {
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.showHandoffOptions)
+        .task {
+            // Start a new session when view appears
+            await viewModel.startSession(
+                type: .checkIn,
+                persona: appState.selectedPersona,
+                inputMode: .text
+            )
+        }
     }
 
     // MARK: - Header View
@@ -65,17 +74,21 @@ struct ChatScreen: View {
             HStack {
                 Text("AI Coach")
                     .font(.headline)
-                    .fontWeight(.semibold)
 
                 Spacer()
 
-                Circle()
-                    .fill(Color.green)
-                    .frame(width: 10, height: 10)
-                    .overlay(
-                        Circle()
-                            .stroke(Color(.systemBackground), lineWidth: 2)
-                    )
+                if viewModel.isStreaming {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                } else {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 10, height: 10)
+                        .overlay(
+                            Circle()
+                                .stroke(Color(.systemBackground), lineWidth: 2)
+                        )
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -94,13 +107,13 @@ struct ChatScreen: View {
                     if viewModel.showCrisisResources {
                         CrisisResourceView(
                             resources: [
-                                CrisisResource(
+                                CrisisResourceModel(
                                     name: "National Suicide Prevention Lifeline",
                                     phone: "988",
                                     textNumber: nil,
                                     available: "Available 24/7"
                                 ),
-                                CrisisResource(
+                                CrisisResourceModel(
                                     name: "Crisis Text Line",
                                     phone: nil,
                                     textNumber: "741741",
@@ -122,7 +135,7 @@ struct ChatScreen: View {
                     }
                 }
             }
-            .onChange(of: viewModel.messages.count) { _ in
+            .onChange(of: viewModel.messages.count) { _, _ in
                 if let lastMessage = viewModel.messages.last {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         proxy.scrollTo(lastMessage.id, anchor: .bottom)
@@ -159,7 +172,7 @@ struct ChatScreen: View {
                 Spacer()
             }
 
-            Text(message.text)
+            Text(message.content)
                 .font(.body)
                 .foregroundColor(message.isFromUser ? .white : .primary)
                 .padding(.horizontal, 16)
@@ -179,21 +192,20 @@ struct ChatScreen: View {
     // MARK: - Quick Replies Section
     private func quickRepliesSection(for message: ChatMessage) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            if let quickReplies = viewModel.getQuickReplies(for: message.id) {
-                QuickReplyView(
-                    suggestions: quickReplies,
-                    onSelect: { quickReply in
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            viewModel.handleQuickReply(quickReply)
-                        }
-                    },
-                    onRequestHumanCoach: {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            viewModel.requestHumanCoach()
-                        }
+            let quickReplies = viewModel.getQuickReplies(for: message.id)
+            QuickReplyView(
+                suggestions: quickReplies,
+                onSelect: { quickReply in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        viewModel.handleQuickReply(quickReply)
                     }
-                )
-            }
+                },
+                onRequestHumanCoach: {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        viewModel.requestHumanCoach()
+                    }
+                }
+            )
         }
     }
 
@@ -205,28 +217,28 @@ struct ChatScreen: View {
             HStack(spacing: 12) {
                 // Voice Input Button
                 Button(action: {
-                    if viewModel.isVoiceInputActive {
+                    if viewModel.isVoiceMode {
                         viewModel.endVoiceInput()
                     } else {
                         viewModel.startVoiceInput()
                     }
                 }) {
                     ZStack {
-                        if viewModel.isVoiceInputActive {
+                        if viewModel.isVoiceMode {
                             Circle()
                                 .fill(Color.red.opacity(0.1))
                                 .frame(width: 44, height: 44)
                                 .overlay(
                                     Circle()
                                         .stroke(Color.red, lineWidth: 2)
-                                        .scaleEffect(viewModel.isVoiceInputActive ? 1.5 : 1.0)
-                                        .opacity(viewModel.isVoiceInputActive ? 0 : 1)
+                                        .scaleEffect(viewModel.isVoiceMode ? 1.5 : 1.0)
+                                        .opacity(viewModel.isVoiceMode ? 0 : 1)
                                 )
                                 .overlay(
                                     Circle()
                                         .stroke(Color.red, lineWidth: 2)
-                                        .scaleEffect(viewModel.isVoiceInputActive ? 2.0 : 1.0)
-                                        .opacity(viewModel.isVoiceInputActive ? 0 : 1)
+                                        .scaleEffect(viewModel.isVoiceMode ? 2.0 : 1.0)
+                                        .opacity(viewModel.isVoiceMode ? 0 : 1)
                                 )
                         } else {
                             Circle()
@@ -234,19 +246,19 @@ struct ChatScreen: View {
                                 .frame(width: 44, height: 44)
                         }
 
-                        Image(systemName: viewModel.isVoiceInputActive ? "stop.fill" : "mic")
+                        Image(systemName: viewModel.isVoiceMode ? "stop.fill" : "mic")
                             .font(.system(size: 20))
-                            .foregroundColor(viewModel.isVoiceInputActive ? .red : .blue)
+                            .foregroundColor(viewModel.isVoiceMode ? .red : .blue)
                     }
                 }
-                .accessibilityLabel(viewModel.isVoiceInputActive ? "Stop recording" : "Start voice input")
+                .accessibilityLabel(viewModel.isVoiceMode ? "Stop recording" : "Start voice input")
 
                 // Text Input / Voice Transcription Display
-                if viewModel.isVoiceInputActive {
+                if viewModel.isVoiceMode {
                     // Show voice transcription when recording
-                    Text(viewModel.inputText.isEmpty ? "Listening..." : viewModel.inputText)
+                    Text(viewModel.currentInput.isEmpty ? "Listening..." : viewModel.currentInput)
                         .font(.body)
-                        .foregroundColor(viewModel.inputText.isEmpty ? .gray : .primary)
+                        .foregroundColor(viewModel.currentInput.isEmpty ? .gray : .primary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
@@ -256,8 +268,10 @@ struct ChatScreen: View {
                         )
                 } else {
                     // Regular text input field
-                    TextField("Type a message...", text: $viewModel.inputText, onCommit: {
-                        viewModel.sendMessage(viewModel.inputText)
+                    TextField("Type a message...", text: $viewModel.currentInput, onCommit: {
+                        Task {
+                            await viewModel.sendMessage()
+                        }
                     })
                         .textFieldStyle(PlainTextFieldStyle())
                         .padding(.horizontal, 12)
@@ -269,15 +283,17 @@ struct ChatScreen: View {
                 }
 
                 // Send Button
-                if !viewModel.isVoiceInputActive {
+                if !viewModel.isVoiceMode {
                     Button(action: {
-                        viewModel.sendMessage(viewModel.inputText)
+                        Task {
+                            await viewModel.sendMessage()
+                        }
                     }) {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 32))
-                            .foregroundColor(viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .gray : .blue)
+                            .foregroundColor(viewModel.currentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .gray : .blue)
                     }
-                    .disabled(viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(viewModel.currentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isStreaming)
                     .accessibilityLabel("Send message")
                 }
             }
@@ -291,4 +307,5 @@ struct ChatScreen: View {
 // MARK: - Preview
 #Preview {
     ChatScreen()
+        .environment(AppState())
 }

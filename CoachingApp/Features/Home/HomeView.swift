@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @Environment(AppState.self) private var appState
     @State private var viewModel = HomeViewModel()
+    @State private var isShowingChat = false
 
     var body: some View {
         NavigationStack {
@@ -14,7 +15,9 @@ struct HomeView: View {
                     // Daily Check-In Card
                     DailyCheckInCard(
                         persona: appState.selectedPersona,
-                        onStartSession: { viewModel.startNewSession() }
+                        onStartSession: {
+                            isShowingChat = true
+                        }
                     )
 
                     // Streak Display
@@ -43,6 +46,9 @@ struct HomeView: View {
                     LoadingView(message: "Loading your dashboard...")
                 }
             }
+        }
+        .sheet(isPresented: $isShowingChat) {
+            ChatScreen()
         }
     }
 
