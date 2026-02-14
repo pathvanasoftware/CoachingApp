@@ -131,8 +131,8 @@ final class APIClient: APIClientProtocol, @unchecked Sendable {
 
     // MARK: - Configuration
 
-    // TODO: Replace with your actual Supabase project URL
-    private static let defaultBaseURL = "https://your-project-ref.supabase.co/rest/v1"
+    // Local backend for development
+    private static let defaultBaseURL = "http://localhost:8000/api/v1"
 
     // MARK: - Public Methods
 

@@ -27,8 +27,8 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
     private let baseURL: String
     private var authTokenProvider: (() -> String?)?
 
-    // TODO: Replace with your actual streaming endpoint base URL
-    private static let defaultBaseURL = "https://your-project-ref.supabase.co/functions/v1"
+    // Local backend for development
+    private static let defaultBaseURL = "http://localhost:8000/api/v1"
 
     // MARK: - Init
 
