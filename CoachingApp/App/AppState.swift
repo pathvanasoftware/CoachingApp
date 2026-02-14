@@ -2,12 +2,13 @@ import SwiftUI
 
 @Observable
 final class AppState {
-    var isAuthenticated: Bool = false
+    // Bypass auth for testing - set to true
+    var isAuthenticated: Bool = true
     var isLoading: Bool = false
-    var hasCompletedOnboarding: Bool = false
-    var currentUserId: String?
-    var currentUserEmail: String?
-    var currentUserName: String?
+    var hasCompletedOnboarding: Bool = true
+    var currentUserId: String? = "test-user-001"
+    var currentUserEmail: String? = "test@example.com"
+    var currentUserName: String? = "Test User"
     var selectedPersona: CoachingPersonaType = .directChallenger
     var preferredInputMode: InputMode = .text
     var engagementStreak: Int = 0
