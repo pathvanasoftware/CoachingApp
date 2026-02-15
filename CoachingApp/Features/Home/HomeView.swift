@@ -44,6 +44,7 @@ struct HomeView: View {
             .overlay {
                 if viewModel.isLoading && viewModel.actionItems.isEmpty {
                     LoadingView(message: "Loading your dashboard...")
+                        .allowsHitTesting(false)
                 }
             }
         }

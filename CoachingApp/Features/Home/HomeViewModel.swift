@@ -36,11 +36,27 @@ final class HomeViewModel {
         isLoading = true
         defer { isLoading = false }
 
-        // Simulate network delay
-        try? await Task.sleep(for: .milliseconds(500))
+        // Never block UI for long - fail open with local sample data.
+        let work = Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            return (Self.sampleActionItems, Self.sampleSessions)
+        }
 
-        actionItems = Self.sampleActionItems
-        recentSessions = Self.sampleSessions
+        let fallback = Task {
+            try? await Task.sleep(for: .seconds(2))
+            return (Self.sampleActionItems, Self.sampleSessions)
+        }
+
+        let result = await withTaskGroup(of: ([ActionItem], [CoachingSession]).self) { group in
+            group.addTask { await work.value }
+            group.addTask { await fallback.value }
+            let first = await group.next() ?? (Self.sampleActionItems, Self.sampleSessions)
+            group.cancelAll()
+            return first
+        }
+
+        actionItems = result.0
+        recentSessions = result.1
     }
 
     func toggleActionItem(_ item: ActionItem) {
