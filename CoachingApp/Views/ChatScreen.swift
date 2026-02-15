@@ -57,6 +57,33 @@ struct ChatScreen: View {
                 .padding(.horizontal, 16)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
+
+            // Crisis resources overlay (always visible, not hidden by scroll position)
+            if viewModel.showCrisisResources {
+                VStack {
+                    CrisisResourceView(
+                        resources: [
+                            CrisisResourceModel(
+                                name: "National Suicide Prevention Lifeline",
+                                phone: "988",
+                                textNumber: nil,
+                                available: "Available 24/7"
+                            ),
+                            CrisisResourceModel(
+                                name: "Crisis Text Line",
+                                phone: nil,
+                                textNumber: "741741",
+                                available: "Text 'HOME' to 741741"
+                            )
+                        ],
+                        isPresented: $viewModel.showCrisisResources
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 80)
+                    Spacer()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.showHandoffOptions)
         .task {
@@ -111,31 +138,6 @@ struct ChatScreen: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 12) {
-                    // Crisis Resources Alert (if applicable)
-                    if viewModel.showCrisisResources {
-                        CrisisResourceView(
-                            resources: [
-                                CrisisResourceModel(
-                                    name: "National Suicide Prevention Lifeline",
-                                    phone: "988",
-                                    textNumber: nil,
-                                    available: "Available 24/7"
-                                ),
-                                CrisisResourceModel(
-                                    name: "Crisis Text Line",
-                                    phone: nil,
-                                    textNumber: "741741",
-                                    available: "Text 'HOME' to 741741"
-                                )
-                            ],
-                            isPresented: $viewModel.showCrisisResources
-                        )
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
-                        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: viewModel.showCrisisResources)
-                    }
-
                     // Messages
                     ForEach(viewModel.messages) { message in
                         messageRow(for: message)
@@ -214,7 +216,9 @@ struct ChatScreen: View {
                     }
                 }
             )
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Input Area

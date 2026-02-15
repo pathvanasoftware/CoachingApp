@@ -31,6 +31,7 @@ final class ChatViewModel {
     private var timerTask: Task<Void, Never>?
     private var streamingTask: Task<Void, Never>?
     private var voiceInputManager: VoiceInputManager?
+    private var pendingHumanCoachRequest: Bool = false
 
     // Quick reply suggestions based on context
     private let quickReplySuggestions: [QuickReply] = [
@@ -138,6 +139,11 @@ final class ChatViewModel {
         )
         messages.append(userMessage)
 
+        // Crisis signal should trigger immediately and visibly.
+        if containsCrisisSignal(in: content) {
+            showCrisisResources = true
+        }
+
         // Stream the assistant response
         await streamAssistantResponse(content: content, for: session)
     }
@@ -215,6 +221,10 @@ final class ChatViewModel {
         }
 
         isStreaming = false
+        if pendingHumanCoachRequest {
+            pendingHumanCoachRequest = false
+            evaluateHumanCoachRequest()
+        }
     }
 
     @MainActor
@@ -257,6 +267,10 @@ final class ChatViewModel {
             }
 
             self.isStreaming = false
+            if self.pendingHumanCoachRequest {
+                self.pendingHumanCoachRequest = false
+                self.evaluateHumanCoachRequest()
+            }
             self.streamingTask = nil
         }
     }
@@ -286,19 +300,34 @@ final class ChatViewModel {
     // MARK: - Human Handoff Support
 
     func requestHumanCoach() {
-        // Check for crisis keywords in recent messages
-        let recentContent = messages.suffix(3).map { $0.content.lowercased() }.joined(separator: " ")
-        let crisisKeywords = ["suicide", "kill myself", "end it", "hurt myself", "hopeless", "want to die"]
+        // If model is still streaming, defer opening handoff/crisis UI until completion.
+        if isStreaming {
+            pendingHumanCoachRequest = true
+            return
+        }
 
-        for keyword in crisisKeywords {
-            if recentContent.contains(keyword) {
-                showCrisisResources = true
-                return
-            }
+        evaluateHumanCoachRequest()
+    }
+
+    private func evaluateHumanCoachRequest() {
+        let recentContent = messages.suffix(4).map { $0.content.lowercased() }.joined(separator: " ")
+        if containsCrisisSignal(in: recentContent) {
+            showCrisisResources = true
+            showHandoffOptions = false
+            return
         }
 
         // Not a crisis - show handoff options
         showHandoffOptions = true
+    }
+
+    private func containsCrisisSignal(in text: String) -> Bool {
+        let t = text.lowercased()
+        let crisisKeywords = [
+            "suicide", "kill myself", "end it", "hurt myself", "hopeless", "want to die",
+            "end my life", "better off dead", "no reason to live"
+        ]
+        return crisisKeywords.contains { t.contains($0) }
     }
 
     func dismissHandoffOptions() {
