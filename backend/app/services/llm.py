@@ -3,7 +3,11 @@ from openai import AsyncOpenAI
 from typing import List, Optional
 from pydantic import BaseModel
 
-client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+def get_openai_client() -> AsyncOpenAI:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY not configured")
+    return AsyncOpenAI(api_key=api_key)
 
 GROW_SYSTEM_PROMPT = """You are an expert Career & Executive Coach using the GROW model.
 
@@ -119,6 +123,7 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
     messages.append({"role": "user", "content": request.message})
     
     try:
+        client = get_openai_client()
         response = await client.chat.completions.create(
             model="gpt-4",
             messages=messages,
