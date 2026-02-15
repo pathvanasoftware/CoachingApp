@@ -11,6 +11,7 @@ import SwiftUI
 struct ChatScreen: View {
     @Environment(AppState.self) private var appState
     @State private var viewModel: ChatViewModel
+    @State private var hasRunRegressionFlow = false
 
     init(viewModel: ChatViewModel = ChatViewModel()) {
         _viewModel = State(initialValue: viewModel)
@@ -65,6 +66,13 @@ struct ChatScreen: View {
                 persona: appState.selectedPersona,
                 inputMode: .text
             )
+
+            // Optional automation for regression screenshots
+            let args = ProcessInfo.processInfo.arguments
+            if args.contains("--regression-chat") && !hasRunRegressionFlow {
+                hasRunRegressionFlow = true
+                await runRegressionFlowIfNeeded()
+            }
         }
     }
 
@@ -301,6 +309,37 @@ struct ChatScreen: View {
             .padding(.vertical, 12)
             .background(Color(.systemBackground))
         }
+    }
+
+    @MainActor
+    private func runRegressionFlowIfNeeded() async {
+        let args = ProcessInfo.processInfo.arguments
+
+        // Crisis branch
+        if args.contains("--regression-crisis") {
+            try? await Task.sleep(for: .milliseconds(600))
+            viewModel.currentInput = "I feel hopeless and want to kill myself"
+            await viewModel.sendMessage()
+            try? await Task.sleep(for: .milliseconds(700))
+            viewModel.requestHumanCoach()
+            return
+        }
+
+        // Default branch: quick reply + handoff options
+        try? await Task.sleep(for: .milliseconds(600))
+        viewModel.currentInput = "I need help planning my next career step"
+        await viewModel.sendMessage()
+
+        try? await Task.sleep(for: .milliseconds(600))
+        if let last = viewModel.messages.last {
+            let suggestions = viewModel.getQuickReplies(for: last.id)
+            if let first = suggestions.first {
+                viewModel.handleQuickReply(first)
+            }
+        }
+
+        try? await Task.sleep(for: .milliseconds(900))
+        viewModel.requestHumanCoach()
     }
 }
 

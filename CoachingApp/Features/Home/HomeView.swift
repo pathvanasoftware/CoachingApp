@@ -4,6 +4,7 @@ struct HomeView: View {
     @Environment(AppState.self) private var appState
     @State private var viewModel = HomeViewModel()
     @State private var isShowingChat = false
+    @State private var hasHandledLaunchArgs = false
 
     var body: some View {
         NavigationStack {
@@ -41,6 +42,14 @@ struct HomeView: View {
             .navigationTitle("Home")
             .task {
                 await viewModel.loadData()
+            }
+            .onAppear {
+                guard !hasHandledLaunchArgs else { return }
+                hasHandledLaunchArgs = true
+                let args = ProcessInfo.processInfo.arguments
+                if args.contains("--open-chat") {
+                    isShowingChat = true
+                }
             }
             .refreshable {
                 await viewModel.loadData()
