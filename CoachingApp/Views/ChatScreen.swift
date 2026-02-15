@@ -57,35 +57,17 @@ struct ChatScreen: View {
                 .padding(.horizontal, 16)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-
-            // Crisis resources overlay (always visible, not hidden by scroll position)
-            if viewModel.showCrisisResources {
-                VStack {
-                    CrisisResourceView(
-                        resources: [
-                            CrisisResourceModel(
-                                name: "National Suicide Prevention Lifeline",
-                                phone: "988",
-                                textNumber: nil,
-                                available: "Available 24/7"
-                            ),
-                            CrisisResourceModel(
-                                name: "Crisis Text Line",
-                                phone: nil,
-                                textNumber: "741741",
-                                available: "Text 'HOME' to 741741"
-                            )
-                        ],
-                        isPresented: $viewModel.showCrisisResources
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.top, 80)
-                    Spacer()
-                }
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.showHandoffOptions)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.showCrisisResources)
+        .sheet(isPresented: $viewModel.showCrisisResources) {
+            CrisisResourceView(
+                resources: crisisResources,
+                isPresented: $viewModel.showCrisisResources
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .task {
             // Start a new session when view appears
             await viewModel.startSession(
@@ -101,6 +83,23 @@ struct ChatScreen: View {
                 await runRegressionFlowIfNeeded()
             }
         }
+    }
+
+    private var crisisResources: [CrisisResourceModel] {
+        [
+            CrisisResourceModel(
+                name: "National Suicide Prevention Lifeline",
+                phone: "988",
+                textNumber: nil,
+                available: "Available 24/7"
+            ),
+            CrisisResourceModel(
+                name: "Crisis Text Line",
+                phone: nil,
+                textNumber: "741741",
+                available: "Text 'HOME' to 741741"
+            )
+        ]
     }
 
     // MARK: - Header View

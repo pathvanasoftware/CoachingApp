@@ -13,60 +13,68 @@ struct QuickReplyView: View {
     let onSelect: (QuickReply) -> Void
     var onRequestHumanCoach: (() -> Void)? = nil
 
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                // Standard quick reply suggestions
-                ForEach(suggestions) { suggestion in
-                    Button(action: {
-                        onSelect(suggestion)
-                    }) {
-                        Text(suggestion.text)
-                            .font(.subheadline)
-                            .foregroundColor(.primary)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .fill(Color(.systemGray5))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .stroke(Color(.systemGray4), lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .accessibilityLabel(suggestion.text)
-                    .accessibilityHint("Tap to send this reply")
-                    .accessibilityAddTraits(.isButton)
-                }
+    private let columns = [
+        GridItem(.adaptive(minimum: 150), spacing: 8, alignment: .leading)
+    ]
 
-                // Persistent "Talk to Career Coach" chip
-                if let onRequestHumanCoach = onRequestHumanCoach {
-                    Button(action: onRequestHumanCoach) {
-                        Label("Talk to Career Coach", systemImage: "person.circle")
-                            .font(.subheadline)
-                            .foregroundColor(.blue)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .fill(Color.blue.opacity(0.1))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .accessibilityLabel("Talk to Career Coach")
-                    .accessibilityHint("Connect with a human coach")
-                    .accessibilityAddTraits(.isButton)
+    var body: some View {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+            // Standard quick reply suggestions
+            ForEach(suggestions) { suggestion in
+                Button(action: {
+                    onSelect(suggestion)
+                }) {
+                    Text(suggestion.text)
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.systemGray5))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color(.systemGray4), lineWidth: 1)
+                        )
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(suggestion.text)
+                .accessibilityHint("Tap to send this reply")
+                .accessibilityAddTraits(.isButton)
             }
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Persistent "Talk to Career Coach" chip
+            if let onRequestHumanCoach = onRequestHumanCoach {
+                Button(action: onRequestHumanCoach) {
+                    Label("Talk to Career Coach", systemImage: "person.circle")
+                        .font(.subheadline)
+                        .foregroundColor(.blue)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.blue.opacity(0.1))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Talk to Career Coach")
+                .accessibilityHint("Connect with a human coach")
+                .accessibilityAddTraits(.isButton)
+            }
         }
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
