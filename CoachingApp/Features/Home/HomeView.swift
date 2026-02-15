@@ -9,6 +9,10 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    if let error = viewModel.loadErrorMessage {
+                        errorBanner(error)
+                    }
+
                     // Greeting Header
                     greetingSection
 
@@ -51,6 +55,25 @@ struct HomeView: View {
         .sheet(isPresented: $isShowingChat) {
             ChatScreen()
         }
+    }
+
+    private func errorBanner(_ message: String) -> some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(AppTheme.warning)
+            Text(message)
+                .font(AppFonts.caption)
+                .foregroundStyle(AppTheme.textSecondary)
+            Spacer()
+            Button("Retry") {
+                Task { await viewModel.loadData() }
+            }
+            .font(AppFonts.caption)
+            .foregroundStyle(AppTheme.primary)
+        }
+        .padding(AppTheme.Spacing.sm)
+        .background(AppTheme.warning.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm))
     }
 
     // MARK: - Greeting Section

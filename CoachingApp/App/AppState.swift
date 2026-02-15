@@ -2,7 +2,7 @@ import SwiftUI
 
 @Observable
 final class AppState {
-    // Bypass auth for testing - set to true
+    // Bypass auth for testing by default
     var isAuthenticated: Bool = true
     var isLoading: Bool = false
     var hasCompletedOnboarding: Bool = true
@@ -12,6 +12,13 @@ final class AppState {
     var selectedPersona: CoachingPersonaType = .directChallenger
     var preferredInputMode: InputMode = .text
     var engagementStreak: Int = 0
+
+    init() {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--force-onboarding") {
+            hasCompletedOnboarding = false
+        }
+    }
 
     func signIn(userId: String, email: String, name: String) {
         currentUserId = userId

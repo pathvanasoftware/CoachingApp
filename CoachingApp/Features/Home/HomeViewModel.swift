@@ -5,6 +5,7 @@ final class HomeViewModel {
     var actionItems: [ActionItem] = []
     var recentSessions: [CoachingSession] = []
     var isLoading: Bool = false
+    var loadErrorMessage: String?
 
     var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
@@ -34,29 +35,25 @@ final class HomeViewModel {
 
     func loadData() async {
         isLoading = true
+        loadErrorMessage = nil
         defer { isLoading = false }
 
-        // Never block UI for long - fail open with local sample data.
-        let work = Task {
-            try? await Task.sleep(for: .milliseconds(400))
-            return (Self.sampleActionItems, Self.sampleSessions)
+        // Fail-open immediately so UI never gets stuck behind spinner.
+        if actionItems.isEmpty {
+            actionItems = Self.sampleActionItems
+        }
+        if recentSessions.isEmpty {
+            recentSessions = Self.sampleSessions
         }
 
-        let fallback = Task {
-            try? await Task.sleep(for: .seconds(2))
-            return (Self.sampleActionItems, Self.sampleSessions)
+        // Simulate async refresh work; in real app replace with API calls.
+        do {
+            try await Task.sleep(for: .milliseconds(300))
+            actionItems = Self.sampleActionItems
+            recentSessions = Self.sampleSessions
+        } catch {
+            loadErrorMessage = "Could not refresh dashboard. Showing local data."
         }
-
-        let result = await withTaskGroup(of: ([ActionItem], [CoachingSession]).self) { group in
-            group.addTask { await work.value }
-            group.addTask { await fallback.value }
-            let first = await group.next() ?? (Self.sampleActionItems, Self.sampleSessions)
-            group.cancelAll()
-            return first
-        }
-
-        actionItems = result.0
-        recentSessions = result.1
     }
 
     func toggleActionItem(_ item: ActionItem) {
