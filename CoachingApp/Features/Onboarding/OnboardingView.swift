@@ -9,6 +9,18 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Top actions
+            HStack {
+                Spacer()
+                Button("Skip") {
+                    viewModel.completeOnboarding()
+                }
+                .font(AppFonts.subheadline)
+                .foregroundStyle(AppTheme.primary)
+            }
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.top, AppTheme.Spacing.sm)
+
             // Progress bar
             progressBar
                 .padding(.horizontal, AppTheme.Spacing.lg)

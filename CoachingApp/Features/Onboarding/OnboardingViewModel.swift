@@ -34,10 +34,9 @@ final class OnboardingViewModel {
             return true
 
         case .assessment:
-            // Require at least answers for all questions
-            let answeredIds = Set(onboardingData.assessmentAnswers.map { $0.questionId })
-            let requiredIds = Set(OnboardingAssessment.questions.map { $0.id })
-            return requiredIds.isSubset(of: answeredIds)
+            // Do not hard-block users here. They can continue with partial answers
+            // and refine details later in chat sessions.
+            return true
 
         case .inputMode:
             // Always valid — has a default selection

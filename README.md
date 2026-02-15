@@ -1,5 +1,19 @@
 # CoachingApp
 
+## Local backend (stable path)
+
+Use repo-local backend path (avoid deleted agent temp paths):
+
+```bash
+cd /Users/jianpinghuang/projects/CoachingApp
+./scripts/start_backend.sh
+```
+
+Expected API base URL:
+
+- `http://localhost:8000/api/v1`
+
+
 A modern coaching application.
 
 ## Overview
