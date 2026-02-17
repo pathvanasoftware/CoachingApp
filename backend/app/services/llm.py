@@ -1,4 +1,5 @@
 import os
+import json
 from openai import AsyncOpenAI
 from typing import List, Optional
 from pydantic import BaseModel
@@ -54,6 +55,33 @@ class CoachingResponse(BaseModel):
     response: str
     quick_replies: List[str]
     suggested_actions: Optional[List[str]] = None
+
+
+def _safe_parse_structured_output(raw_text: str) -> Optional[dict]:
+    """Try to parse model output as JSON dict."""
+    if not raw_text:
+        return None
+
+    # Direct JSON parse
+    try:
+        parsed = json.loads(raw_text)
+        if isinstance(parsed, dict):
+            return parsed
+    except Exception:
+        pass
+
+    # Try extracting first JSON object block
+    start = raw_text.find("{")
+    end = raw_text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        try:
+            parsed = json.loads(raw_text[start:end + 1])
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            return None
+
+    return None
 
 
 def detect_crisis(message: str) -> bool:
@@ -150,22 +178,63 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
     
     try:
         client = get_openai_client()
+
+        # Ask model to generate BOTH coaching response + contextual quick-reply options.
+        structured_messages = messages + [{
+            "role": "system",
+            "content": (
+                "Return ONLY valid JSON with this shape: "
+                "{\"response\": string, \"quick_replies\": [string, string, string, string], \"suggested_actions\": [string]}. "
+                "quick_replies must be concise (3-8 words), user-selectable, and tailored to the user's latest message. "
+                "No markdown, no extra text."
+            )
+        }]
+
         response = await client.chat.completions.create(
             model="gpt-4",
-            messages=messages,
-            max_tokens=500,
+            messages=structured_messages,
+            max_tokens=600,
             temperature=0.7
         )
-        
-        ai_response = response.choices[0].message.content
-        
+
+        raw = response.choices[0].message.content or ""
+        parsed = _safe_parse_structured_output(raw)
+
+        if parsed and isinstance(parsed.get("response"), str):
+            ai_response = parsed.get("response", "").strip()
+            quick_replies = parsed.get("quick_replies", [])
+            suggested_actions = parsed.get("suggested_actions", None)
+
+            if not isinstance(quick_replies, list):
+                quick_replies = []
+
+            quick_replies = [str(x).strip() for x in quick_replies if str(x).strip()]
+            if len(quick_replies) < 2:
+                quick_replies = generate_quick_replies(request.message, ai_response, request.context)
+            else:
+                quick_replies = quick_replies[:4]
+
+            if isinstance(suggested_actions, list):
+                suggested_actions = [str(x).strip() for x in suggested_actions if str(x).strip()][:5]
+            else:
+                suggested_actions = None
+
+            return CoachingResponse(
+                response=ai_response,
+                quick_replies=quick_replies,
+                suggested_actions=suggested_actions
+            )
+
+        # Fallback to plain text response if model did not return valid JSON
+        ai_response = raw.strip() or "I'm here to help you work through this. Could you tell me more?"
         return CoachingResponse(
             response=ai_response,
             quick_replies=generate_quick_replies(request.message, ai_response, request.context)
         )
-    except Exception as e:
+
+    except Exception:
         # Fallback response if API fails
         return CoachingResponse(
             response="I'm here to help you work through this. Could you tell me more about what's on your mind?",
-            quick_replies=["Let me share more", "What coaching approach works best?"]
+            quick_replies=["Let me share more", "What should I do next?", "Help me prioritize", "I'd like a concrete plan"]
         )
