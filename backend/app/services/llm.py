@@ -9,6 +9,7 @@ from app.services.context_engine import build_context_packet, infer_goal_link
 from app.services.memory_store import load_profile, update_profile_from_turn, save_profile
 from app.services.emotion_engine import analyze_text_emotion, infer_context_triggers
 from app.services.behavior_tracker import update_behavior_signals, style_preference_shift
+from app.services.goal_architecture import infer_goal_hierarchy, build_goal_anchor, progressive_skill_building, outcome_prediction
 
 def get_openai_client() -> AsyncOpenAI:
     api_key = os.getenv("OPENAI_API_KEY")
@@ -73,6 +74,10 @@ class CoachingResponse(BaseModel):
     behavior_signals: Optional[dict] = None
     context_triggers: Optional[dict] = None
     recommended_style_shift: Optional[str] = None
+    goal_hierarchy: Optional[dict] = None
+    goal_anchor: Optional[str] = None
+    progressive_skill_building: Optional[dict] = None
+    outcome_prediction: Optional[dict] = None
 
 
 def _safe_parse_structured_output(raw_text: str) -> Optional[dict]:
@@ -190,6 +195,9 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
         )
         profile = update_behavior_signals(profile, style_used="supportive", goal_link="wellbeing_first")
         save_profile(request.user_id or "anonymous", profile)
+        style_shift = style_preference_shift(profile)
+        crisis_hierarchy = infer_goal_hierarchy(request.message, "wellbeing_first", profile)
+        crisis_anchor = build_goal_anchor("wellbeing_first", crisis_hierarchy)
         return CoachingResponse(
             response=get_crisis_response(),
             quick_replies=["I'm safe, thanks", "I need to talk to someone", "Find professional help"],
@@ -202,11 +210,15 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
             sentiment=ei.sentiment,
             linguistic_markers=ei.linguistic_markers,
             behavior_signals={
-                "style_preference_shift": style_preference_shift(profile),
+                "style_preference_shift": style_shift,
                 "interaction_frequency_hint": "tracked",
             },
             context_triggers=context_triggers,
-            recommended_style_shift="supportive"
+            recommended_style_shift="supportive",
+            goal_hierarchy=crisis_hierarchy,
+            goal_anchor=crisis_anchor,
+            progressive_skill_building=progressive_skill_building("supportive", "high_stress"),
+            outcome_prediction=outcome_prediction("wellbeing_first", "high_stress", style_shift),
         )
     
     # Build context + style orchestration
@@ -217,12 +229,16 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
     history_dicts = [{"role": m.role, "content": m.content} for m in (request.history or [])]
     context_packet = build_context_packet(request.message, history_dicts, request.context)
     profile = load_profile(request.user_id or "anonymous")
+    goal_hierarchy = infer_goal_hierarchy(request.message, goal_link, profile)
+    goal_anchor = build_goal_anchor(goal_link, goal_hierarchy)
 
     messages = [
         {"role": "system", "content": GROW_SYSTEM_PROMPT},
         {"role": "system", "content": f"Coaching style to use this turn: {style_used}. {STYLE_PROMPTS[style_used]}"},
         {"role": "system", "content": f"Emotion detected: {emotion}. Goal alignment tag: {goal_link}."},
         {"role": "system", "content": f"Persistent profile memory: {json.dumps(profile, ensure_ascii=False)}"},
+        {"role": "system", "content": f"Goal hierarchy: {json.dumps(goal_hierarchy, ensure_ascii=False)}"},
+        {"role": "system", "content": f"Goal anchor: {goal_anchor}"},
         {"role": "system", "content": "Session orchestration: structure each turn as (1) brief acknowledgment, (2) core coaching move, (3) one concrete next step."},
         {"role": "system", "content": context_packet},
     ]
@@ -286,6 +302,7 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
             )
             profile = update_behavior_signals(profile, style_used=style_used, goal_link=goal_link)
             save_profile(request.user_id or "anonymous", profile)
+            style_shift = style_preference_shift(profile)
             return CoachingResponse(
                 response=ai_response,
                 quick_replies=quick_replies,
@@ -298,11 +315,15 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
                 sentiment=ei.sentiment,
                 linguistic_markers=ei.linguistic_markers,
                 behavior_signals={
-                    "style_preference_shift": style_preference_shift(profile),
+                    "style_preference_shift": style_shift,
                     "session_event_count": len(profile.get("session_events", [])),
                 },
                 context_triggers=context_triggers,
-                recommended_style_shift=style_preference_shift(profile),
+                recommended_style_shift=style_shift,
+                goal_hierarchy=goal_hierarchy,
+                goal_anchor=goal_anchor,
+                progressive_skill_building=progressive_skill_building(style_used, ei.primary),
+                outcome_prediction=outcome_prediction(goal_link, ei.primary, style_shift),
             )
 
         # Fallback to plain text response if model did not return valid JSON
@@ -317,6 +338,7 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
         )
         profile = update_behavior_signals(profile, style_used=style_used, goal_link=goal_link)
         save_profile(request.user_id or "anonymous", profile)
+        style_shift = style_preference_shift(profile)
         return CoachingResponse(
             response=ai_response,
             quick_replies=generate_quick_replies(request.message, ai_response, request.context),
@@ -328,11 +350,15 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
             sentiment=ei.sentiment,
             linguistic_markers=ei.linguistic_markers,
             behavior_signals={
-                "style_preference_shift": style_preference_shift(profile),
+                "style_preference_shift": style_shift,
                 "session_event_count": len(profile.get("session_events", [])),
             },
             context_triggers=context_triggers,
-            recommended_style_shift=style_preference_shift(profile),
+            recommended_style_shift=style_shift,
+            goal_hierarchy=goal_hierarchy,
+            goal_anchor=goal_anchor,
+            progressive_skill_building=progressive_skill_building(style_used, ei.primary),
+            outcome_prediction=outcome_prediction(goal_link, ei.primary, style_shift),
         )
 
     except Exception:
@@ -352,20 +378,29 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
         profile = update_behavior_signals(profile, style_used=fallback_style, goal_link=fallback_goal)
         save_profile(request.user_id or "anonymous", profile)
 
+        style_shift = style_preference_shift(profile)
+        effective_primary = (ei.primary if 'ei' in locals() else "neutral")
+        fallback_hierarchy = infer_goal_hierarchy(request.message, fallback_goal, profile)
+        fallback_anchor = build_goal_anchor(fallback_goal, fallback_hierarchy)
+
         return CoachingResponse(
             response="I'm here to help you work through this. Could you tell me more about what's on your mind?",
             quick_replies=["Let me share more", "What should I do next?", "Help me prioritize", "I'd like a concrete plan"],
             style_used=fallback_style,
             emotion_detected=fallback_emotion,
             goal_link=fallback_goal,
-            emotion_primary=(ei.primary if 'ei' in locals() else "neutral"),
+            emotion_primary=effective_primary,
             emotion_scores=(ei.scores if 'ei' in locals() else {"neutral": 1.0}),
             sentiment=(ei.sentiment if 'ei' in locals() else {"positive": 0.2, "negative": 0.2, "neutral": 0.6}),
             linguistic_markers=(ei.linguistic_markers if 'ei' in locals() else {}),
             behavior_signals={
-                "style_preference_shift": style_preference_shift(profile),
+                "style_preference_shift": style_shift,
                 "session_event_count": len(profile.get("session_events", [])),
             },
             context_triggers=(context_triggers if 'context_triggers' in locals() else {}),
-            recommended_style_shift=style_preference_shift(profile),
+            recommended_style_shift=style_shift,
+            goal_hierarchy=fallback_hierarchy,
+            goal_anchor=fallback_anchor,
+            progressive_skill_building=progressive_skill_building(fallback_style, effective_primary),
+            outcome_prediction=outcome_prediction(fallback_goal, effective_primary, style_shift),
         )
