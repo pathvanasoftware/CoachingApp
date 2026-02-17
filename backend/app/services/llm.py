@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from app.services.style_router import route_style, STYLE_PROMPTS
 from app.services.emotion_analyzer import detect_emotion
 from app.services.context_engine import build_context_packet, infer_goal_link
+from app.services.memory_store import load_profile, update_profile_from_turn
 
 def get_openai_client() -> AsyncOpenAI:
     api_key = os.getenv("OPENAI_API_KEY")
@@ -53,6 +54,7 @@ class CoachingRequest(BaseModel):
     history: Optional[List[ChatMessage]] = None
     context: Optional[str] = None
     coaching_style: Optional[str] = None
+    user_id: Optional[str] = "anonymous"
 
 
 class CoachingResponse(BaseModel):
@@ -165,6 +167,7 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
     
     # Check for crisis indicators
     if detect_crisis(request.message):
+        update_profile_from_turn(request.user_id or "anonymous", request.message, "wellbeing_first")
         return CoachingResponse(
             response=get_crisis_response(),
             quick_replies=["I'm safe, thanks", "I need to talk to someone", "Find professional help"],
@@ -181,11 +184,14 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
 
     history_dicts = [{"role": m.role, "content": m.content} for m in (request.history or [])]
     context_packet = build_context_packet(request.message, history_dicts, request.context)
+    profile = load_profile(request.user_id or "anonymous")
 
     messages = [
         {"role": "system", "content": GROW_SYSTEM_PROMPT},
         {"role": "system", "content": f"Coaching style to use this turn: {style_used}. {STYLE_PROMPTS[style_used]}"},
         {"role": "system", "content": f"Emotion detected: {emotion}. Goal alignment tag: {goal_link}."},
+        {"role": "system", "content": f"Persistent profile memory: {json.dumps(profile, ensure_ascii=False)}"},
+        {"role": "system", "content": "Session orchestration: structure each turn as (1) brief acknowledgment, (2) core coaching move, (3) one concrete next step."},
         {"role": "system", "content": context_packet},
     ]
 
@@ -238,6 +244,7 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
             else:
                 suggested_actions = None
 
+            update_profile_from_turn(request.user_id or "anonymous", request.message, goal_link)
             return CoachingResponse(
                 response=ai_response,
                 quick_replies=quick_replies,
@@ -249,6 +256,7 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
 
         # Fallback to plain text response if model did not return valid JSON
         ai_response = raw.strip() or "I'm here to help you work through this. Could you tell me more?"
+        update_profile_from_turn(request.user_id or "anonymous", request.message, goal_link)
         return CoachingResponse(
             response=ai_response,
             quick_replies=generate_quick_replies(request.message, ai_response, request.context),
@@ -259,6 +267,7 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
 
     except Exception:
         # Fallback response if API fails
+        update_profile_from_turn(request.user_id or "anonymous", request.message, goal_link if 'goal_link' in locals() else "professional_growth")
         return CoachingResponse(
             response="I'm here to help you work through this. Could you tell me more about what's on your mind?",
             quick_replies=["Let me share more", "What should I do next?", "Help me prioritize", "I'd like a concrete plan"],
