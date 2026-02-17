@@ -3,6 +3,9 @@ import json
 from openai import AsyncOpenAI
 from typing import List, Optional
 from pydantic import BaseModel
+from app.services.style_router import route_style, STYLE_PROMPTS
+from app.services.emotion_analyzer import detect_emotion
+from app.services.context_engine import build_context_packet, infer_goal_link
 
 def get_openai_client() -> AsyncOpenAI:
     api_key = os.getenv("OPENAI_API_KEY")
@@ -49,12 +52,16 @@ class CoachingRequest(BaseModel):
     message: str
     history: Optional[List[ChatMessage]] = None
     context: Optional[str] = None
+    coaching_style: Optional[str] = None
 
 
 class CoachingResponse(BaseModel):
     response: str
     quick_replies: List[str]
     suggested_actions: Optional[List[str]] = None
+    style_used: Optional[str] = None
+    emotion_detected: Optional[str] = None
+    goal_link: Optional[str] = None
 
 
 def _safe_parse_structured_output(raw_text: str) -> Optional[dict]:
@@ -161,19 +168,31 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
         return CoachingResponse(
             response=get_crisis_response(),
             quick_replies=["I'm safe, thanks", "I need to talk to someone", "Find professional help"],
-            suggested_actions=["Contact crisis support", "Reach out to a trusted person"]
+            suggested_actions=["Contact crisis support", "Reach out to a trusted person"],
+            style_used="supportive",
+            emotion_detected="distressed",
+            goal_link="wellbeing_first"
         )
     
-    # Build conversation history
-    messages = [{"role": "system", "content": GROW_SYSTEM_PROMPT}]
-    
+    # Build context + style orchestration
+    emotion = detect_emotion(request.message)
+    style_used = route_style(request.message, request.coaching_style, emotion)
+    goal_link = infer_goal_link(request.message)
+
+    history_dicts = [{"role": m.role, "content": m.content} for m in (request.history or [])]
+    context_packet = build_context_packet(request.message, history_dicts, request.context)
+
+    messages = [
+        {"role": "system", "content": GROW_SYSTEM_PROMPT},
+        {"role": "system", "content": f"Coaching style to use this turn: {style_used}. {STYLE_PROMPTS[style_used]}"},
+        {"role": "system", "content": f"Emotion detected: {emotion}. Goal alignment tag: {goal_link}."},
+        {"role": "system", "content": context_packet},
+    ]
+
     if request.history:
         for msg in request.history:
             messages.append({"role": msg.role, "content": msg.content})
-    
-    if request.context:
-        messages.append({"role": "system", "content": f"Context: {request.context}"})
-    
+
     messages.append({"role": "user", "content": request.message})
     
     try:
@@ -222,19 +241,28 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
             return CoachingResponse(
                 response=ai_response,
                 quick_replies=quick_replies,
-                suggested_actions=suggested_actions
+                suggested_actions=suggested_actions,
+                style_used=style_used,
+                emotion_detected=emotion,
+                goal_link=goal_link
             )
 
         # Fallback to plain text response if model did not return valid JSON
         ai_response = raw.strip() or "I'm here to help you work through this. Could you tell me more?"
         return CoachingResponse(
             response=ai_response,
-            quick_replies=generate_quick_replies(request.message, ai_response, request.context)
+            quick_replies=generate_quick_replies(request.message, ai_response, request.context),
+            style_used=style_used,
+            emotion_detected=emotion,
+            goal_link=goal_link
         )
 
     except Exception:
         # Fallback response if API fails
         return CoachingResponse(
             response="I'm here to help you work through this. Could you tell me more about what's on your mind?",
-            quick_replies=["Let me share more", "What should I do next?", "Help me prioritize", "I'd like a concrete plan"]
+            quick_replies=["Let me share more", "What should I do next?", "Help me prioritize", "I'd like a concrete plan"],
+            style_used=style_used if 'style_used' in locals() else "strategic",
+            emotion_detected=emotion if 'emotion' in locals() else "neutral",
+            goal_link=goal_link if 'goal_link' in locals() else "professional_growth"
         )
