@@ -45,6 +45,13 @@ async def chat_stream(request: ChatStreamRequest):
             "style_used": result.style_used,
             "emotion_detected": result.emotion_detected,
             "goal_link": result.goal_link,
+            "emotion_primary": result.emotion_primary,
+            "emotion_scores": result.emotion_scores,
+            "sentiment": result.sentiment,
+            "linguistic_markers": result.linguistic_markers,
+            "behavior_signals": result.behavior_signals,
+            "context_triggers": result.context_triggers,
+            "recommended_style_shift": result.recommended_style_shift,
             "quick_replies": result.quick_replies,
         }
         yield f"data: {json.dumps({'meta': meta}, ensure_ascii=False)}\n\n"

@@ -6,7 +6,9 @@ from pydantic import BaseModel
 from app.services.style_router import route_style, STYLE_PROMPTS
 from app.services.emotion_analyzer import detect_emotion
 from app.services.context_engine import build_context_packet, infer_goal_link
-from app.services.memory_store import load_profile, update_profile_from_turn
+from app.services.memory_store import load_profile, update_profile_from_turn, save_profile
+from app.services.emotion_engine import analyze_text_emotion, infer_context_triggers
+from app.services.behavior_tracker import update_behavior_signals, style_preference_shift
 
 def get_openai_client() -> AsyncOpenAI:
     api_key = os.getenv("OPENAI_API_KEY")
@@ -64,6 +66,13 @@ class CoachingResponse(BaseModel):
     style_used: Optional[str] = None
     emotion_detected: Optional[str] = None
     goal_link: Optional[str] = None
+    emotion_primary: Optional[str] = None
+    emotion_scores: Optional[dict] = None
+    sentiment: Optional[dict] = None
+    linguistic_markers: Optional[dict] = None
+    behavior_signals: Optional[dict] = None
+    context_triggers: Optional[dict] = None
+    recommended_style_shift: Optional[str] = None
 
 
 def _safe_parse_structured_output(raw_text: str) -> Optional[dict]:
@@ -167,20 +176,42 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
     
     # Check for crisis indicators
     if detect_crisis(request.message):
-        update_profile_from_turn(request.user_id or "anonymous", request.message, "wellbeing_first")
+        profile = update_profile_from_turn(
+            request.user_id or "anonymous",
+            request.message,
+            "wellbeing_first",
+            style_used="supportive",
+            emotion_primary="high_stress",
+            context_triggers=context_triggers,
+        )
+        profile = update_behavior_signals(profile, style_used="supportive", goal_link="wellbeing_first")
+        save_profile(request.user_id or "anonymous", profile)
         return CoachingResponse(
             response=get_crisis_response(),
             quick_replies=["I'm safe, thanks", "I need to talk to someone", "Find professional help"],
             suggested_actions=["Contact crisis support", "Reach out to a trusted person"],
             style_used="supportive",
             emotion_detected="distressed",
-            goal_link="wellbeing_first"
+            goal_link="wellbeing_first",
+            emotion_primary="high_stress",
+            emotion_scores=ei.scores,
+            sentiment=ei.sentiment,
+            linguistic_markers=ei.linguistic_markers,
+            behavior_signals={
+                "style_preference_shift": style_preference_shift(profile),
+                "interaction_frequency_hint": "tracked",
+            },
+            context_triggers=context_triggers,
+            recommended_style_shift="supportive"
         )
     
     # Build context + style orchestration
     emotion = detect_emotion(request.message)
     style_used = route_style(request.message, request.coaching_style, emotion)
     goal_link = infer_goal_link(request.message)
+
+    ei = analyze_text_emotion(request.message)
+    context_triggers = infer_context_triggers(request.message)
 
     history_dicts = [{"role": m.role, "content": m.content} for m in (request.history or [])]
     context_packet = build_context_packet(request.message, history_dicts, request.context)
@@ -244,34 +275,96 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
             else:
                 suggested_actions = None
 
-            update_profile_from_turn(request.user_id or "anonymous", request.message, goal_link)
+            profile = update_profile_from_turn(
+                request.user_id or "anonymous",
+                request.message,
+                goal_link,
+                style_used=style_used,
+                emotion_primary=ei.primary,
+                context_triggers=context_triggers,
+            )
+            profile = update_behavior_signals(profile, style_used=style_used, goal_link=goal_link)
+            save_profile(request.user_id or "anonymous", profile)
             return CoachingResponse(
                 response=ai_response,
                 quick_replies=quick_replies,
                 suggested_actions=suggested_actions,
                 style_used=style_used,
                 emotion_detected=emotion,
-                goal_link=goal_link
+                goal_link=goal_link,
+                emotion_primary=ei.primary,
+                emotion_scores=ei.scores,
+                sentiment=ei.sentiment,
+                linguistic_markers=ei.linguistic_markers,
+                behavior_signals={
+                    "style_preference_shift": style_preference_shift(profile),
+                    "session_event_count": len(profile.get("session_events", [])),
+                },
+                context_triggers=context_triggers,
+                recommended_style_shift=style_preference_shift(profile),
             )
 
         # Fallback to plain text response if model did not return valid JSON
         ai_response = raw.strip() or "I'm here to help you work through this. Could you tell me more?"
-        update_profile_from_turn(request.user_id or "anonymous", request.message, goal_link)
+        profile = update_profile_from_turn(
+            request.user_id or "anonymous",
+            request.message,
+            goal_link,
+            style_used=style_used,
+            emotion_primary=ei.primary,
+            context_triggers=context_triggers,
+        )
+        profile = update_behavior_signals(profile, style_used=style_used, goal_link=goal_link)
+        save_profile(request.user_id or "anonymous", profile)
         return CoachingResponse(
             response=ai_response,
             quick_replies=generate_quick_replies(request.message, ai_response, request.context),
             style_used=style_used,
             emotion_detected=emotion,
-            goal_link=goal_link
+            goal_link=goal_link,
+            emotion_primary=ei.primary,
+            emotion_scores=ei.scores,
+            sentiment=ei.sentiment,
+            linguistic_markers=ei.linguistic_markers,
+            behavior_signals={
+                "style_preference_shift": style_preference_shift(profile),
+                "session_event_count": len(profile.get("session_events", [])),
+            },
+            context_triggers=context_triggers,
+            recommended_style_shift=style_preference_shift(profile),
         )
 
     except Exception:
         # Fallback response if API fails
-        update_profile_from_turn(request.user_id or "anonymous", request.message, goal_link if 'goal_link' in locals() else "professional_growth")
+        fallback_goal = goal_link if 'goal_link' in locals() else "professional_growth"
+        fallback_style = style_used if 'style_used' in locals() else "strategic"
+        fallback_emotion = emotion if 'emotion' in locals() else "neutral"
+
+        profile = update_profile_from_turn(
+            request.user_id or "anonymous",
+            request.message,
+            fallback_goal,
+            style_used=fallback_style,
+            emotion_primary=(ei.primary if 'ei' in locals() else "neutral"),
+            context_triggers=(context_triggers if 'context_triggers' in locals() else {}),
+        )
+        profile = update_behavior_signals(profile, style_used=fallback_style, goal_link=fallback_goal)
+        save_profile(request.user_id or "anonymous", profile)
+
         return CoachingResponse(
             response="I'm here to help you work through this. Could you tell me more about what's on your mind?",
             quick_replies=["Let me share more", "What should I do next?", "Help me prioritize", "I'd like a concrete plan"],
-            style_used=style_used if 'style_used' in locals() else "strategic",
-            emotion_detected=emotion if 'emotion' in locals() else "neutral",
-            goal_link=goal_link if 'goal_link' in locals() else "professional_growth"
+            style_used=fallback_style,
+            emotion_detected=fallback_emotion,
+            goal_link=fallback_goal,
+            emotion_primary=(ei.primary if 'ei' in locals() else "neutral"),
+            emotion_scores=(ei.scores if 'ei' in locals() else {"neutral": 1.0}),
+            sentiment=(ei.sentiment if 'ei' in locals() else {"positive": 0.2, "negative": 0.2, "neutral": 0.6}),
+            linguistic_markers=(ei.linguistic_markers if 'ei' in locals() else {}),
+            behavior_signals={
+                "style_preference_shift": style_preference_shift(profile),
+                "session_event_count": len(profile.get("session_events", [])),
+            },
+            context_triggers=(context_triggers if 'context_triggers' in locals() else {}),
+            recommended_style_shift=style_preference_shift(profile),
         )

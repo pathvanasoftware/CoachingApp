@@ -24,7 +24,11 @@ def load_profile(user_id: str) -> Dict[str, Any]:
             "goals": [],
             "patterns": [],
             "preferences": {},
-            "last_topics": []
+            "last_topics": [],
+            "emotion_timeline": [],
+            "style_usage": {},
+            "goal_progress_signals": {},
+            "session_events": []
         }
 
     try:
@@ -40,7 +44,11 @@ def load_profile(user_id: str) -> Dict[str, Any]:
         "goals": [],
         "patterns": [],
         "preferences": {},
-        "last_topics": []
+        "last_topics": [],
+        "emotion_timeline": [],
+        "style_usage": {},
+        "goal_progress_signals": {},
+        "session_events": []
     }
 
 
@@ -51,7 +59,15 @@ def save_profile(user_id: str, profile: Dict[str, Any]) -> None:
         json.dump(profile, f, ensure_ascii=False, indent=2)
 
 
-def update_profile_from_turn(user_id: str, user_message: str, goal_link: str) -> Dict[str, Any]:
+def update_profile_from_turn(
+    user_id: str,
+    user_message: str,
+    goal_link: str,
+    *,
+    style_used: str = "strategic",
+    emotion_primary: str = "neutral",
+    context_triggers: Dict[str, str] | None = None,
+) -> Dict[str, Any]:
     profile = load_profile(user_id)
 
     # simple topic memory
@@ -73,6 +89,15 @@ def update_profile_from_turn(user_id: str, user_message: str, goal_link: str) ->
     if any(k in text for k in ["team", "stakeholder", "manager", "leadership"]):
         patterns.add("leadership_scope")
     profile["patterns"] = sorted(patterns)
+
+    timeline = profile.get("emotion_timeline", [])
+    timeline.append({
+        "emotion": emotion_primary,
+        "style": style_used,
+        "goal": goal_link,
+        "context": context_triggers or {},
+    })
+    profile["emotion_timeline"] = timeline[-40:]
 
     save_profile(user_id, profile)
     return profile
