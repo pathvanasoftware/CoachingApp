@@ -13,6 +13,16 @@ Expected API base URL:
 
 - `http://localhost:8000/api/v1`
 
+### Coaching styles (backend)
+
+`POST /api/v1/chat/` now supports optional `coaching_style`:
+- `directive`
+- `facilitative`
+- `supportive`
+- `strategic`
+
+If omitted, style is auto-routed from user text + emotion signal.
+
 
 A modern coaching application.
 

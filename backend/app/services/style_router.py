@@ -2,12 +2,7 @@ from typing import Literal, Optional
 
 CoachingStyle = Literal["directive", "facilitative", "supportive", "strategic"]
 
-STYLE_PROMPTS = {
-    "directive": "You are a directive executive coach: clear recommendations, concrete steps, confident tone.",
-    "facilitative": "You are a facilitative coach: use Socratic questions to guide discovery and reflection.",
-    "supportive": "You are a supportive coach: validate emotions, build confidence, and encourage momentum.",
-    "strategic": "You are a strategic coach: zoom out, connect decisions to long-term leadership goals and tradeoffs.",
-}
+from app.prompts.styles import STYLE_PROMPTS
 
 
 def route_style(user_message: str, preferred_style: Optional[str] = None, emotion: Optional[str] = None) -> CoachingStyle:
