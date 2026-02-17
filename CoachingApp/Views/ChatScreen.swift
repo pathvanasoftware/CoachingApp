@@ -229,22 +229,52 @@ struct ChatScreen: View {
     private func diagnosticsChips(style: String, emotion: String, goal: String) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                chip("Style: \(style)")
-                chip("Emotion: \(emotion)")
-                chip("Goal: \(goal)")
+                chip("Style: \(style)", tint: styleTint(style))
+                chip("Emotion: \(emotion)", tint: emotionTint(emotion))
+                chip("Goal: \(goal)", tint: goalTint(goal))
             }
             .padding(.vertical, 2)
         }
     }
 
-    private func chip(_ text: String) -> some View {
+    private func chip(_ text: String, tint: Color) -> some View {
         Text(text)
             .font(.caption2)
-            .foregroundColor(.secondary)
+            .foregroundColor(tint)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(Color(.systemGray6))
+            .background(tint.opacity(0.12))
+            .overlay(Capsule().stroke(tint.opacity(0.35), lineWidth: 0.8))
             .clipShape(Capsule())
+    }
+
+    private func styleTint(_ style: String) -> Color {
+        switch style.lowercased() {
+        case "directive": return .orange
+        case "facilitative": return .indigo
+        case "supportive": return .mint
+        case "strategic": return .blue
+        default: return .secondary
+        }
+    }
+
+    private func emotionTint(_ emotion: String) -> Color {
+        switch emotion.lowercased() {
+        case "distressed": return .red
+        case "low_confidence", "uncertain": return .orange
+        case "motivated": return .green
+        default: return .secondary
+        }
+    }
+
+    private func goalTint(_ goal: String) -> Color {
+        switch goal.lowercased() {
+        case "career_advancement": return .purple
+        case "leadership_effectiveness": return .blue
+        case "execution_excellence": return .teal
+        case "wellbeing_first": return .red
+        default: return .secondary
+        }
     }
 
     // MARK: - Quick Replies Section
