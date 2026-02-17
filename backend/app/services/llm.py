@@ -80,23 +80,49 @@ These services are free, confidential, and available 24/7. You don't have to fac
 Would you like to talk about what's going on? I'm here to listen, and I can also help you find professional support in your area."""
 
 
-def generate_quick_replies(response: str, context: str = None) -> List[str]:
-    """Generate contextual quick reply options"""
-    base_replies = [
-        "Tell me more about that",
-        "What's my next step?",
-        "Help me brainstorm options",
-        "I'd like to explore this deeper"
-    ]
-    
-    if "goal" in response.lower() or "achieve" in response.lower():
-        base_replies.insert(0, "Let's define my goal")
-    if "option" in response.lower() or "choice" in response.lower():
-        base_replies.insert(0, "What are my options?")
-    if "action" in response.lower() or "step" in response.lower():
-        base_replies.insert(0, "Create an action plan")
-    
-    return base_replies[:4]
+def generate_quick_replies(user_message: str, ai_response: str, context: str = None) -> List[str]:
+    """Generate contextual quick reply options based on user's latest answer + AI response."""
+    user = (user_message or "").lower()
+    coach = (ai_response or "").lower()
+
+    # Always keep one generic exploration option
+    options: List[str] = ["Tell me more"]
+
+    # User-intent driven options (primary signal)
+    if any(k in user for k in ["promotion", "raise", "salary", "compensation"]):
+        options += ["How do I negotiate this?", "What proof should I prepare?"]
+    if any(k in user for k in ["switch", "change career", "transition", "new role"]):
+        options += ["How do I de-risk this move?", "What should my 30-60-90 day plan be?"]
+    if any(k in user for k in ["team", "manager", "leadership", "conflict", "boss"]):
+        options += ["How should I handle this conversation?", "Give me a script I can use"]
+    if any(k in user for k in ["stuck", "overwhelmed", "burnout", "stress", "anxious"]):
+        options += ["Help me prioritize next steps", "What's the smallest next action?"]
+
+    # Coach-response driven options (secondary signal)
+    if any(k in coach for k in ["goal", "achieve", "outcome"]):
+        options.append("Let's define the exact goal")
+    if any(k in coach for k in ["option", "choice", "alternative"]):
+        options.append("Show me 3 options")
+    if any(k in coach for k in ["action", "step", "plan"]):
+        options.append("Turn this into an action plan")
+
+    # Fallbacks if intent signals are weak
+    if len(options) < 4:
+        options += [
+            "What should I do next?",
+            "Help me brainstorm options",
+            "I'd like to explore this deeper"
+        ]
+
+    # De-duplicate while preserving order
+    seen = set()
+    deduped = []
+    for opt in options:
+        if opt not in seen:
+            seen.add(opt)
+            deduped.append(opt)
+
+    return deduped[:4]
 
 
 async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
@@ -135,7 +161,7 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
         
         return CoachingResponse(
             response=ai_response,
-            quick_replies=generate_quick_replies(ai_response, request.context)
+            quick_replies=generate_quick_replies(request.message, ai_response, request.context)
         )
     except Exception as e:
         # Fallback response if API fails
