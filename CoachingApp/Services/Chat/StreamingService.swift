@@ -174,9 +174,16 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
 
                 // Try to parse as JSON with a "token" field
                 if let jsonData = data.data(using: .utf8),
-                   let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
-                   let token = json["token"] as? String {
-                    return token
+                   let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                    if let token = json["token"] as? String {
+                        return token
+                    }
+                    if let meta = json["meta"] {
+                        if let metaData = try? JSONSerialization.data(withJSONObject: meta),
+                           let metaString = String(data: metaData, encoding: .utf8) {
+                            return "__META__:\(metaString)"
+                        }
+                    }
                 }
 
                 // If not JSON, return raw data (could be "[DONE]" or plain text)

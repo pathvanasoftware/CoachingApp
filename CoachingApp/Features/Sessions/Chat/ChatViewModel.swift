@@ -220,6 +220,9 @@ final class ChatViewModel {
         do {
             for try await token in stream {
                 guard let lastIndex = messages.indices.last else { break }
+                if applyDiagnosticsIfMetaToken(token, messageIndex: lastIndex) {
+                    continue
+                }
                 messages[lastIndex].content += token
             }
         } catch {
@@ -267,6 +270,9 @@ final class ChatViewModel {
                 for try await token in stream {
                     guard !Task.isCancelled else { break }
                     guard let lastIndex = self.messages.indices.last else { break }
+                    if self.applyDiagnosticsIfMetaToken(token, messageIndex: lastIndex) {
+                        continue
+                    }
                     self.messages[lastIndex].content += token
                 }
             } catch {
@@ -370,6 +376,27 @@ final class ChatViewModel {
             emotionDetected: emotion,
             goalLink: goal
         )
+    }
+
+    private func applyDiagnosticsIfMetaToken(_ token: String, messageIndex: Int) -> Bool {
+        guard token.hasPrefix("__META__:") else { return false }
+        let raw = String(token.dropFirst("__META__:".count))
+        guard let data = raw.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return true
+        }
+
+        let style = (json["style_used"] as? String) ?? selectedCoachingStyle.displayName
+        let emotion = (json["emotion_detected"] as? String) ?? "neutral"
+        let goal = (json["goal_link"] as? String) ?? "professional_growth"
+
+        messages[messageIndex].diagnostics = CoachingDiagnostics(
+            styleUsed: style,
+            emotionDetected: emotion,
+            goalLink: goal
+        )
+
+        return true
     }
 
     func dismissHandoffOptions() {
