@@ -184,6 +184,10 @@ struct ChatScreen: View {
             // Message Bubble
             messageBubble(for: message)
 
+            if !message.isFromUser, let d = message.diagnostics {
+                diagnosticsChips(style: d.styleUsed, emotion: d.emotionDetected, goal: d.goalLink)
+            }
+
             // Quick Replies (only for AI messages)
             if !message.isFromUser && viewModel.shouldShowQuickReplies(for: message.id) {
                 quickRepliesSection(for: message)
@@ -220,6 +224,27 @@ struct ChatScreen: View {
                 Spacer()
             }
         }
+    }
+
+    private func diagnosticsChips(style: String, emotion: String, goal: String) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                chip("Style: \(style)")
+                chip("Emotion: \(emotion)")
+                chip("Goal: \(goal)")
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    private func chip(_ text: String) -> some View {
+        Text(text)
+            .font(.caption2)
+            .foregroundColor(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color(.systemGray6))
+            .clipShape(Capsule())
     }
 
     // MARK: - Quick Replies Section

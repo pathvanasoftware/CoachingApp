@@ -7,6 +7,7 @@ struct ChatMessage: Identifiable, Codable {
     var content: String
     var timestamp: Date
     var isStreaming: Bool
+    var diagnostics: CoachingDiagnostics?
 
     init(
         id: String = UUID().uuidString,
@@ -14,7 +15,8 @@ struct ChatMessage: Identifiable, Codable {
         role: MessageRole,
         content: String,
         timestamp: Date = Date(),
-        isStreaming: Bool = false
+        isStreaming: Bool = false,
+        diagnostics: CoachingDiagnostics? = nil
     ) {
         self.id = id
         self.sessionId = sessionId
@@ -22,6 +24,7 @@ struct ChatMessage: Identifiable, Codable {
         self.content = content
         self.timestamp = timestamp
         self.isStreaming = isStreaming
+        self.diagnostics = diagnostics
     }
 
     var isFromUser: Bool { role == .user }
@@ -32,4 +35,10 @@ enum MessageRole: String, Codable {
     case user = "user"
     case assistant = "assistant"
     case system = "system"
+}
+
+struct CoachingDiagnostics: Codable {
+    var styleUsed: String
+    var emotionDetected: String
+    var goalLink: String
 }

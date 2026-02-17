@@ -33,6 +33,7 @@ final class ChatViewModel {
     private var streamingTask: Task<Void, Never>?
     private var voiceInputManager: VoiceInputManager?
     private var pendingHumanCoachRequest: Bool = false
+    private var pendingDiagnostics: CoachingDiagnostics?
 
     // Quick reply suggestions based on context
     private let quickReplySuggestions: [QuickReply] = [
@@ -145,6 +146,9 @@ final class ChatViewModel {
             showCrisisResources = true
         }
 
+        // Build diagnostics for the upcoming assistant turn
+        pendingDiagnostics = buildDiagnostics(for: content)
+
         // Stream the assistant response
         await streamAssistantResponse(content: content, for: session)
     }
@@ -197,7 +201,12 @@ final class ChatViewModel {
             sessionId: session.id,
             role: .assistant,
             content: "",
-            isStreaming: true
+            isStreaming: true,
+            diagnostics: CoachingDiagnostics(
+                styleUsed: selectedCoachingStyle.displayName,
+                emotionDetected: "neutral",
+                goalLink: "professional_growth"
+            )
         )
         messages.append(assistantMessage)
 
@@ -238,9 +247,11 @@ final class ChatViewModel {
             sessionId: session.id,
             role: .assistant,
             content: "",
-            isStreaming: true
+            isStreaming: true,
+            diagnostics: pendingDiagnostics
         )
         messages.append(assistantMessage)
+        pendingDiagnostics = nil
 
         let stream = streamingService.streamResponse(
             sessionId: session.id,
@@ -331,6 +342,34 @@ final class ChatViewModel {
             "end my life", "better off dead", "no reason to live"
         ]
         return crisisKeywords.contains { t.contains($0) }
+    }
+
+    private func buildDiagnostics(for userMessage: String) -> CoachingDiagnostics {
+        let text = userMessage.lowercased()
+
+        let emotion: String
+        if ["overwhelmed", "burnout", "anxious", "hopeless"].contains(where: { text.contains($0) }) {
+            emotion = "distressed"
+        } else if ["not sure", "unclear", "confused", "maybe"].contains(where: { text.contains($0) }) {
+            emotion = "uncertain"
+        } else {
+            emotion = "neutral"
+        }
+
+        let goal: String
+        if ["promotion", "vp", "director", "career"].contains(where: { text.contains($0) }) {
+            goal = "career_advancement"
+        } else if ["team", "leadership", "stakeholder", "manager"].contains(where: { text.contains($0) }) {
+            goal = "leadership_effectiveness"
+        } else {
+            goal = "professional_growth"
+        }
+
+        return CoachingDiagnostics(
+            styleUsed: selectedCoachingStyle.displayName,
+            emotionDetected: emotion,
+            goalLink: goal
+        )
     }
 
     func dismissHandoffOptions() {
