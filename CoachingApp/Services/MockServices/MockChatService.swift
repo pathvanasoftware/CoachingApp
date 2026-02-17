@@ -157,7 +157,8 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
     func streamResponse(
         sessionId: String,
         message: String,
-        persona: CoachingPersonaType
+        persona: CoachingPersonaType,
+        coachingStyle: CoachingStyle? = nil
     ) -> AsyncThrowingStream<String, Error> {
         let response = coachingResponses[responseIndex % coachingResponses.count]
         responseIndex += 1

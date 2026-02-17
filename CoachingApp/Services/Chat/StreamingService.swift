@@ -6,7 +6,8 @@ protocol StreamingServiceProtocol: Sendable {
     func streamResponse(
         sessionId: String,
         message: String,
-        persona: CoachingPersonaType
+        persona: CoachingPersonaType,
+        coachingStyle: CoachingStyle?
     ) -> AsyncThrowingStream<String, Error>
 }
 
@@ -16,6 +17,7 @@ private struct StreamingRequest: Codable {
     let sessionId: String
     let message: String
     let persona: String
+    let coachingStyle: String?
 }
 
 // MARK: - Streaming Service
@@ -46,7 +48,8 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
     func streamResponse(
         sessionId: String,
         message: String,
-        persona: CoachingPersonaType
+        persona: CoachingPersonaType,
+        coachingStyle: CoachingStyle? = nil
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
@@ -55,6 +58,7 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
                         sessionId: sessionId,
                         message: message,
                         persona: persona,
+                        coachingStyle: coachingStyle,
                         continuation: continuation
                     )
                 } catch {
@@ -74,6 +78,7 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
         sessionId: String,
         message: String,
         persona: CoachingPersonaType,
+        coachingStyle: CoachingStyle?,
         continuation: AsyncThrowingStream<String, Error>.Continuation
     ) async throws {
         guard let url = URL(string: "\(baseURL)/chat-stream") else {
@@ -96,7 +101,8 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
         let body = StreamingRequest(
             sessionId: sessionId,
             message: message,
-            persona: persona.rawValue
+            persona: persona.rawValue,
+            coachingStyle: coachingStyle?.apiValue
         )
         request.httpBody = try JSONEncoder().encode(body)
 

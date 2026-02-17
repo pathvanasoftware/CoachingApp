@@ -20,6 +20,7 @@ final class ChatViewModel {
     var showCrisisResources: Bool = false
     var hasSubscription: Bool = false
     var showQuickRepliesFor: String?
+    var selectedCoachingStyle: CoachingStyle = .auto
 
     // MARK: - Dependencies
 
@@ -203,7 +204,8 @@ final class ChatViewModel {
         let stream = streamingService.streamResponse(
             sessionId: session.id,
             message: "",
-            persona: session.persona
+            persona: session.persona,
+            coachingStyle: selectedCoachingStyle
         )
 
         do {
@@ -243,7 +245,8 @@ final class ChatViewModel {
         let stream = streamingService.streamResponse(
             sessionId: session.id,
             message: content,
-            persona: session.persona
+            persona: session.persona,
+            coachingStyle: selectedCoachingStyle
         )
 
         streamingTask = Task { @MainActor [weak self] in

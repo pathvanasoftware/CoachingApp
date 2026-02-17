@@ -10,6 +10,7 @@ final class AppState {
     var currentUserEmail: String? = "test@example.com"
     var currentUserName: String? = "Test User"
     var selectedPersona: CoachingPersonaType = .directChallenger
+    var selectedCoachingStyle: CoachingStyle = .auto
     var preferredInputMode: InputMode = .text
     var engagementStreak: Int = 0
 

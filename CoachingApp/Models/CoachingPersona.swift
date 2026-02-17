@@ -1,6 +1,30 @@
 import Foundation
 import SwiftUI
 
+enum CoachingStyle: String, Codable, CaseIterable, Identifiable {
+    case auto
+    case directive
+    case facilitative
+    case supportive
+    case strategic
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .auto: return "Auto"
+        case .directive: return "Directive"
+        case .facilitative: return "Facilitative"
+        case .supportive: return "Supportive"
+        case .strategic: return "Strategic"
+        }
+    }
+
+    var apiValue: String? {
+        self == .auto ? nil : rawValue
+    }
+}
+
 enum CoachingPersonaType: String, Codable, CaseIterable, Identifiable {
     case directChallenger = "direct_challenger"
     case supportiveStrategist = "supportive_strategist"

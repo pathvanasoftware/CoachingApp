@@ -60,6 +60,9 @@ struct ChatScreen: View {
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.showHandoffOptions)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.showCrisisResources)
+        .onChange(of: viewModel.selectedCoachingStyle) { _, newValue in
+            appState.selectedCoachingStyle = newValue
+        }
         .sheet(isPresented: $viewModel.showCrisisResources) {
             CrisisResourceView(
                 resources: crisisResources,
@@ -69,6 +72,8 @@ struct ChatScreen: View {
             .presentationDragIndicator(.visible)
         }
         .task {
+            viewModel.selectedCoachingStyle = appState.selectedCoachingStyle
+
             // Start a new session when view appears
             await viewModel.startSession(
                 type: .checkIn,
@@ -110,6 +115,25 @@ struct ChatScreen: View {
                     .font(.headline)
 
                 Spacer()
+
+                Menu {
+                    Picker("Coaching Style", selection: $viewModel.selectedCoachingStyle) {
+                        ForEach(CoachingStyle.allCases) { style in
+                            Text(style.displayName).tag(style)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(viewModel.selectedCoachingStyle.displayName)
+                            .font(.caption)
+                        Image(systemName: "chevron.down")
+                            .font(.caption2)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color(.systemGray6))
+                    .clipShape(Capsule())
+                }
 
                 if viewModel.isStreaming {
                     ProgressView()
