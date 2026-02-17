@@ -173,7 +173,11 @@ def generate_quick_replies(user_message: str, ai_response: str, context: str = N
 
 async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
     """Get AI coaching response using GPT-4"""
-    
+
+    # Context signals needed by all branches
+    context_triggers = infer_context_triggers(request.message)
+    ei = analyze_text_emotion(request.message)
+
     # Check for crisis indicators
     if detect_crisis(request.message):
         profile = update_profile_from_turn(
@@ -209,9 +213,6 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
     emotion = detect_emotion(request.message)
     style_used = route_style(request.message, request.coaching_style, emotion)
     goal_link = infer_goal_link(request.message)
-
-    ei = analyze_text_emotion(request.message)
-    context_triggers = infer_context_triggers(request.message)
 
     history_dicts = [{"role": m.role, "content": m.content} for m in (request.history or [])]
     context_packet = build_context_packet(request.message, history_dicts, request.context)
