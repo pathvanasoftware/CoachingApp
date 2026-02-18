@@ -41,4 +41,8 @@ struct CoachingDiagnostics: Codable {
     var styleUsed: String
     var emotionDetected: String
     var goalLink: String
+    var goalAnchor: String?
+    var goalHierarchySummary: String?
+    var progressiveSkillSummary: String?
+    var outcomePredictionSummary: String?
 }

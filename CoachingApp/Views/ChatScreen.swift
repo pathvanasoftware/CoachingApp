@@ -186,6 +186,7 @@ struct ChatScreen: View {
 
             if !message.isFromUser, let d = message.diagnostics {
                 diagnosticsChips(style: d.styleUsed, emotion: d.emotionDetected, goal: d.goalLink)
+                goalArchitectureDetails(d)
             }
 
             // Quick Replies (only for AI messages)
@@ -275,6 +276,30 @@ struct ChatScreen: View {
         case "wellbeing_first": return .red
         default: return .secondary
         }
+    }
+
+    private func goalArchitectureDetails(_ d: CoachingDiagnostics) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let anchor = d.goalAnchor, !anchor.isEmpty {
+                detailLine("Anchor", anchor)
+            }
+            if let h = d.goalHierarchySummary, !h.isEmpty {
+                detailLine("Hierarchy", h)
+            }
+            if let p = d.progressiveSkillSummary, !p.isEmpty {
+                detailLine("Skill", p)
+            }
+            if let o = d.outcomePredictionSummary, !o.isEmpty {
+                detailLine("Prediction", o)
+            }
+        }
+    }
+
+    private func detailLine(_ label: String, _ text: String) -> some View {
+        Text("\(label): \(text)")
+            .font(.caption2)
+            .foregroundColor(.secondary)
+            .lineLimit(2)
     }
 
     // MARK: - Quick Replies Section

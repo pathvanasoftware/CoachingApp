@@ -205,7 +205,11 @@ final class ChatViewModel {
             diagnostics: CoachingDiagnostics(
                 styleUsed: selectedCoachingStyle.displayName,
                 emotionDetected: "neutral",
-                goalLink: "professional_growth"
+                goalLink: "professional_growth",
+                goalAnchor: nil,
+                goalHierarchySummary: nil,
+                progressiveSkillSummary: nil,
+                outcomePredictionSummary: nil
             )
         )
         messages.append(assistantMessage)
@@ -374,7 +378,11 @@ final class ChatViewModel {
         return CoachingDiagnostics(
             styleUsed: selectedCoachingStyle.displayName,
             emotionDetected: emotion,
-            goalLink: goal
+            goalLink: goal,
+            goalAnchor: nil,
+            goalHierarchySummary: nil,
+            progressiveSkillSummary: nil,
+            outcomePredictionSummary: nil
         )
     }
 
@@ -390,13 +398,34 @@ final class ChatViewModel {
         let emotion = (json["emotion_detected"] as? String) ?? "neutral"
         let goal = (json["goal_link"] as? String) ?? "professional_growth"
 
+        let goalAnchor = json["goal_anchor"] as? String
+        let goalHierarchySummary = summarizeAny(json["goal_hierarchy"])
+        let progressiveSkillSummary = summarizeAny(json["progressive_skill_building"])
+        let outcomePredictionSummary = summarizeAny(json["outcome_prediction"])
+
         messages[messageIndex].diagnostics = CoachingDiagnostics(
             styleUsed: style,
             emotionDetected: emotion,
-            goalLink: goal
+            goalLink: goal,
+            goalAnchor: goalAnchor,
+            goalHierarchySummary: goalHierarchySummary,
+            progressiveSkillSummary: progressiveSkillSummary,
+            outcomePredictionSummary: outcomePredictionSummary
         )
 
         return true
+    }
+
+    private func summarizeAny(_ value: Any?) -> String? {
+        guard let value else { return nil }
+        if let s = value as? String {
+            return s
+        }
+        if let data = try? JSONSerialization.data(withJSONObject: value, options: []),
+           let text = String(data: data, encoding: .utf8) {
+            return text
+        }
+        return nil
     }
 
     func dismissHandoffOptions() {

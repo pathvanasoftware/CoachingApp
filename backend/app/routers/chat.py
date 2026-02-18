@@ -52,6 +52,10 @@ async def chat_stream(request: ChatStreamRequest):
             "behavior_signals": result.behavior_signals,
             "context_triggers": result.context_triggers,
             "recommended_style_shift": result.recommended_style_shift,
+            "goal_hierarchy": result.goal_hierarchy,
+            "goal_anchor": result.goal_anchor,
+            "progressive_skill_building": result.progressive_skill_building,
+            "outcome_prediction": result.outcome_prediction,
             "quick_replies": result.quick_replies,
         }
         yield f"data: {json.dumps({'meta': meta}, ensure_ascii=False)}\n\n"
