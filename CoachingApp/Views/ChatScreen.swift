@@ -279,18 +279,30 @@ struct ChatScreen: View {
     }
 
     private func goalArchitectureDetails(_ d: CoachingDiagnostics) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if let anchor = d.goalAnchor, !anchor.isEmpty {
-                detailLine("Anchor", anchor)
-            }
-            if let h = d.goalHierarchySummary, !h.isEmpty {
-                detailLine("Hierarchy", h)
-            }
-            if let p = d.progressiveSkillSummary, !p.isEmpty {
-                detailLine("Skill", p)
-            }
-            if let o = d.outcomePredictionSummary, !o.isEmpty {
-                detailLine("Prediction", o)
+        let hasDetails = [d.goalAnchor, d.goalHierarchySummary, d.progressiveSkillSummary, d.outcomePredictionSummary]
+            .contains { ($0 ?? "").isEmpty == false }
+
+        return Group {
+            if hasDetails {
+                DisclosureGroup("Goal Insights") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        if let anchor = d.goalAnchor, !anchor.isEmpty {
+                            detailLine("Anchor", anchor)
+                        }
+                        if let h = d.goalHierarchySummary, !h.isEmpty {
+                            detailLine("Hierarchy", h)
+                        }
+                        if let p = d.progressiveSkillSummary, !p.isEmpty {
+                            detailLine("Skill", p)
+                        }
+                        if let o = d.outcomePredictionSummary, !o.isEmpty {
+                            detailLine("Prediction", o)
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
             }
         }
     }
@@ -299,7 +311,7 @@ struct ChatScreen: View {
         Text("\(label): \(text)")
             .font(.caption2)
             .foregroundColor(.secondary)
-            .lineLimit(2)
+            .lineLimit(3)
     }
 
     // MARK: - Quick Replies Section
