@@ -11,6 +11,7 @@ final class AppState {
     var currentUserName: String? = "Test User"
     var selectedPersona: CoachingPersonaType = .directChallenger
     var selectedCoachingStyle: CoachingStyle = .auto
+    var showDebugDiagnostics: Bool = false
     var preferredInputMode: InputMode = .text
     var engagementStreak: Int = 0
 
@@ -18,6 +19,9 @@ final class AppState {
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--force-onboarding") {
             hasCompletedOnboarding = false
+        }
+        if args.contains("--debug-diagnostics") {
+            showDebugDiagnostics = true
         }
     }
 

@@ -122,6 +122,10 @@ struct ChatScreen: View {
                             Text(style.displayName).tag(style)
                         }
                     }
+
+                    Button(appState.showDebugDiagnostics ? "Hide Debug Diagnostics" : "Show Debug Diagnostics") {
+                        appState.showDebugDiagnostics.toggle()
+                    }
                 } label: {
                     HStack(spacing: 4) {
                         Text(viewModel.selectedCoachingStyle.displayName)
@@ -184,7 +188,7 @@ struct ChatScreen: View {
             // Message Bubble
             messageBubble(for: message)
 
-            if !message.isFromUser, let d = message.diagnostics {
+            if appState.showDebugDiagnostics, !message.isFromUser, let d = message.diagnostics {
                 diagnosticsChips(style: d.styleUsed, emotion: d.emotionDetected, goal: d.goalLink)
                 goalArchitectureDetails(d)
             }
