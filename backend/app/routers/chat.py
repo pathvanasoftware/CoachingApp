@@ -1,6 +1,7 @@
+import os
 import json
 import asyncio
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from app.services.llm import CoachingRequest, CoachingResponse, get_coaching_response
@@ -18,6 +19,8 @@ class ChatStreamRequest(BaseModel):
 @router.post("/", response_model=CoachingResponse)
 async def chat(request: CoachingRequest) -> CoachingResponse:
     """Handle coaching chat messages"""
+    if os.getenv("REQUIRE_OPENAI_KEY", "1") == "1" and not os.getenv("OPENAI_API_KEY"):
+        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is required in strict mode")
     return await get_coaching_response(request)
 
 @router.post("/quick-replies")
@@ -30,6 +33,9 @@ async def get_quick_replies(message: str, response: str = "") -> dict:
 @router.post("/chat-stream")
 async def chat_stream(request: ChatStreamRequest):
     """SSE stream for iOS client. First emits metadata, then token chunks."""
+
+    if os.getenv("REQUIRE_OPENAI_KEY", "1") == "1" and not os.getenv("OPENAI_API_KEY"):
+        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is required in strict mode")
 
     coaching_req = CoachingRequest(
         message=request.message,

@@ -45,4 +45,6 @@ struct CoachingDiagnostics: Codable {
     var goalHierarchySummary: String?
     var progressiveSkillSummary: String?
     var outcomePredictionSummary: String?
+    var riskLevel: String?
+    var recommendedStyleShift: String?
 }

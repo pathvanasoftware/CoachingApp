@@ -209,7 +209,9 @@ final class ChatViewModel {
                 goalAnchor: nil,
                 goalHierarchySummary: nil,
                 progressiveSkillSummary: nil,
-                outcomePredictionSummary: nil
+                outcomePredictionSummary: nil,
+                riskLevel: nil,
+                recommendedStyleShift: nil
             )
         )
         messages.append(assistantMessage)
@@ -402,6 +404,8 @@ final class ChatViewModel {
         let goalHierarchySummary = summarizeAny(json["goal_hierarchy"])
         let progressiveSkillSummary = summarizeAny(json["progressive_skill_building"])
         let outcomePredictionSummary = summarizeAny(json["outcome_prediction"])
+        let recommendedStyleShift = json["recommended_style_shift"] as? String
+        let riskLevel = (json["outcome_prediction"] as? [String: Any])?["risk_level"] as? String
 
         messages[messageIndex].diagnostics = CoachingDiagnostics(
             styleUsed: style,
@@ -410,7 +414,9 @@ final class ChatViewModel {
             goalAnchor: goalAnchor,
             goalHierarchySummary: goalHierarchySummary,
             progressiveSkillSummary: progressiveSkillSummary,
-            outcomePredictionSummary: outcomePredictionSummary
+            outcomePredictionSummary: outcomePredictionSummary,
+            riskLevel: riskLevel,
+            recommendedStyleShift: recommendedStyleShift
         )
 
         return true

@@ -35,6 +35,13 @@ fi
 
 export HOST="${HOST:-0.0.0.0}"
 export PORT="${PORT:-8000}"
+export REQUIRE_OPENAI_KEY="${REQUIRE_OPENAI_KEY:-1}"
+
+if [ "$REQUIRE_OPENAI_KEY" = "1" ] && [ -z "${OPENAI_API_KEY:-}" ]; then
+  echo "❌ OPENAI_API_KEY is required (REQUIRE_OPENAI_KEY=1)."
+  echo "Set it first: export OPENAI_API_KEY='sk-proj-...'"
+  exit 1
+fi
 
 echo "✅ Starting backend at http://$HOST:$PORT"
 exec uvicorn main:app --host "$HOST" --port "$PORT"

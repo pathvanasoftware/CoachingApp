@@ -32,6 +32,8 @@ def test_quick_replies_endpoint():
 
 
 def test_chat_stream_endpoint(monkeypatch):
+    monkeypatch.setenv("REQUIRE_OPENAI_KEY", "0")
+
     async def _fake(_req):
         return CoachingResponse(
             response="One two three",

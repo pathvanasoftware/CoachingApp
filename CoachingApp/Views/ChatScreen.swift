@@ -283,8 +283,15 @@ struct ChatScreen: View {
     }
 
     private func goalArchitectureDetails(_ d: CoachingDiagnostics) -> some View {
-        let hasDetails = [d.goalAnchor, d.goalHierarchySummary, d.progressiveSkillSummary, d.outcomePredictionSummary]
-            .contains { ($0 ?? "").isEmpty == false }
+        let hasDetails = [
+            d.goalAnchor,
+            d.goalHierarchySummary,
+            d.progressiveSkillSummary,
+            d.outcomePredictionSummary,
+            d.riskLevel,
+            d.recommendedStyleShift,
+        ]
+        .contains { ($0 ?? "").isEmpty == false }
 
         return Group {
             if hasDetails {
@@ -301,6 +308,12 @@ struct ChatScreen: View {
                         }
                         if let o = d.outcomePredictionSummary, !o.isEmpty {
                             detailLine("Prediction", o)
+                        }
+                        if let risk = d.riskLevel, !risk.isEmpty {
+                            detailLine("Risk", risk)
+                        }
+                        if let shift = d.recommendedStyleShift, !shift.isEmpty {
+                            detailLine("Style Shift", shift)
                         }
                     }
                     .padding(.top, 4)
