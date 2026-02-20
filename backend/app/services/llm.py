@@ -107,6 +107,40 @@ def _safe_parse_structured_output(raw_text: str) -> Optional[dict]:
     return None
 
 
+def _clean_response_text(raw_text: str) -> str:
+    """Ensure assistant response is plain text, not JSON wrapper."""
+    txt = (raw_text or "").strip()
+    if not txt:
+        return ""
+
+    # Strip common markdown code fences first
+    if txt.startswith("```") and txt.endswith("```"):
+        txt = txt.strip("`").strip()
+
+    # Unwrap nested JSON response up to a few levels
+    for _ in range(3):
+        parsed = _safe_parse_structured_output(txt)
+        if parsed and isinstance(parsed.get("response"), str):
+            nxt = parsed.get("response", "").strip()
+            if nxt == txt:
+                break
+            txt = nxt
+            continue
+        break
+
+    # Heuristic cleanup for quasi-JSON text wrappers
+    if txt.startswith("{") and '"response"' in txt:
+        import re
+        m = re.search(r'"response"\s*:\s*"(.*?)"\s*,\s*"quick_replies"', txt, flags=re.S)
+        if m:
+            candidate = m.group(1)
+            candidate = candidate.replace('\\n', '\n').replace('\\"', '"').strip()
+            if candidate:
+                return candidate
+
+    return txt
+
+
 def detect_crisis(message: str) -> bool:
     """Detect potential crisis indicators"""
     crisis_keywords = [
@@ -274,7 +308,7 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
         parsed = _safe_parse_structured_output(raw)
 
         if parsed and isinstance(parsed.get("response"), str):
-            ai_response = parsed.get("response", "").strip()
+            ai_response = _clean_response_text(parsed.get("response", ""))
             quick_replies = parsed.get("quick_replies", [])
             suggested_actions = parsed.get("suggested_actions", None)
 
@@ -327,7 +361,7 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
             )
 
         # Fallback to plain text response if model did not return valid JSON
-        ai_response = raw.strip() or "I'm here to help you work through this. Could you tell me more?"
+        ai_response = _clean_response_text(raw) or "I'm here to help you work through this. Could you tell me more?"
         profile = update_profile_from_turn(
             request.user_id or "anonymous",
             request.message,
