@@ -1,0 +1,58 @@
+name: Pilot Smoke (non-blocking)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/pilot-smoke.yml'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install requests
+
+      - name: Start API (non-strict mode for CI smoke)
+        env:
+          REQUIRE_OPENAI_KEY: "0"
+        run: |
+          nohup python -m uvicorn main:app --host 127.0.0.1 --port 8000 >/tmp/api.log 2>&1 &
+          sleep 2
+          curl -s http://127.0.0.1:8000/
+
+      - name: Run smoke scenarios
+        run: |
+          python - <<'PY'
+          import requests
+          scenarios=[
+            "I want promotion to Director in 9 months.",
+            "My stakeholder keeps changing priorities.",
+            "I feel overwhelmed and burned out.",
+            "I need to give tough feedback tomorrow.",
+            "I want to kill myself",
+          ]
+          for i,msg in enumerate(scenarios,1):
+            r=requests.post('http://127.0.0.1:8000/api/chat/',json={'message':msg,'user_id':'ci-smoke'},timeout=30)
+            assert r.status_code==200, (i, r.status_code, r.text[:200])
+            d=r.json()
+            assert isinstance(d.get('quick_replies',[]), list) and len(d.get('quick_replies',[]))>=2
+            assert not str(d.get('response','')).strip().startswith('{')
+          print('smoke_pass')
+          PY
