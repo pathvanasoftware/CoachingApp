@@ -71,6 +71,11 @@ struct ChatScreen: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showShareSheet) {
+            if let url = exportURL {
+                ShareSheet(activityItems: [url])
+            }
+        }
         .task {
             viewModel.selectedCoachingStyle = appState.selectedCoachingStyle
 
@@ -122,6 +127,15 @@ struct ChatScreen: View {
                             Text(style.displayName).tag(style)
                         }
                     }
+
+                    Divider()
+
+                    Button {
+                        exportSession()
+                    } label: {
+                        Label("Export Session", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(viewModel.messages.isEmpty)
 
                     Button(appState.showDebugDiagnostics ? "Hide Debug Diagnostics" : "Show Debug Diagnostics") {
                         appState.showDebugDiagnostics.toggle()
@@ -477,10 +491,171 @@ struct ChatScreen: View {
         try? await Task.sleep(for: .milliseconds(900))
         viewModel.requestHumanCoach()
     }
+
+    // MARK: - Export Session
+
+    @State private var showShareSheet = false
+    @State private var exportURL: URL?
+
+    private func exportSession() {
+        guard let session = viewModel.currentSession, !viewModel.messages.isEmpty else { return }
+
+        let url = SessionExportService.shareSession(
+            session: session,
+            messages: viewModel.messages,
+            as: .markdown
+        )
+
+        exportURL = url
+        showShareSheet = true
+    }
 }
 
 // MARK: - Preview
 #Preview {
     ChatScreen()
         .environment(AppState())
+}
+import Foundation
+import SwiftUI
+
+// MARK: - Session Export Service
+
+struct SessionExportService {
+
+    // MARK: - Export as Text
+
+    static func exportAsText(session: CoachingSession, messages: [ChatMessage]) -> String {
+        var text = """
+        Coaching Session Export
+        ========================
+        Date: \(session.startedAt.formatted(date: .complete, time: .shortened))
+        Type: \(session.sessionType.displayName)
+        Duration: \(session.formattedDuration)
+        Persona: \(session.persona.displayName)
+
+        ========================
+
+        """
+
+        for message in messages {
+            let timestamp = message.timestamp.formatted(date: .omitted, time: .shortened)
+            let role = message.role == .user ? "👤 You" : "🤖 Coach"
+
+            text += "[\(timestamp)] \(role):\n"
+            text += "\(message.content)\n"
+
+            if let diagnostics = message.diagnostics, message.role == .assistant {
+                text += "\n---\n"
+                text += "Style: \(diagnostics.styleUsed)\n"
+                text += "Emotion: \(diagnostics.emotionDetected)\n"
+                text += "Goal: \(diagnostics.goalLink)\n"
+                if let risk = diagnostics.riskLevel {
+                    text += "Risk Level: \(risk)\n"
+                }
+                text += "---\n"
+            }
+
+            text += "\n"
+        }
+
+        text += "\n---\n"
+        text += "Exported from CoachingApp on \(Date().formatted(date: .complete, time: .shortened))\n"
+
+        return text
+    }
+
+    // MARK: - Export as Markdown
+
+    static func exportAsMarkdown(session: CoachingSession, messages: [ChatMessage]) -> String {
+        var markdown = """
+        # Coaching Session
+
+        **Date:** \(session.startedAt.formatted(date: .complete, time: .shortened))
+        **Type:** \(session.sessionType.displayName)
+        **Duration:** \(session.formattedDuration)
+        **Persona:** \(session.persona.displayName)
+
+        ---
+
+        """
+
+        for message in messages {
+            let timestamp = message.timestamp.formatted(date: .omitted, time: .shortened)
+            let role = message.role == .user ? "👤 **You**" : "🤖 **Coach**"
+
+            markdown += "### \(role) - \(timestamp)\n\n"
+            markdown += "\(message.content)\n\n"
+
+            if let diagnostics = message.diagnostics, message.role == .assistant {
+                markdown += "<details>\n"
+                markdown += "<summary>📊 Coaching Insights</summary>\n\n"
+                markdown += "- **Style:** \(diagnostics.styleUsed)\n"
+                markdown += "- **Emotion:** \(diagnostics.emotionDetected)\n"
+                markdown += "- **Goal:** \(diagnostics.goalLink)\n"
+                if let risk = diagnostics.riskLevel {
+                    markdown += "- **Risk Level:** \(risk)\n"
+                }
+                if let shift = diagnostics.recommendedStyleShift {
+                    markdown += "- **Style Shift:** \(shift)\n"
+                }
+                markdown += "\n</details>\n\n"
+            }
+        }
+
+        markdown += "---\n\n"
+        markdown += "*Exported from CoachingApp on \(Date().formatted(date: .complete, time: .shortened))*\n"
+
+        return markdown
+    }
+
+    // MARK: - Share Sheet
+
+    static func shareSession(session: CoachingSession, messages: [ChatMessage], as format: ExportFormat = .text) -> URL {
+        let content: String
+        let fileExtension: String
+
+        switch format {
+        case .text:
+            content = exportAsText(session: session, messages: messages)
+            fileExtension = "txt"
+        case .markdown:
+            content = exportAsMarkdown(session: session, messages: messages)
+            fileExtension = "md"
+        }
+
+        // Create temporary file
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileName = "coaching_session_\(session.id).\(fileExtension)"
+        let fileURL = tempDir.appendingPathComponent(fileName)
+
+        try? content.write(to: fileURL, atomically: true, encoding: .utf8)
+
+        return fileURL
+    }
+}
+
+// MARK: - Export Format
+
+enum ExportFormat {
+    case text
+    case markdown
+}
+import SwiftUI
+import UIKit
+
+// MARK: - Share Sheet (UIViewControllerRepresentable)
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    var applicationActivities: [UIActivity]? = nil
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(
+            activityItems: activityItems,
+            applicationActivities: applicationActivities
+        )
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

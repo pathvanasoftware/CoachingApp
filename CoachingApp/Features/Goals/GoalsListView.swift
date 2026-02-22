@@ -23,6 +23,15 @@ struct GoalsListView: View {
             .background(AppTheme.background)
             .navigationTitle("Goals")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink {
+                        GoalsDashboardView()
+                    } label: {
+                        Image(systemName: "chart.bar.fill")
+                            .font(.title3)
+                    }
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         viewModel.showingAddGoal = true
@@ -180,4 +189,275 @@ struct GoalsListView: View {
 
 #Preview {
     GoalsListView()
+}
+import SwiftUI
+
+struct GoalsDashboardView: View {
+    @State private var viewModel = GoalsViewModel()
+    @State private var selectedInsight: GoalInsight?
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Overall Stats
+                    overallStatsCard
+
+                    // Goal Progress Overview
+                    goalProgressSection
+
+                    // Recent Activity
+                    recentActivitySection
+
+                    // Insights
+                    insightsSection
+                }
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Goals Dashboard")
+            .task {
+                await viewModel.loadGoals()
+            }
+        }
+    }
+
+    // MARK: - Overall Stats Card
+
+    private var overallStatsCard: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Text("Overall Progress")
+                    .font(.headline)
+                Spacer()
+            }
+
+            HStack(spacing: 24) {
+                // Active Goals
+                statItem(
+                    value: "\(viewModel.activeGoalsCount)",
+                    label: "Active Goals",
+                    color: .blue
+                )
+
+                // Completed
+                statItem(
+                    value: "\(viewModel.completedGoalsCount)",
+                    label: "Completed",
+                    color: .green
+                )
+
+                // Progress
+                statItem(
+                    value: "\(overallProgress)%",
+                    label: "Overall",
+                    color: .purple
+                )
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+    }
+
+    private func statItem(value: String, label: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundStyle(color)
+
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var overallProgress: Int {
+        guard !viewModel.goals.isEmpty else { return 0 }
+        let completedCount = viewModel.completedGoalsCount
+        return Int((Double(completedCount) / Double(viewModel.goals.count)) * 100)
+    }
+
+    // MARK: - Goal Progress Section
+
+    private var goalProgressSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Active Goals")
+                .font(.headline)
+
+            ForEach(viewModel.goals.filter { $0.status == .active }.prefix(5)) { goal in
+                goalProgressBar(goal)
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+    }
+
+    private func goalProgressBar(_ goal: Goal) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(goal.title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+
+                Spacer()
+
+                Text("\(goal.progressPercentage)%")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            ProgressView(value: Double(goal.progressPercentage), total: 100)
+                .tint(progressColor(for: goal.progressPercentage))
+        }
+    }
+
+    private func progressColor(for percentage: Int) -> Color {
+        switch percentage {
+        case 0..<25: return .red
+        case 25..<50: return .orange
+        case 50..<75: return .yellow
+        default: return .green
+        }
+    }
+
+    // MARK: - Recent Activity Section
+
+    private var recentActivitySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Recent Activity")
+                    .font(.headline)
+                Spacer()
+            }
+
+            if viewModel.goals.isEmpty {
+                Text("No recent activity")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(recentGoals, id: \.id) { goal in
+                    HStack(spacing: 12) {
+                        Image(systemName: goal.status == .completed ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(goal.status == .completed ? .green : .gray)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(goal.title)
+                                .font(.subheadline)
+
+                            Text(goal.updatedAt.formatted(date: .abbreviated, time: .omitted))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+    }
+
+    private var recentGoals: [Goal] {
+        Array(viewModel.goals.sorted { $0.updatedAt > $1.updatedAt }.prefix(5))
+    }
+
+    // MARK: - Insights Section
+
+    private var insightsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Insights")
+                .font(.headline)
+
+            if let insights = generateInsights(), !insights.isEmpty {
+                ForEach(insights) { insight in
+                    insightCard(insight)
+                }
+            } else {
+                Text("Start tracking goals to see insights")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+    }
+
+    private func insightCard(_ insight: GoalInsight) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: insight.icon)
+                .font(.title3)
+                .foregroundStyle(insight.color)
+                .frame(width: 32)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(insight.title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+
+                Text(insight.message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func generateInsights() -> [GoalInsight]? {
+        var insights: [GoalInsight] = []
+
+        // Progress insight
+        if overallProgress >= 70 {
+            insights.append(GoalInsight(
+                icon: "star.fill",
+                color: .yellow,
+                title: "Great Progress!",
+                message: "You're \(overallProgress)% complete on all goals"
+            ))
+        }
+
+        // Streak insight
+        let recentCompleted = viewModel.goals.filter {
+            $0.status == .completed && $0.updatedAt > Date().addingTimeInterval(-7*24*3600)
+        }.count
+
+        if recentCompleted >= 2 {
+            insights.append(GoalInsight(
+                icon: "flame.fill",
+                color: .orange,
+                title: "On Fire! 🔥",
+                message: "Completed \(recentCompleted) goals this week"
+            ))
+        }
+
+        return insights
+    }
+}
+
+// MARK: - Goal Insight Model
+
+struct GoalInsight: Identifiable {
+    let id = UUID()
+    let icon: String
+    let color: Color
+    let title: String
+    let message: String
+}
+
+// MARK: - Preview
+
+#Preview {
+    GoalsDashboardView()
 }
