@@ -2,24 +2,16 @@ import SwiftUI
 
 struct PersonaAvatar: View {
     let persona: CoachingPersonaType
-    var size: CGFloat = 48
-
+    var size: CGFloat = 60
+    
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(persona.accentColor.gradient)
-                .frame(width: size, height: size)
-
-            Image(systemName: persona.icon)
-                .font(.system(size: size * 0.4))
-                .foregroundStyle(.white)
-        }
-    }
-}
-
-#Preview {
-    HStack(spacing: 20) {
-        PersonaAvatar(persona: .directChallenger, size: 60)
-        PersonaAvatar(persona: .supportiveStrategist, size: 60)
+        Circle()
+            .fill(AppTheme.primary)
+            .frame(width: size, height: size)
+            .overlay(
+                Text(String(persona.displayName.prefix(1)))
+                    .font(.system(size: size * 0.4))
+                    .foregroundStyle(.white)
+            )
     }
 }

@@ -4,47 +4,25 @@ struct EmptyStateView: View {
     let icon: String
     let title: String
     let message: String
-    var buttonTitle: String?
-    var buttonAction: (() -> Void)?
-
+    var buttonTitle: String? = nil
+    var action: (() -> Void)? = nil
+    
     var body: some View {
-        VStack(spacing: AppTheme.Spacing.md) {
-            Spacer()
-
+        VStack(spacing: 16) {
             Image(systemName: icon)
-                .font(.system(size: 56))
-                .foregroundStyle(AppTheme.textTertiary)
-
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
             Text(title)
-                .font(AppFonts.title2)
-                .foregroundStyle(AppTheme.textPrimary)
-
+                .font(.headline)
             Text(message)
-                .font(AppFonts.body)
-                .foregroundStyle(AppTheme.textSecondary)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, AppTheme.Spacing.xl)
-
-            if let buttonTitle, let buttonAction {
-                Button(action: buttonAction) {
-                    Text(buttonTitle)
-                        .primaryButtonStyle()
-                }
-                .padding(.horizontal, AppTheme.Spacing.xxl)
-                .padding(.top, AppTheme.Spacing.sm)
+            if let buttonTitle, let action {
+                Button(buttonTitle, action: action)
+                    .buttonStyle(.borderedProminent)
             }
-
-            Spacer()
         }
-        .frame(maxWidth: .infinity)
+        .padding()
     }
-}
-
-#Preview {
-    EmptyStateView(
-        icon: "target",
-        title: "No Goals Yet",
-        message: "Set your first goal to start tracking progress.",
-        buttonTitle: "Add Goal"
-    ) {}
 }

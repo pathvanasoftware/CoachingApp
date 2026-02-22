@@ -1,22 +1,16 @@
 import SwiftUI
 
 struct LoadingView: View {
-    var message: String = "Loading..."
-
+    let message: String
+    
     var body: some View {
-        VStack(spacing: AppTheme.Spacing.md) {
+        VStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(1.2)
-
             Text(message)
-                .font(AppFonts.subheadline)
-                .foregroundStyle(AppTheme.textSecondary)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(AppTheme.background)
     }
-}
-
-#Preview {
-    LoadingView(message: "Loading your data...")
 }

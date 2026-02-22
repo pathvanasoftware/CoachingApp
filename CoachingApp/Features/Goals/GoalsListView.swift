@@ -144,7 +144,7 @@ struct GoalsListView: View {
             title: emptyStateTitle,
             message: emptyStateMessage,
             buttonTitle: viewModel.selectedFilter == nil || viewModel.selectedFilter == .active ? "Add Goal" : nil,
-            buttonAction: viewModel.selectedFilter == nil || viewModel.selectedFilter == .active ? { viewModel.showingAddGoal = true } : nil
+            action: viewModel.selectedFilter == nil || viewModel.selectedFilter == .active ? { viewModel.showingAddGoal = true } : nil
         )
     }
 
