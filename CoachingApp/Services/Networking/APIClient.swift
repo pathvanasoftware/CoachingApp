@@ -131,8 +131,19 @@ final class APIClient: APIClientProtocol, @unchecked Sendable {
 
     // MARK: - Configuration
 
-    // Local backend for development
-    private static let defaultBaseURL = "http://localhost:8000/api/v1"
+    // Use centralized API configuration from AppState
+    private static var defaultBaseURL: String {
+        // Access UserDefaults directly to avoid dependency on AppState
+        if let saved = UserDefaults.standard.string(forKey: "com.coachingapp.apiEnvironment"),
+           let env = APIEnvironment(rawValue: saved) {
+            return env.baseURL
+        }
+        #if DEBUG
+        return APIEnvironment.localhost.baseURL
+        #else
+        return APIEnvironment.production.baseURL
+        #endif
+    }
 
     // MARK: - Public Methods
 

@@ -29,8 +29,18 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
     private let baseURL: String
     private var authTokenProvider: (() -> String?)?
 
-    // Local backend for development
-    private static let defaultBaseURL = "http://localhost:8000/api/v1"
+    // Use centralized API configuration from AppState
+    private static var defaultBaseURL: String {
+        if let saved = UserDefaults.standard.string(forKey: "com.coachingapp.apiEnvironment"),
+           let env = APIEnvironment(rawValue: saved) {
+            return env.baseURL
+        }
+        #if DEBUG
+        return APIEnvironment.localhost.baseURL
+        #else
+        return APIEnvironment.production.baseURL
+        #endif
+    }
 
     // MARK: - Init
 
