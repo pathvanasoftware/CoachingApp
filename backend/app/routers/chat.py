@@ -4,7 +4,8 @@ import asyncio
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from app.services.llm import CoachingRequest, CoachingResponse, get_coaching_response
+from typing import List
+from app.services.llm import CoachingRequest, CoachingResponse, get_coaching_response, generate_session_summary
 
 router = APIRouter()
 
@@ -75,3 +76,18 @@ async def chat_stream(request: ChatStreamRequest):
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_gen(), media_type="text/event-stream")
+
+
+class SessionSummaryRequest(BaseModel):
+    messages: List[dict]
+    userId: str | None = "anonymous"
+
+
+@router.post("/session-summary")
+async def session_summary(request: SessionSummaryRequest):
+    """Generate a comprehensive summary of the coaching session"""
+    if os.getenv("REQUIRE_OPENAI_KEY", "1") == "1" and not os.getenv("OPENAI_API_KEY"):
+        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is required in strict mode")
+    
+    summary = await generate_session_summary(request.messages, request.userId or "anonymous")
+    return summary

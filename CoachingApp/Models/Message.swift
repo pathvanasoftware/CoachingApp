@@ -57,3 +57,21 @@ struct CoachingDiagnostics: Codable {
     var riskLevel: String?
     var recommendedStyleShift: String?
 }
+
+// MARK: - Coaching Session Summary
+
+struct CoachingSessionSummary: Codable {
+    let summary: String
+    let keyInsights: [String]
+    let actionItems: [String]
+    let progressMade: String
+    let recommendedNextSteps: [String]
+    
+    enum CodingKeys: String, CodingKey {
+        case summary
+        case keyInsights = "key_insights"
+        case actionItems = "action_items"
+        case progressMade = "progress_made"
+        case recommendedNextSteps = "recommended_next_steps"
+    }
+}

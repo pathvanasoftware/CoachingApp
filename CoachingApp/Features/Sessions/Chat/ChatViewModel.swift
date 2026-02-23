@@ -15,6 +15,8 @@ final class ChatViewModel {
     var errorMessage: String?
     var isVoiceMode: Bool = false
     var lastSavedAt: Date?
+    var sessionSummary: CoachingSessionSummary?
+    var isGeneratingSummary: Bool = false
 
     // MARK: - Handoff & Crisis State
 
@@ -555,6 +557,43 @@ final class ChatViewModel {
             } catch {
                 // Silent failure, already persisted in memory
             }
+        }
+    }
+
+    @MainActor
+    func generateSessionSummary() async {
+        guard !messages.isEmpty else { return }
+        
+        isGeneratingSummary = true
+        defer { isGeneratingSummary = false }
+        
+        do {
+            let apiMessages = messages.map { message in
+                ["role": message.role.rawValue, "content": message.content]
+            }
+            
+            let requestBody: [String: Any] = [
+                "messages": apiMessages,
+                "userId": "mock-user-001"
+            ]
+            
+            let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
+            
+            // Get baseURL from UserDefaults (same as AppState)
+            let envRaw = UserDefaults.standard.string(forKey: "selectedAPIEnvironment") ?? "Local"
+            let env = APIEnvironment(rawValue: envRaw) ?? .localhost
+            
+            var request = URLRequest(url: URL(string: "\(env.baseURL)/chat/session-summary")!)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = jsonData
+            
+            let (data, _) = try await URLSession.shared.data(for: request)
+            let summary = try JSONDecoder().decode(CoachingSessionSummary.self, from: data)
+            
+            self.sessionSummary = summary
+        } catch {
+            errorMessage = "Failed to generate summary: \(error.localizedDescription)"
         }
     }
 

@@ -13,6 +13,7 @@ struct ChatScreen: View {
     @State private var viewModel: ChatViewModel
     @State private var hasRunRegressionFlow = false
     @State private var showSaveIndicator = false
+    @State private var showSummary = false
 
     init(viewModel: ChatViewModel = ChatViewModel()) {
         _viewModel = State(initialValue: viewModel)
@@ -76,6 +77,11 @@ struct ChatScreen: View {
             if let url = exportURL {
                 ShareSheet(activityItems: [url])
             }
+        }
+        .sheet(isPresented: $showSummary) {
+            SessionSummaryView(summary: viewModel.sessionSummary, isPresented: $showSummary)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .task {
             viewModel.selectedCoachingStyle = appState.selectedCoachingStyle
@@ -156,6 +162,16 @@ struct ChatScreen: View {
                     }
 
                     Divider()
+
+                    Button {
+                        Task {
+                            await viewModel.generateSessionSummary()
+                            showSummary = true
+                        }
+                    } label: {
+                        Label("Session Summary", systemImage: "doc.text.magnifyingglass")
+                    }
+                    .disabled(viewModel.messages.isEmpty)
 
                     Button {
                         exportSession()
@@ -746,4 +762,114 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - Session Summary View
+
+struct SessionSummaryView: View {
+    let summary: CoachingSessionSummary?
+    @Binding var isPresented: Bool
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                if let summary {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Summary
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Session Overview")
+                                .font(.headline)
+                            Text(summary.summary)
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Divider()
+                        
+                        // Key Insights
+                        if !summary.keyInsights.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("💡 Key Insights")
+                                    .font(.headline)
+                                ForEach(summary.keyInsights, id: \.self) { insight in
+                                    HStack(alignment: .top, spacing: 8) {
+                                        Text("•")
+                                        Text(insight)
+                                            .font(.body)
+                                    }
+                                }
+                            }
+                            
+                            Divider()
+                        }
+                        
+                        // Progress Made
+                        if !summary.progressMade.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("🎯 Progress Made")
+                                    .font(.headline)
+                                Text(summary.progressMade)
+                                    .font(.body)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Divider()
+                        }
+                        
+                        // Action Items
+                        if !summary.actionItems.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("✅ Action Items")
+                                    .font(.headline)
+                                ForEach(summary.actionItems, id: \.self) { action in
+                                    HStack(alignment: .top, spacing: 8) {
+                                        Image(systemName: "checkmark.circle")
+                                            .foregroundStyle(.blue)
+                                        Text(action)
+                                            .font(.body)
+                                    }
+                                }
+                            }
+                            
+                            Divider()
+                        }
+                        
+                        // Recommended Next Steps
+                        if !summary.recommendedNextSteps.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("🚀 Recommended Next Steps")
+                                    .font(.headline)
+                                ForEach(summary.recommendedNextSteps, id: \.self) { step in
+                                    HStack(alignment: .top, spacing: 8) {
+                                        Text("→")
+                                            .foregroundStyle(.blue)
+                                        Text(step)
+                                            .font(.body)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .padding()
+                } else {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                        Text("Generating summary...")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .navigationTitle("Session Summary")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        isPresented = false
+                    }
+                }
+            }
+        }
+    }
 }

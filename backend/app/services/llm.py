@@ -110,6 +110,80 @@ def _safe_parse_structured_output(raw_text: str) -> Optional[dict]:
     return None
 
 
+async def generate_session_summary(messages: List[dict], user_id: str = "anonymous") -> dict:
+    """Generate a comprehensive session summary"""
+    if not messages or len(messages) < 2:
+        return {
+            "summary": "Session just started - no summary available yet.",
+            "key_insights": [],
+            "action_items": [],
+            "progress_made": "Beginning of conversation",
+            "recommended_next_steps": []
+        }
+    
+    # Build conversation text
+    conversation = "\n".join([
+        f"{'User' if msg['role'] == 'user' else 'Coach'}: {msg['content']}"
+        for msg in messages
+    ])
+    
+    summary_prompt = f"""Analyze this coaching session and provide a structured summary:
+
+{conversation}
+
+Return ONLY valid JSON with this exact structure:
+{{
+  "summary": "2-3 sentence overview of the session",
+  "key_insights": ["insight 1", "insight 2", "insight 3"],
+  "action_items": ["action 1", "action 2"],
+  "progress_made": "What progress or breakthroughs happened",
+  "recommended_next_steps": ["next step 1", "next step 2"]
+}}
+
+Focus on what the coachee discovered, decisions made, and concrete next actions."""
+    
+    try:
+        client = get_openai_client()
+        response = await client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are an expert at summarizing coaching sessions."},
+                {"role": "user", "content": summary_prompt}
+            ],
+            max_tokens=500,
+            temperature=0.3
+        )
+        
+        raw = response.choices[0].message.content or ""
+        parsed = _safe_parse_structured_output(raw)
+        
+        if parsed and isinstance(parsed.get("summary"), str):
+            return {
+                "summary": parsed.get("summary", ""),
+                "key_insights": parsed.get("key_insights", []),
+                "action_items": parsed.get("action_items", []),
+                "progress_made": parsed.get("progress_made", ""),
+                "recommended_next_steps": parsed.get("recommended_next_steps", [])
+            }
+        
+        # Fallback
+        return {
+            "summary": raw[:200] if raw else "Summary generation failed.",
+            "key_insights": [],
+            "action_items": [],
+            "progress_made": "Session completed",
+            "recommended_next_steps": []
+        }
+    except Exception as e:
+        return {
+            "summary": f"Summary generation error: {str(e)}",
+            "key_insights": [],
+            "action_items": [],
+            "progress_made": "Session completed",
+            "recommended_next_steps": []
+        }
+
+
 def _clean_response_text(raw_text: str) -> str:
     """Ensure assistant response is plain text, not JSON wrapper."""
     txt = (raw_text or "").strip()
@@ -263,7 +337,13 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
     style_used = route_style(request.message, request.coaching_style, emotion)
     goal_link = infer_goal_link(request.message)
 
-    history_dicts = [{"role": m.role, "content": m.content} for m in (request.history or [])]
+    # Smart history trimming: keep context manageable for GPT-4
+    history = request.history or []
+    if len(history) > 20:
+        # Keep first 2 turns (context) + last 10 turns (recent conversation)
+        history = history[:2] + history[-10:]
+    
+    history_dicts = [{"role": m.role, "content": m.content} for m in history]
     context_packet = build_context_packet(request.message, history_dicts, request.context)
     profile = load_profile(request.user_id or "anonymous")
     goal_hierarchy = infer_goal_hierarchy(request.message, goal_link, profile)
@@ -303,7 +383,7 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
         response = await client.chat.completions.create(
             model="gpt-4",
             messages=structured_messages,
-            max_tokens=600,
+            max_tokens=800,
             temperature=0.7
         )
 
