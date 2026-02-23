@@ -155,6 +155,25 @@ MIT
 
 ---
 
+## Attribution & Legal
+
+This application references coaching frameworks from thought leaders including Kim Scott (Radical Candor), Julie Zhuo (The Making of a Manager), Deborah Liu (Take Back Your Power), Brené Brown (Dare to Lead), and Marshall Goldsmith (What Got You Here Won't Get You There).
+
+**These frameworks are:**
+- Educational summaries used under Fair Use
+- Properly attributed to original authors
+- Not a substitute for reading the original books
+- Applied to enhance coaching conversations
+
+**See:** [LEGAL_ATTRIBUTION.md](docs/LEGAL_ATTRIBUTION.md) for full details and reading list.
+
+**We encourage users to:**
+- Read the original books
+- Support these authors
+- Credit them when sharing insights
+
+---
+
 ## Contributing
 
 Contributions welcome! Please:

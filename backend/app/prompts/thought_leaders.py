@@ -1,6 +1,13 @@
 """
 Coaching frameworks from thought leaders and bestselling authors.
 Each framework can be activated as an enhancement to the base GROW model.
+
+LEGAL DISCLAIMER:
+These frameworks are educational summaries of publicly available coaching concepts,
+used under Fair Use for educational and coaching purposes. All frameworks are attributed
+to their original authors. This is not a substitute for reading the original books.
+
+See docs/LEGAL_ATTRIBUTION.md for full legal attribution and recommended reading list.
 """
 
 # Kim Scott - Radical Candor
