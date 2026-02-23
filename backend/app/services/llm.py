@@ -10,6 +10,7 @@ from app.services.memory_store import load_profile, update_profile_from_turn, sa
 from app.services.emotion_engine import analyze_text_emotion, infer_context_triggers
 from app.services.behavior_tracker import update_behavior_signals, style_preference_shift
 from app.services.goal_architecture import infer_goal_hierarchy, build_goal_anchor, progressive_skill_building, outcome_prediction
+from app.prompts.thought_leaders import get_framework_for_context
 
 def get_openai_client() -> AsyncOpenAI:
     api_key = os.getenv("OPENAI_API_KEY")
@@ -348,10 +349,14 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
     profile = load_profile(request.user_id or "anonymous")
     goal_hierarchy = infer_goal_hierarchy(request.message, goal_link, profile)
     goal_anchor = build_goal_anchor(goal_link, goal_hierarchy)
+    
+    # Select relevant thought leader framework based on context
+    thought_leader_framework = get_framework_for_context(request.message, emotion, goal_link)
 
     messages = [
         {"role": "system", "content": GROW_SYSTEM_PROMPT},
         {"role": "system", "content": f"Coaching style to use this turn: {style_used}. {STYLE_PROMPTS[style_used]}"},
+        {"role": "system", "content": f"**Enhanced with thought leader framework:**\n\n{thought_leader_framework}"},
         {"role": "system", "content": f"Emotion detected: {emotion}. Goal alignment tag: {goal_link}."},
         {"role": "system", "content": f"Persistent profile memory: {json.dumps(profile, ensure_ascii=False)}"},
         {"role": "system", "content": f"Goal hierarchy: {json.dumps(goal_hierarchy, ensure_ascii=False)}"},
