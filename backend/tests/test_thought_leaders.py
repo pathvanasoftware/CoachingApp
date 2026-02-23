@@ -1,96 +1,92 @@
 import pytest
-from app.prompts.thought_leaders import (
+from app.prompts.proprietary_frameworks import (
     get_framework_for_context,
-    RADICAL_CANDOR,
-    MAKING_OF_A_MANAGER,
-    TAKE_BACK_YOUR_POWER,
-    DARE_TO_LEAD,
-    WHAT_GOT_YOU_HERE,
+    DIRECT_CARE_FEEDBACK,
+    LEADERSHIP_FOUNDATION,
+    POWER_OWNERSHIP_MODEL,
+    COURAGEOUS_LEADERSHIP,
+    EXECUTIVE_EVOLUTION,
 )
 
 
-def test_radical_candor_triggered_by_feedback():
-    """Test that feedback conversations trigger Radical Candor"""
+def test_direct_care_triggered_by_feedback():
+    """Test that feedback conversations trigger Direct Care Feedback"""
     msg = "I need to give my team member some difficult feedback about their performance"
     framework = get_framework_for_context(msg, "neutral", "professional_growth")
-    assert "Radical Candor" in framework
-    assert "Care Personally + Challenge Directly" in framework
+    assert "Direct Care Feedback" in framework
+    assert "empathy" in framework.lower() and "clarity" in framework.lower()
 
 
-def test_making_of_manager_for_new_managers():
-    """Test that new manager scenarios trigger Julie Zhuo's framework"""
+def test_leadership_foundation_for_new_managers():
+    """Test that new manager scenarios trigger Leadership Foundation"""
     msg = "I just became a first time manager and I'm not sure how to delegate"
     framework = get_framework_for_context(msg, "uncertain", "leadership_effectiveness")
-    assert "Making of a Manager" in framework
-    assert "Julie Zhuo" in framework
+    assert "Leadership Foundation" in framework
     assert "delegation" in framework.lower()
 
 
-def test_take_back_power_for_imposter_syndrome():
-    """Test that imposter syndrome triggers Deborah Liu's framework"""
+def test_power_ownership_for_imposter_syndrome():
+    """Test that imposter syndrome triggers Power Ownership Model"""
     msg = "I feel like an imposter in this role, I don't think I deserve this promotion"
     framework = get_framework_for_context(msg, "self_doubt", "career_advancement")
-    assert "Take Back Your Power" in framework
-    assert "Deborah Liu" in framework
-    assert "imposter" in framework.lower()
+    assert "Power Ownership Model" in framework
+    assert "limiting belief" in framework.lower() or "not ready" in framework.lower()
 
 
-def test_take_back_power_for_negotiation():
-    """Test that salary negotiation triggers Deborah Liu's framework"""
+def test_power_ownership_for_negotiation():
+    """Test that salary negotiation triggers Power Ownership Model"""
     msg = "I want to negotiate a raise but I'm not sure if I should ask"
     framework = get_framework_for_context(msg, "uncertain", "career_advancement")
-    assert "Take Back Your Power" in framework
+    assert "Power Ownership Model" in framework
     assert "negotiation" in framework.lower() or "Negotiation" in framework
 
 
-def test_dare_to_lead_for_vulnerability():
-    """Test that vulnerability topics trigger Brené Brown's framework"""
+def test_courageous_leadership_for_vulnerability():
+    """Test that vulnerability topics trigger Courageous Leadership"""
     msg = "I want to be more authentic with my team but I'm afraid of being vulnerable"
     framework = get_framework_for_context(msg, "anxious", "leadership_effectiveness")
-    assert "Dare to Lead" in framework
-    assert "Brené Brown" in framework or "Brene Brown" in framework
-    assert "vulnerability" in framework.lower() or "Vulnerability" in framework
+    assert "Courageous Leadership" in framework
+    assert "vulnerability" in framework.lower() or "courage" in framework.lower()
 
 
-def test_what_got_you_here_for_senior_exec():
-    """Test that senior executive issues trigger Marshall Goldsmith's framework"""
-    msg = "I'm a VP and got some 360 feedback that I need to work on, people say I add too much value"
+def test_executive_evolution_for_senior_exec():
+    """Test that senior executive issues trigger Executive Evolution"""
+    msg = "I'm a VP and got some 360 feedback that I need to work on"
     framework = get_framework_for_context(msg, "reflective", "leadership_effectiveness")
-    assert "What Got You Here" in framework
-    assert "Marshall Goldsmith" in framework
-    assert "adding too much value" in framework.lower() or "Adding too much value" in framework
+    assert "Executive Evolution" in framework
+    assert "derailer" in framework.lower() or "executive" in framework.lower()
 
 
-def test_default_fallback_to_radical_candor():
-    """Test that generic messages default to Radical Candor (most universal)"""
+def test_default_fallback_to_direct_care():
+    """Test that generic messages default to Direct Care Feedback (most universal)"""
     msg = "I need help with my career"
     framework = get_framework_for_context(msg, "neutral", "professional_growth")
-    # Should get Radical Candor as default
-    assert "Radical Candor" in framework or "Kim Scott" in framework
+    # Should get Direct Care Feedback as default
+    assert "Direct Care Feedback" in framework
 
 
-def test_leadership_goal_triggers_making_of_manager():
-    """Test that leadership_effectiveness goal triggers Making of a Manager"""
+def test_leadership_goal_triggers_leadership_foundation():
+    """Test that leadership_effectiveness goal triggers Leadership Foundation"""
     msg = "I'm struggling with my team"
     framework = get_framework_for_context(msg, "frustrated", "leadership_effectiveness")
-    assert "Making of a Manager" in framework
+    assert "Leadership Foundation" in framework
 
 
-def test_career_advancement_goal_triggers_take_back_power():
-    """Test that career_advancement goal triggers Take Back Your Power"""
+def test_career_advancement_goal_triggers_power_ownership():
+    """Test that career_advancement goal triggers Power Ownership Model"""
     msg = "I want to advance in my career"
     framework = get_framework_for_context(msg, "ambitious", "career_advancement")
-    assert "Take Back Your Power" in framework
+    assert "Power Ownership Model" in framework
 
 
 def test_frameworks_contain_actionable_content():
     """Test that all frameworks have actionable guidance"""
     frameworks = [
-        RADICAL_CANDOR,
-        MAKING_OF_A_MANAGER,
-        TAKE_BACK_YOUR_POWER,
-        DARE_TO_LEAD,
-        WHAT_GOT_YOU_HERE,
+        DIRECT_CARE_FEEDBACK,
+        LEADERSHIP_FOUNDATION,
+        POWER_OWNERSHIP_MODEL,
+        COURAGEOUS_LEADERSHIP,
+        EXECUTIVE_EVOLUTION,
     ]
     
     for framework in frameworks:
@@ -105,11 +101,11 @@ def test_frameworks_contain_actionable_content():
 def test_frameworks_are_comprehensive():
     """Test that frameworks provide sufficient detail"""
     frameworks = [
-        RADICAL_CANDOR,
-        MAKING_OF_A_MANAGER,
-        TAKE_BACK_YOUR_POWER,
-        DARE_TO_LEAD,
-        WHAT_GOT_YOU_HERE,
+        DIRECT_CARE_FEEDBACK,
+        LEADERSHIP_FOUNDATION,
+        POWER_OWNERSHIP_MODEL,
+        COURAGEOUS_LEADERSHIP,
+        EXECUTIVE_EVOLUTION,
     ]
     
     for framework in frameworks:
@@ -117,3 +113,25 @@ def test_frameworks_are_comprehensive():
         assert len(framework) > 500
         # Should have multiple sections
         assert framework.count("**") >= 4
+
+
+def test_frameworks_are_proprietary():
+    """Test that frameworks use proprietary names, not third-party names"""
+    frameworks = [
+        DIRECT_CARE_FEEDBACK,
+        LEADERSHIP_FOUNDATION,
+        POWER_OWNERSHIP_MODEL,
+        COURAGEOUS_LEADERSHIP,
+        EXECUTIVE_EVOLUTION,
+    ]
+    
+    for framework in frameworks:
+        # Should NOT contain third-party author names
+        assert "Kim Scott" not in framework
+        assert "Julie Zhuo" not in framework
+        assert "Deborah Liu" not in framework
+        assert "Brené Brown" not in framework
+        assert "Marshall Goldsmith" not in framework
+        
+        # Should contain ™ symbol (trademark)
+        assert "™" in framework

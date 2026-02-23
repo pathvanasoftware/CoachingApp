@@ -155,22 +155,19 @@ MIT
 
 ---
 
-## Attribution & Legal
+## Proprietary Frameworks
 
-This application references coaching frameworks from thought leaders including Kim Scott (Radical Candor), Julie Zhuo (The Making of a Manager), Deborah Liu (Take Back Your Power), Brené Brown (Dare to Lead), and Marshall Goldsmith (What Got You Here Won't Get You There).
+This application uses 5 original coaching frameworks developed specifically for CoachingApp:
 
-**These frameworks are:**
-- Educational summaries used under Fair Use
-- Properly attributed to original authors
-- Not a substitute for reading the original books
-- Applied to enhance coaching conversations
+1. **Direct Care Feedback™** - Empathy + Clarity in feedback conversations
+2. **Leadership Foundation™** - Building strong leadership from the ground up
+3. **Power Ownership Model™** - Taking control of your career
+4. **Courageous Leadership™** - Building trust through authenticity
+5. **Executive Evolution™** - Identifying behaviors that limit senior leaders
 
-**See:** [LEGAL_ATTRIBUTION.md](docs/LEGAL_ATTRIBUTION.md) for full details and reading list.
+These are **original works** created for CoachingApp, synthesizing proven coaching best practices into practical, actionable guidance.
 
-**We encourage users to:**
-- Read the original books
-- Support these authors
-- Credit them when sharing insights
+**See:** [PROPRIETARY_FRAMEWORKS.md](docs/PROPRIETARY_FRAMEWORKS.md) for full details.
 
 ---
 

@@ -10,7 +10,7 @@ from app.services.memory_store import load_profile, update_profile_from_turn, sa
 from app.services.emotion_engine import analyze_text_emotion, infer_context_triggers
 from app.services.behavior_tracker import update_behavior_signals, style_preference_shift
 from app.services.goal_architecture import infer_goal_hierarchy, build_goal_anchor, progressive_skill_building, outcome_prediction
-from app.prompts.thought_leaders import get_framework_for_context
+from app.prompts.proprietary_frameworks import get_framework_for_context
 
 def get_openai_client() -> AsyncOpenAI:
     api_key = os.getenv("OPENAI_API_KEY")
