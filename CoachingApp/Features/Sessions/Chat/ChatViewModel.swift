@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 @Observable
 final class ChatViewModel {
@@ -13,6 +14,7 @@ final class ChatViewModel {
     var elapsedSeconds: Int = 0
     var errorMessage: String?
     var isVoiceMode: Bool = false
+    var lastSavedAt: Date?
 
     // MARK: - Handoff & Crisis State
 
@@ -136,11 +138,12 @@ final class ChatViewModel {
         currentInput = ""
         errorMessage = nil
 
-        // Add user message to the local list
+        // Add user message to the local list (sending status)
         let userMessage = ChatMessage(
             sessionId: session.id,
             role: .user,
-            content: content
+            content: content,
+            status: .sending
         )
         messages.append(userMessage)
 
@@ -154,6 +157,34 @@ final class ChatViewModel {
 
         // Stream the assistant response
         await streamAssistantResponse(content: content, for: session)
+
+        // Haptic feedback on send
+        await MainActor.run {
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
+        }
+    }
+
+    func retryMessage(_ messageId: String) async {
+        guard let index = messages.firstIndex(where: { $0.id == messageId }),
+              messages[index].role == .user,
+              messages[index].status == .failed else { return }
+
+        let content = messages[index].content
+        guard let session = currentSession else { return }
+
+        // Reset status to sending
+        messages[index].status = .sending
+        errorMessage = nil
+
+        // Retry the assistant response
+        await streamAssistantResponse(content: content, for: session)
+
+        // Haptic feedback
+        await MainActor.run {
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+        }
     }
 
     @MainActor
@@ -275,6 +306,8 @@ final class ChatViewModel {
         streamingTask = Task { @MainActor [weak self] in
             guard let self else { return }
 
+            var streamFailed = false
+
             do {
                 for try await token in stream {
                     guard !Task.isCancelled else { break }
@@ -286,13 +319,31 @@ final class ChatViewModel {
                 }
             } catch {
                 if !Task.isCancelled {
-                    self.errorMessage = "Response was interrupted. Please try again."
+                    streamFailed = true
+                    self.errorMessage = "Network error. Please check your connection and retry."
+
+                    // Mark the user message as failed
+                    if let userMessageIndex = self.messages.indices.dropLast().last,
+                       self.messages[userMessageIndex].role == .user {
+                        self.messages[userMessageIndex].status = .failed
+                    }
+
+                    // Remove the failed assistant message
+                    if let lastIndex = self.messages.indices.last {
+                        self.messages.removeLast()
+                    }
                 }
             }
 
-            // Finalize the message
-            if let lastIndex = self.messages.indices.last {
+            // Finalize the message (only if stream succeeded)
+            if !streamFailed, let lastIndex = self.messages.indices.last {
                 self.messages[lastIndex].isStreaming = false
+
+                // Mark user message as sent
+                if let userMessageIndex = self.messages.indices.dropLast().last,
+                   self.messages[userMessageIndex].role == .user {
+                    self.messages[userMessageIndex].status = .sent
+                }
             }
 
             self.isStreaming = false
@@ -497,8 +548,13 @@ final class ChatViewModel {
     @MainActor
     private func saveCurrentSession() {
         guard let session = currentSession, !messages.isEmpty else { return }
-        Task {
-            try? await historyStorage.saveSession(session, messages: messages)
+        Task { @MainActor in
+            do {
+                try await historyStorage.saveSession(session, messages: messages)
+                self.lastSavedAt = Date()
+            } catch {
+                // Silent failure, already persisted in memory
+            }
         }
     }
 

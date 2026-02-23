@@ -3,6 +3,7 @@ import SwiftUI
 struct MessageBubbleView: View {
     let message: ChatMessage
     let persona: CoachingPersonaType
+    var onRetry: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .bottom, spacing: AppTheme.Spacing.sm) {
@@ -36,6 +37,12 @@ struct MessageBubbleView: View {
                     if !message.isFromUser { Spacer(minLength: 0) }
                 }
 
+                // Status indicator (failed/sending)
+                if message.isFromUser {
+                    statusIndicator
+                        .padding(.horizontal, AppTheme.Spacing.xs)
+                }
+
                 // Timestamp
                 Text(message.timestamp.timeDisplay)
                     .font(AppFonts.caption2)
@@ -48,6 +55,40 @@ struct MessageBubbleView: View {
             }
         }
         .padding(.vertical, AppTheme.Spacing.xxs)
+    }
+
+    // MARK: - Status Indicator
+
+    @ViewBuilder
+    private var statusIndicator: some View {
+        switch message.status {
+        case .sending:
+            HStack(spacing: 4) {
+                ProgressView()
+                    .scaleEffect(0.6)
+                Text("Sending...")
+                    .font(AppFonts.caption2)
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+        case .failed:
+            HStack(spacing: 4) {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundStyle(.red)
+                Text("Failed to send")
+                    .font(AppFonts.caption2)
+                    .foregroundStyle(.red)
+
+                if let onRetry {
+                    Button("Retry") {
+                        onRetry()
+                    }
+                    .font(AppFonts.caption2)
+                    .foregroundStyle(AppTheme.primary)
+                }
+            }
+        case .sent:
+            EmptyView()
+        }
     }
 
     // MARK: - Bubble Styling

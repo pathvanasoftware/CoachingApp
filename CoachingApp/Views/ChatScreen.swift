@@ -12,6 +12,7 @@ struct ChatScreen: View {
     @Environment(AppState.self) private var appState
     @State private var viewModel: ChatViewModel
     @State private var hasRunRegressionFlow = false
+    @State private var showSaveIndicator = false
 
     init(viewModel: ChatViewModel = ChatViewModel()) {
         _viewModel = State(initialValue: viewModel)
@@ -93,6 +94,18 @@ struct ChatScreen: View {
                 await runRegressionFlowIfNeeded()
             }
         }
+        .onChange(of: viewModel.lastSavedAt) { _, newValue in
+            guard newValue != nil else { return }
+            withAnimation {
+                showSaveIndicator = true
+            }
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                withAnimation {
+                    showSaveIndicator = false
+                }
+            }
+        }
     }
 
     private var crisisResources: [CrisisResourceModel] {
@@ -116,8 +129,22 @@ struct ChatScreen: View {
     private var headerView: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("AI Coach")
-                    .font(.headline)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("AI Coach")
+                        .font(.headline)
+
+                    // Save indicator
+                    if showSaveIndicator {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption2)
+                            Text("Saved")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.green)
+                        .transition(.opacity.combined(with: .scale))
+                    }
+                }
 
                 Spacer()
 
@@ -223,25 +250,62 @@ struct ChatScreen: View {
 
     // MARK: - Message Bubble
     private func messageBubble(for message: ChatMessage) -> some View {
-        HStack {
+        VStack(alignment: message.isFromUser ? .trailing : .leading, spacing: 4) {
+            HStack {
+                if message.isFromUser {
+                    Spacer()
+                }
+
+                Text(message.content)
+                    .font(.body)
+                    .foregroundColor(message.isFromUser ? .white : .primary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18)
+                            .fill(message.isFromUser ? Color.blue : Color(.systemGray5))
+                    )
+                    .frame(maxWidth: UIScreen.main.bounds.width * 0.75, alignment: message.isFromUser ? .trailing : .leading)
+
+                if !message.isFromUser {
+                    Spacer()
+                }
+            }
+
+            // Status indicator for user messages
             if message.isFromUser {
-                Spacer()
+                HStack(spacing: 4) {
+                    switch message.status {
+                    case .sending:
+                        ProgressView()
+                            .scaleEffect(0.6)
+                        Text("Sending...")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    case .failed:
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .foregroundStyle(.red)
+                            .font(.caption)
+                        Text("Failed")
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                        Button("Retry") {
+                            Task {
+                                await viewModel.retryMessage(message.id)
+                            }
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.blue)
+                    case .sent:
+                        EmptyView()
+                    }
+                }
             }
 
-            Text(message.content)
-                .font(.body)
-                .foregroundColor(message.isFromUser ? .white : .primary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 18)
-                        .fill(message.isFromUser ? Color.blue : Color(.systemGray5))
-                )
-                .frame(maxWidth: UIScreen.main.bounds.width * 0.75, alignment: message.isFromUser ? .trailing : .leading)
-
-            if !message.isFromUser {
-                Spacer()
-            }
+            // Timestamp
+            Text(message.timestamp.formatted(date: .omitted, time: .shortened))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
     }
 
