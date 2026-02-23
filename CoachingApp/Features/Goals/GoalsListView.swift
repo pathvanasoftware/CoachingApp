@@ -159,19 +159,21 @@ struct GoalsListView: View {
 
     private var emptyStateTitle: String {
         switch viewModel.selectedFilter {
-        case .active: return "No Active Goals"
-        case .completed: return "No Completed Goals"
-        case .paused: return "No Paused Goals"
+        case .active: return "No Active Goals Yet"
+        case .completed: return "No Wins Yet! 🎯"
+        case .paused: return "Nothing on Hold"
         case .archived: return "No Archived Goals"
-        case .none: return "No Goals Yet"
+        case .none: return "Ready to Set Your First Goal?"
         }
     }
 
     private var emptyStateMessage: String {
         switch viewModel.selectedFilter {
-        case .active: return "Set a new goal to start tracking your progress."
-        case .completed: return "Complete your first goal to see it here."
-        default: return "Create your first goal to begin your coaching journey."
+        case .active: return "Time to aim high! Create a goal and start making progress. 🚀"
+        case .completed: return "Your first completed goal will appear here. Keep pushing! 💪"
+        case .paused: return "When you pause a goal, it'll show up here for later."
+        case .archived: return "Archived goals are stored here when you're done."
+        default: return "Every big achievement starts with a single goal. Let's create yours! ✨"
         }
     }
 

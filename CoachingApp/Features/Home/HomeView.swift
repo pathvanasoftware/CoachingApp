@@ -146,11 +146,20 @@ struct HomeView: View {
                 .foregroundStyle(AppTheme.textPrimary)
 
             if viewModel.recentSessions.isEmpty {
-                Text("No recent sessions.")
-                    .font(AppFonts.subheadline)
-                    .foregroundStyle(AppTheme.textTertiary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, AppTheme.Spacing.lg)
+                VStack(spacing: 8) {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                        .font(.system(size: 36))
+                        .foregroundStyle(AppTheme.textTertiary)
+                    Text("Start Your First Session")
+                        .font(AppFonts.headline)
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text("Tap the check-in card above to begin! 💬")
+                        .font(AppFonts.subheadline)
+                        .foregroundStyle(AppTheme.textTertiary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, AppTheme.Spacing.lg)
             } else {
                 ForEach(viewModel.recentSessions.prefix(3)) { session in
                     recentSessionRow(session)

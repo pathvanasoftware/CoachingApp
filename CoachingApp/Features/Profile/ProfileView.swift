@@ -68,10 +68,14 @@ struct ProfileView: View {
                         get: { appState.showDebugDiagnostics },
                         set: { appState.showDebugDiagnostics = $0 }
                     ))
+                    
+                    Button("Restart Onboarding") {
+                        appState.hasCompletedOnboarding = false
+                    }
                 } header: {
                     Text("Developer Options")
                 } footer: {
-                    Text("Display coaching metadata (style, emotion, goal) in chat messages.")
+                    Text("Display coaching metadata (style, emotion, goal) in chat messages. Restart onboarding if you skipped it earlier.")
                 }
 
                 // MARK: - Account Actions

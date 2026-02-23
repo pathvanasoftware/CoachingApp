@@ -431,6 +431,30 @@ struct ChatScreen: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    // MARK: - Dynamic Input Placeholder
+
+    private var inputPlaceholder: String {
+        if viewModel.messages.isEmpty {
+            return "What's on your mind today?"
+        }
+        
+        // Check recent emotion from diagnostics
+        if let lastAssistantMessage = viewModel.messages.reversed().first(where: { $0.role == .assistant }),
+           let diagnostics = lastAssistantMessage.diagnostics {
+            let emotion = diagnostics.emotionDetected.lowercased()
+            
+            if emotion.contains("stress") || emotion.contains("anxiety") {
+                return "Share what's stressing you..."
+            } else if emotion.contains("frustrated") {
+                return "Tell me more about what's frustrating..."
+            } else if emotion.contains("excited") || emotion.contains("energy") {
+                return "What else is on your mind?"
+            }
+        }
+        
+        return "Continue the conversation..."
+    }
+
     // MARK: - Input Area
     private var inputArea: some View {
         VStack(spacing: 0) {
@@ -490,7 +514,7 @@ struct ChatScreen: View {
                         )
                 } else {
                     // Regular text input field
-                    TextField("Type a message...", text: $viewModel.currentInput, onCommit: {
+                    TextField(inputPlaceholder, text: $viewModel.currentInput, onCommit: {
                         Task {
                             await viewModel.sendMessage()
                         }
