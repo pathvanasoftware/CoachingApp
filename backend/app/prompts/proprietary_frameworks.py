@@ -51,6 +51,27 @@ Core principle: Balance empathy with clarity in feedback conversations.
 - Model it in coaching relationship (care + clarity)
 - Help identify when they're avoiding tough conversations
 - Practice specific feedback language
+
+---
+
+**Enhanced Concepts:**
+
+**Conversation Safety (inspired by dialogue research):**
+- Create psychological safety before difficult conversations
+- Establish shared purpose ("We both want what's best for the team")
+- When safety breaks down, pause and rebuild before continuing
+
+**Fact vs Story Separation:**
+- Facts: Observable behaviors ("You arrived 10 minutes late")
+- Stories: Your interpretations ("You don't respect the team's time")
+- Share your story as a story: "The story I'm telling myself is..."
+- Opens dialogue for clarification
+
+**Feedback Reception Skills:**
+- Understand the three feedback types: Evaluation, Coaching, Appreciation
+- Identify triggers: Truth (is it accurate?), Relationship (who's giving it?), Identity (what does it say about me?)
+- Extract value even from imperfect feedback
+- Set boundaries - you don't have to accept all feedback
 """.strip()
 
 
@@ -120,6 +141,30 @@ Level 4: "Here's what I did" → Full autonomy (mature delegation)
 - Diagnose delegation maturity levels
 - Structure effective 1-on-1s
 - Build team purpose and process clarity
+
+---
+
+**Enhanced Concepts:**
+
+**Coaching-Based 1-on-1 Structure (inspired by coaching research):**
+- 2 min: Let them set the agenda ("What's most important to discuss?")
+- 5 min: Deep dive with powerful questions:
+  - "What's the real challenge here?"
+  - "What have you tried? What else could you try?"
+  - "What do you need from me?"
+- 3 min: Clarify next actions and support
+
+**Motivation Design (intrinsic motivation principles):**
+- **Autonomy**: Give control over how work gets done
+- **Mastery**: Create growth opportunities (challenges, learning)
+- **Purpose**: Connect work to meaning and impact
+- Key: Creative work needs intrinsic motivation more than external rewards
+
+**Purpose-Driven Leadership:**
+- Start with WHY: Why does this work matter? What do we believe?
+- Then HOW: Our unique approach and values
+- Then WHAT: The actual work and outcomes
+- Communicate from inside-out: Purpose → Method → Results
 """.strip()
 
 
@@ -216,6 +261,31 @@ Core focus: Taking control of your career through ownership, influence, and evid
 - Create visibility & influence strategies
 - Negotiate career moves strategically
 - Document and celebrate progress
+
+---
+
+**Enhanced Concepts:**
+
+**Inner Dialogue Management (inspired by performance psychology):**
+- Identify your Inner Critic: That voice saying "you can't do this"
+- Recognize Natural Ability: Skills you have without conscious effort
+- Reduce interference through non-judgmental awareness
+- Focus on the present moment, not outcomes
+- Trust your capabilities developed through practice
+
+**Growth Mindset Development:**
+- Fixed mindset: "I'm not good at this" (abilities are static)
+- Growth mindset: "I haven't mastered this yet" (abilities develop)
+- Embrace challenges as growth opportunities
+- View effort as the path to mastery
+- Learn from criticism rather than deflecting
+- "Not yet" is more powerful than "I can't"
+
+**Intrinsic Motivation Activation:**
+- Tap into what naturally energizes you
+- Seek work that provides autonomy, mastery opportunities, and purpose
+- Focus on the journey of improvement, not just outcomes
+- Build resilience through meaningful goals
 """.strip()
 
 
@@ -301,6 +371,38 @@ Core focus: Building trust and authenticity through vulnerability and clear comm
 - Reframe failure as learning (extract lessons)
 - Practice authentic communication (clear is kind)
 - Develop resilience (bounce back stronger)
+
+---
+
+**Enhanced Concepts:**
+
+**Emotional Intelligence Development (inspired by EQ research):**
+- **Self-Awareness**: Know your emotions and their impact on others
+  - Ask: "What am I feeling right now? Why?"
+  - Recognize patterns in your emotional responses
+- **Self-Management**: Control impulsive reactions
+  - Pause before responding in heated moments
+  - Channel emotions constructively
+- **Self-Motivation**: Inner drive and resilience
+  - Focus on long-term goals despite short-term setbacks
+- **Empathy**: Understand others' emotions and perspectives
+  - Ask: "What might they be feeling right now?"
+  - Listen for emotions, not just words
+- **Social Skills**: Build relationships and influence
+  - Develop rapport quickly
+  - Navigate complex social dynamics
+
+**Emotional Contagion Awareness:**
+- Leaders' emotions spread to teams (positive or negative)
+- Your emotional state sets the tone for others
+- Manage your energy and presence intentionally
+- In high-stakes situations, emotional control is critical
+
+**Empathy in Practice:**
+- Cognitive empathy: Understand others' thinking
+- Emotional empathy: Feel what others feel
+- Compassionate empathy: Move to help when needed
+- Practice: Before meetings, consider each attendee's likely emotional state
 """.strip()
 
 
@@ -376,6 +478,34 @@ Core focus: Identifying and changing behaviors that limit senior leaders' effect
 - Stakeholder engagement for feedback (FeedForward)
 - Track progress with specific behaviors (measurable)
 - Focus on one behavior at a time (don't overwhelm)
+
+---
+
+**Enhanced Concepts:**
+
+**Executive Coaching Principles (inspired by leadership coaching research):**
+- **People First**: Address team dynamics before business strategy
+- **Build Trust**: Listen deeply, understand context before advising
+- **Challenge Assumptions**: Help executives see blind spots
+- **Maintain Independence**: Provide objective perspective, don't take sides
+- **Focus on Team Dynamics**: Individual issues often reflect team patterns
+
+**Team Dynamics Observation:**
+- Watch for communication patterns in team meetings
+- Identify who speaks, who listens, who's excluded
+- Notice decision-making dynamics (who influences, who decides)
+- Address unhealthy conflict patterns early
+- Help teams develop shared language and norms
+
+**Blind Spot Identification:**
+- Use 360 feedback to surface unseen behaviors
+- Look for patterns: What behaviors helped you succeed before but limit you now?
+- Common executive blind spots:
+  - Over-reliance on strengths (what got you here won't get you there)
+  - Difficulty receiving critical feedback
+  - Assuming others see situations as you do
+  - Underestimating your impact on others
+- Create systematic feedback loops (quarterly check-ins with stakeholders)
 """.strip()
 
 
