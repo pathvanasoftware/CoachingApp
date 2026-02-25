@@ -51,6 +51,9 @@ Core principle: Balance empathy with clarity in feedback conversations.
 - Model it in coaching relationship (care + clarity)
 - Help identify when they're avoiding tough conversations
 - Practice specific feedback language
+- Challenge clients to explore their feedback patterns
+- Support them in developing this critical skill
+- Ask powerful questions to discover the root of avoidance
 
 ---
 
@@ -65,7 +68,8 @@ Core principle: Balance empathy with clarity in feedback conversations.
 - Facts: Observable behaviors ("You arrived 10 minutes late")
 - Stories: Your interpretations ("You don't respect the team's time")
 - Share your story as a story: "The story I'm telling myself is..."
-- Opens dialogue for clarification
+- Ask: "What's your perspective on what happened?" to explore their view
+- Opens dialogue for clarification and discovery
 
 **Feedback Reception Skills:**
 - Understand the three feedback types: Evaluation, Coaching, Appreciation
@@ -141,6 +145,10 @@ Level 4: "Here's what I did" → Full autonomy (mature delegation)
 - Diagnose delegation maturity levels
 - Structure effective 1-on-1s
 - Build team purpose and process clarity
+- Explore their leadership challenges deeply
+- Support their growth journey
+- Challenge them to discover their leadership style
+- Ask questions that develop their self-awareness
 
 ---
 
@@ -261,6 +269,10 @@ Core focus: Taking control of your career through ownership, influence, and evid
 - Create visibility & influence strategies
 - Negotiate career moves strategically
 - Document and celebrate progress
+- Explore the source of their self-doubt
+- Support them in taking bold actions
+- Ask deep questions to discover their authentic strengths
+- Develop their ability to advocate for themselves
 
 ---
 
@@ -371,6 +383,11 @@ Core focus: Building trust and authenticity through vulnerability and clear comm
 - Reframe failure as learning (extract lessons)
 - Practice authentic communication (clear is kind)
 - Develop resilience (bounce back stronger)
+- Explore their relationship with vulnerability
+- Support them in building psychological safety
+- Challenge them to lead with authenticity
+- Ask questions that discover their core values
+- Develop their emotional intelligence capabilities
 
 ---
 
@@ -478,6 +495,11 @@ Core focus: Identifying and changing behaviors that limit senior leaders' effect
 - Stakeholder engagement for feedback (FeedForward)
 - Track progress with specific behaviors (measurable)
 - Focus on one behavior at a time (don't overwhelm)
+- Explore their leadership blind spots
+- Support their evolution as executives
+- Challenge assumptions that limit their effectiveness
+- Ask powerful questions to discover systemic issues
+- Develop their ability to receive and act on feedback
 
 ---
 
@@ -536,13 +558,13 @@ def get_framework_for_context(user_message: str, emotion: str, goal_link: str) -
     if any(k in msg_lower for k in ["new manager", "first time manager", "managing people", "delegation", "team lead", "new leader"]):
         return LEADERSHIP_FOUNDATION
     
-    # Priority 3: Self-doubt, career advancement → Power Ownership Model
-    if any(k in msg_lower for k in ["imposter", "not ready", "deserve", "doubt", "negotiat", "raise", "promotion", "self doubt"]):
-        return POWER_OWNERSHIP_MODEL
-    
-    # Priority 4: Vulnerability, authenticity, trust → Courageous Leadership
-    if any(k in msg_lower for k in ["vulnerable", "authentic", "trust", "psychological safety", "courage", "safe"]):
+    # Priority 3: Vulnerability, authenticity, trust → Courageous Leadership
+    if any(k in msg_lower for k in ["vulnerable", "authentic", "psychological safety", "courage", "safe", "admit my mistake", "admit a mistake", "afraid of losing"]):
         return COURAGEOUS_LEADERSHIP
+    
+    # Priority 4: Self-doubt, career advancement → Power Ownership Model
+    if any(k in msg_lower for k in ["imposter", "not ready", "deserve", "doubt", "negotiat", "raise", "promotion", "self doubt", "fraud", "qualified"]):
+        return POWER_OWNERSHIP_MODEL
     
     # Priority 5: Feedback & difficult conversations → Direct Care Feedback
     if any(k in msg_lower for k in ["feedback", "difficult conversation", "confrontation", "honest", "direct", "hard conversation"]):
