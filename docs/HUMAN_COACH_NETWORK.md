@@ -18,9 +18,6 @@ The app monitors conversations in real-time using an **async escalation classifi
 | **Repeated Loops** | Same topic surfaces 3+ times across sessions without progress | Medium | AI flags pattern, suggests human coach |
 | **User Request** | User explicitly asks for a human ("Can I talk to a real person?") | High | Immediate booking flow |
 | **Topic Boundary** | Legal advice, financial planning, mental health symptoms, clinical territory | High | Decline topic + redirect to human coach |
-| **Personal Crisis Spillover** | User discusses divorce, grief, severe burnout, personal trauma beyond career impact | Medium | Acknowledge briefly, reframe to career impact, suggest human coach |
-| **High-Stakes Negotiation** | Compensation negotiation, exit package, co-founder disputes, board presentations | Medium | Suggest human coach for role-play and strategy |
-| **Low Engagement** | User gives <5 word responses for 4+ consecutive turns | Low | AI adjusts approach; if persists, suggest human or reschedule |
 | **Org-Political Sensitivity** | Situations involving HR investigations, legal exposure, whistleblowing, ethics violations | High | **Do not coach** - redirect to human coach + suggest legal counsel |
 | **Crisis (Immediate)** | Explicit self-harm, suicide ideation, safety concerns | **CRITICAL** | Surface crisis resources (988) + notify ops team + offer human coach |
 
@@ -107,22 +104,18 @@ Escalation Categories:
 2. repeated_loop - Same topic 3+ times without progress
 3. user_request - User explicitly asks for human
 4. topic_boundary - Legal, financial, clinical territory
-5. personal_crisis - Personal trauma beyond career impact
-6. high_stakes - Compensation, exit packages, co-founder disputes
-7. low_engagement - <5 word responses for 4+ turns
-8. org_political - HR investigations, legal exposure, whistleblowing
-9. crisis - Self-harm, suicide ideation, safety concerns
+5. org_political - HR investigations, legal exposure, whistleblowing
+6. crisis - Self-harm, suicide ideation, safety concerns
 
 Respond in JSON only:
 {
   "escalation_needed": true/false,
   "urgency": "low" | "medium" | "high" | "critical",
   "category": "complex_decision" | "repeated_loop" | "user_request" | 
-    "topic_boundary" | "personal_crisis" | "high_stakes" | 
-    "low_engagement" | "org_political" | "crisis" | "none",
+    "topic_boundary" | "org_political" | "crisis" | "none",
   "reasoning": "Brief explanation of why escalation is/isn't needed",
   "suggested_coach_specialty": "leadership" | "transitions" | 
-    "communication" | "strategy" | "wellbeing" | "crisis" | null
+    "communication" | "strategy" | "crisis" | null
 }
 """
 ```
@@ -477,11 +470,8 @@ def match_coach(user_id: str, specialty: str, urgency: str) -> Coach:
 2. ✅ Repeated loops (3+ times same topic, no progress)
 3. ✅ User explicit request
 4. ✅ Topic boundaries (legal, financial, clinical)
-5. ✅ Personal crisis spillover
-6. ✅ High-stakes negotiations
-7. ✅ Low engagement (<5 words, 4+ turns)
-8. ✅ Org-political sensitivity (HR, legal, whistleblowing)
-9. ✅ Crisis (self-harm, suicide ideation)
+5. ✅ Org-political sensitivity (HR, legal, whistleblowing)
+6. ✅ Crisis (self-harm, suicide ideation)
 
 ### Coach Network Build Strategy
 1. **Phase 1 (Pilot):** 5-10 coaches from co-founder's network
