@@ -649,8 +649,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 7WL9KY32LF;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "CoachingApp needs microphone access for voice coaching sessions.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "CoachingApp uses speech recognition for voice coaching sessions.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ascendra needs microphone access for voice coaching sessions.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Ascendra uses speech recognition for voice coaching sessions.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -661,8 +661,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.coachingapp.ios;
-				PRODUCT_NAME = CoachingApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pathvana.ascendra;
+				PRODUCT_NAME = Ascendra;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -743,8 +743,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 7WL9KY32LF;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "CoachingApp needs microphone access for voice coaching sessions.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "CoachingApp uses speech recognition for voice coaching sessions.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ascendra needs microphone access for voice coaching sessions.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Ascendra uses speech recognition for voice coaching sessions.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -755,8 +755,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.coachingapp.ios;
-				PRODUCT_NAME = CoachingApp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pathvana.ascendra;
+				PRODUCT_NAME = Ascendra;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";

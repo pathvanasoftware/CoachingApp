@@ -12,13 +12,25 @@ final class SupabaseService: @unchecked Sendable {
 
     static let shared = SupabaseService()
 
-    // MARK: - Configuration
+    private static let supabaseURL = {
+        let urlString = ProcessInfo.processInfo.environment["SUPABASE_URL"]
+            ?? (Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String)
 
-    // TODO: Replace with your actual Supabase project URL
-    private static let supabaseURL = URL(string: "https://your-project-ref.supabase.co")!
+        guard let urlString, let url = URL(string: urlString), !urlString.isEmpty else {
+            fatalError("Missing or invalid SUPABASE_URL. Configure it in Info.plist or environment.")
+        }
+        return url
+    }()
 
-    // TODO: Replace with your actual Supabase anon key
-    private static let supabaseAnonKey = "your-supabase-anon-key"
+    private static let supabaseAnonKey = {
+        let key = ProcessInfo.processInfo.environment["SUPABASE_ANON_KEY"]
+            ?? (Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String)
+
+        guard let key, !key.isEmpty else {
+            fatalError("Missing SUPABASE_ANON_KEY. Configure it in Info.plist or environment.")
+        }
+        return key
+    }()
 
     // MARK: - Client
 

@@ -166,19 +166,21 @@ final class VoiceViewModel {
         )
         messages.append(userMessage)
 
-        Task {
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            guard let sessionId = self.currentSession?.id else { return }
             do {
-                let response = try await chatService.sendMessage(
+                let response = try await self.chatService.sendMessage(
                     sessionId: sessionId,
-                    content: transcribedText
+                    content: self.transcribedText
                 )
 
-                messages.append(response)
-                currentResponse = response.content
-                startSpeaking(text: response.content)
+                self.messages.append(response)
+                self.currentResponse = response.content
+                self.startSpeaking(text: response.content)
             } catch {
-                errorMessage = "Failed to get response: \(error.localizedDescription)"
-                voiceState = .idle
+                self.errorMessage = "Failed to get response: \(error.localizedDescription)"
+                self.voiceState = .idle
             }
         }
     }
@@ -237,5 +239,10 @@ final class VoiceViewModel {
         amplitudeTimer?.invalidate()
         amplitudeTimer = nil
         amplitude = 0.0
+    }
+
+    deinit {
+        stopAmplitudeSimulation()
+        stopListening()
     }
 }

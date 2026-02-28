@@ -215,8 +215,10 @@ final class ChatViewModel {
                 try? await Task.sleep(for: .seconds(1))
                 guard !Task.isCancelled else { break }
                 await MainActor.run {
-                    self?.elapsedSeconds += 1
+                    guard let self = self else { return }
+                    self.elapsedSeconds += 1
                 }
+                guard !Task.isCancelled else { break }
             }
         }
     }
@@ -268,7 +270,7 @@ final class ChatViewModel {
                 messages[lastIndex].content += token
             }
         } catch {
-            // Streaming interrupted -- keep whatever content we have
+            errorMessage = "Streaming error: \(error.localizedDescription)"
         }
 
         // Finalize the message
@@ -579,11 +581,15 @@ final class ChatViewModel {
             
             let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
             
-            // Get baseURL from UserDefaults (same as AppState)
             let envRaw = UserDefaults.standard.string(forKey: "selectedAPIEnvironment") ?? "Local"
             let env = APIEnvironment(rawValue: envRaw) ?? .localhost
             
-            var request = URLRequest(url: URL(string: "\(env.baseURL)/chat/session-summary")!)
+            guard let url = URL(string: "\(env.baseURL)/chat/session-summary") else {
+                errorMessage = "Invalid API URL"
+                return
+            }
+            
+            var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = jsonData
@@ -655,11 +661,10 @@ actor ChatHistoryStorage {
     // MARK: - Initialization
     
     private init() {
-        // Use Application Support directory for persistent storage
-        let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? fileManager.temporaryDirectory
         storageDirectory = appSupport.appendingPathComponent("ChatHistory", isDirectory: true)
         
-        // Create directory if it doesn't exist
         try? fileManager.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
         
         encoder.dateEncodingStrategy = .iso8601

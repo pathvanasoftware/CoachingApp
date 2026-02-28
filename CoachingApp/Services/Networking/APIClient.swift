@@ -14,6 +14,7 @@ enum APIError: Error, LocalizedError {
     case notFound
     case rateLimited
     case serverError
+    case missingAPIKey
     case networkError(Error)
     case unknown(Error)
 
@@ -41,6 +42,8 @@ enum APIError: Error, LocalizedError {
             return "Too many requests. Please try again shortly."
         case .serverError:
             return "A server error occurred. Please try again later."
+        case .missingAPIKey:
+            return "API key is missing. Configure SUPABASE_ANON_KEY in Info.plist or environment."
         case .networkError(let error):
             return "Network error: \(error.localizedDescription)"
         case .unknown(let error):
@@ -226,12 +229,12 @@ final class APIClient: APIClientProtocol, @unchecked Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        // Supabase requires apikey header
-        // TODO: Replace with your actual anon key
-        request.setValue(
-            "your-supabase-anon-key",
-            forHTTPHeaderField: "apikey"
-        )
+        guard let anonKey = ProcessInfo.processInfo.environment["SUPABASE_ANON_KEY"]
+            ?? Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String,
+              !anonKey.isEmpty else {
+            throw APIError.missingAPIKey
+        }
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
 
         // Inject auth token if available
         if let token = authTokenProvider?() {

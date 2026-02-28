@@ -29,6 +29,17 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
     private let baseURL: String
     private var authTokenProvider: (() -> String?)?
 
+    private var supabaseAnonKey: String? {
+        if let envValue = ProcessInfo.processInfo.environment["SUPABASE_ANON_KEY"], !envValue.isEmpty {
+            return envValue
+        }
+        if let plistValue = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String,
+           !plistValue.isEmpty {
+            return plistValue
+        }
+        return nil
+    }
+
     // Use centralized API configuration from AppState
     private static var defaultBaseURL: String {
         if let saved = UserDefaults.standard.string(forKey: "com.coachingapp.apiEnvironment"),
@@ -100,13 +111,15 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
 
-        // Inject auth token
         if let token = authTokenProvider?() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
-        // TODO: Replace with your actual anon key
-        request.setValue("your-supabase-anon-key", forHTTPHeaderField: "apikey")
+        if let anonKey = supabaseAnonKey {
+            request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        } else {
+            throw StreamingError.missingAPIKey
+        }
 
         let body = StreamingRequest(
             sessionId: sessionId,
@@ -221,6 +234,7 @@ enum StreamingError: Error, LocalizedError {
     case connectionLost
     case decodingFailed
     case cancelled
+    case missingAPIKey
 
     var errorDescription: String? {
         switch self {
@@ -236,6 +250,8 @@ enum StreamingError: Error, LocalizedError {
             return "Failed to decode streamed data."
         case .cancelled:
             return "The streaming request was cancelled."
+        case .missingAPIKey:
+            return "API key is missing. Please configure SUPABASE_ANON_KEY environment variable."
         }
     }
 }
