@@ -128,7 +128,9 @@ class VoiceInputManager: NSObject, ObservableObject {
         do {
             try AVAudioSession.sharedInstance().setActive(false)
         } catch {
-            print("Failed to deactivate audio session: \(error)")
+            #if DEBUG
+            print("[VoiceInputManager] Failed to deactivate audio session: \(error)")
+            #endif
         }
 
         isActive = false

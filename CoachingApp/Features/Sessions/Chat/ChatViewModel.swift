@@ -58,6 +58,12 @@ final class ChatViewModel {
         self.streamingService = streamingService
     }
 
+    deinit {
+        timerTask?.cancel()
+        streamingTask?.cancel()
+        voiceInputManager = nil
+    }
+
     // MARK: - Session Lifecycle
 
     @MainActor
@@ -557,7 +563,7 @@ final class ChatViewModel {
                 try await historyStorage.saveSession(session, messages: messages)
                 self.lastSavedAt = Date()
             } catch {
-                // Silent failure, already persisted in memory
+                print("[ChatViewModel] Failed to save session: \(error.localizedDescription)")
             }
         }
     }

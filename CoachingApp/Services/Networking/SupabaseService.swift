@@ -1,6 +1,25 @@
 import Foundation
 import Supabase
 
+// MARK: - Supabase Configuration Error
+
+enum SupabaseConfigError: Error, LocalizedError {
+    case missingURL
+    case missingAnonKey
+    case invalidURL(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingURL:
+            return "SUPABASE_URL is not configured. Add it to Info.plist or environment variables."
+        case .missingAnonKey:
+            return "SUPABASE_ANON_KEY is not configured. Add it to Info.plist or environment variables."
+        case .invalidURL(let urlString):
+            return "Invalid SUPABASE_URL: \(urlString)"
+        }
+    }
+}
+
 // MARK: - Supabase Service
 
 /// Singleton wrapper around the Supabase Swift client.
@@ -10,47 +29,77 @@ final class SupabaseService: @unchecked Sendable {
 
     // MARK: - Singleton
 
-    static let shared = SupabaseService()
+    static let shared: SupabaseService = {
+        do {
+            return try SupabaseService()
+        } catch {
+            print("[SupabaseService] Configuration error: \(error.localizedDescription)")
+            return SupabaseService.fallback
+        }
+    }()
 
-    private static let supabaseURL = {
+    private static let fallback = SupabaseService(
+        url: URL(string: "https://placeholder.supabase.co")!,
+        key: "placeholder-key",
+        isUsingFallback: true
+    )
+
+    private static func loadSupabaseURL() throws -> URL {
         let urlString = ProcessInfo.processInfo.environment["SUPABASE_URL"]
             ?? (Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String)
 
-        guard let urlString, let url = URL(string: urlString), !urlString.isEmpty else {
-            fatalError("Missing or invalid SUPABASE_URL. Configure it in Info.plist or environment.")
+        guard let urlString, !urlString.isEmpty else {
+            throw SupabaseConfigError.missingURL
         }
-        return url
-    }()
 
-    private static let supabaseAnonKey = {
+        guard let url = URL(string: urlString) else {
+            throw SupabaseConfigError.invalidURL(urlString)
+        }
+
+        return url
+    }
+
+    private static func loadSupabaseAnonKey() throws -> String {
         let key = ProcessInfo.processInfo.environment["SUPABASE_ANON_KEY"]
             ?? (Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String)
 
         guard let key, !key.isEmpty else {
-            fatalError("Missing SUPABASE_ANON_KEY. Configure it in Info.plist or environment.")
+            throw SupabaseConfigError.missingAnonKey
         }
+
         return key
-    }()
+    }
+
+    // MARK: - Configuration Status
+
+    static var isConfigured: Bool {
+        do {
+            _ = try loadSupabaseURL()
+            _ = try loadSupabaseAnonKey()
+            return true
+        } catch {
+            return false
+        }
+    }
 
     // MARK: - Client
 
     let client: SupabaseClient
+    let isUsingFallback: Bool
 
     // MARK: - Init
 
-    private init() {
-        client = SupabaseClient(
-            supabaseURL: Self.supabaseURL,
-            supabaseKey: Self.supabaseAnonKey
-        )
+    private init() throws {
+        let url = try Self.loadSupabaseURL()
+        let key = try Self.loadSupabaseAnonKey()
+        self.client = SupabaseClient(supabaseURL: url, supabaseKey: key)
+        self.isUsingFallback = false
     }
 
     /// Initialize with custom URL and key (useful for testing).
-    init(url: URL, key: String) {
-        client = SupabaseClient(
-            supabaseURL: url,
-            supabaseKey: key
-        )
+    init(url: URL, key: String, isUsingFallback: Bool = false) {
+        self.client = SupabaseClient(supabaseURL: url, supabaseKey: key)
+        self.isUsingFallback = isUsingFallback
     }
 
     // MARK: - Auth Helpers

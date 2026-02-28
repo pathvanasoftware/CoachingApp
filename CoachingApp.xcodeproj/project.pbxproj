@@ -47,6 +47,7 @@
 		79646EA9779957BCBC320E3B /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C8928E058D5F864FCDDD393 /* LoadingView.swift */; };
 		796B85D4DEF9A04DCBC9FDE1 /* CoachingCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16078495C28DD5C7423D4D3A /* CoachingCard.swift */; };
 		816BC7B2F201095E4BB2EDBA /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF96D0756A6FAFEFC04CD747 /* AppState.swift */; };
+		8495AEA1D5B0B04866E7133C /* GoalsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD0E59AA2EF993F19B042F3A /* GoalsViewModelTests.swift */; };
 		850BCF08C98C09968318E94B /* SessionsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCF99931C548DA0039434E2 /* SessionsListView.swift */; };
 		8BB8D418726C3E7268F982B9 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220FF949F181D5486FBC78A3 /* ProfileView.swift */; };
 		8DE7ABBD3EBEDEF8FEB4AA6A /* GoalDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76A02E5BE3383D395F399F3E /* GoalDetailView.swift */; };
@@ -73,7 +74,9 @@
 		C90447A9A685F43E1E4E8D84 /* HandoffOptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D527D3A1B874C6835D8D470 /* HandoffOptionsView.swift */; };
 		CDD68D87F60D522804641663 /* String+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EA6E4927B469313E9026BF4 /* String+Extensions.swift */; };
 		CF72270C07B52E88FDBDF7E2 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51F3626AB0047EE35A89696 /* ChatViewModel.swift */; };
+		D1B90E85D3485A76C97F80AB /* ChatViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01A1E411DD40428C901696AC /* ChatViewModelTests.swift */; };
 		D20F3BF6ADD6C311209FBA71 /* VoiceModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6846D9B6ACE47D9CA99FCCC2 /* VoiceModeView.swift */; };
+		D2C5B15CA8FADFF6BF034B34 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6ECA374BF9CF7DA85B8B2892 /* Foundation.framework */; };
 		D420D1BBFD7C1D5B2CC90918 /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3646003BB3890821196B968 /* AuthViewModel.swift */; };
 		D8BFC2254832DE1BCECC4B48 /* StreamingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B03152E74EBE5449FFF416 /* StreamingService.swift */; };
 		D939E262E23A95B9B06E1912 /* ActionItemsList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98643DF64FB484BE8A67B9EA /* ActionItemsList.swift */; };
@@ -88,8 +91,19 @@
 		FE620AB265FA28AC87C53F8D /* PersonaAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00144B000DE48A254BD46C26 /* PersonaAvatar.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		26FD18F29F90D51934DD7A3A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 163F64C3A939F3F11DC21CC6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D50D8CCFED1ABA072AC75BD7;
+			remoteInfo = CoachingApp;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		00144B000DE48A254BD46C26 /* PersonaAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonaAvatar.swift; sourceTree = "<group>"; };
+		01A1E411DD40428C901696AC /* ChatViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatViewModelTests.swift; path = CoachingAppTests/ChatViewModelTests.swift; sourceTree = "<group>"; };
 		08AB5419BC86639C4FBB74C3 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		0A7D435BB2BF036EDDC33870 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		0BF38D2AD9B5AAD138E9840B /* GoalsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalsListView.swift; sourceTree = "<group>"; };
@@ -128,6 +142,7 @@
 		62C7B1CADCEC76E97672E06D /* Goal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Goal.swift; sourceTree = "<group>"; };
 		6846D9B6ACE47D9CA99FCCC2 /* VoiceModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceModeView.swift; sourceTree = "<group>"; };
 		6A68CF3FF8EB1CE92AE9268D /* ChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatService.swift; sourceTree = "<group>"; };
+		6ECA374BF9CF7DA85B8B2892 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		73B68A00359A8FD6C6557A9C /* Coach.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Coach.swift; sourceTree = "<group>"; };
 		76718E01C8495598AEEB868D /* StreakView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreakView.swift; sourceTree = "<group>"; };
 		76A02E5BE3383D395F399F3E /* GoalDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalDetailView.swift; sourceTree = "<group>"; };
@@ -138,6 +153,7 @@
 		8BCDFC67756BAB1D86B7ED21 /* FirstGoalSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstGoalSetupView.swift; sourceTree = "<group>"; };
 		8DCF99931C548DA0039434E2 /* SessionsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionsListView.swift; sourceTree = "<group>"; };
 		8E2A376AAA14FA8C6B1170A7 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		9100F66BF2DE875EF4974BB6 /* CoachingAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CoachingAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		94A6A5704E91567A22A5F222 /* EscalationBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EscalationBanner.swift; sourceTree = "<group>"; };
 		966A053467EA76B9DD8D2011 /* MockAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAuthService.swift; sourceTree = "<group>"; };
 		98643DF64FB484BE8A67B9EA /* ActionItemsList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionItemsList.swift; sourceTree = "<group>"; };
@@ -159,6 +175,7 @@
 		D014F50BE4D01C1238322843 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		D24791EC0CBE75094793A199 /* DailyCheckInCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckInCard.swift; sourceTree = "<group>"; };
 		D7964E32DC5B2FD8D1B0DC14 /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
+		DD0E59AA2EF993F19B042F3A /* GoalsViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GoalsViewModelTests.swift; path = CoachingAppTests/GoalsViewModelTests.swift; sourceTree = "<group>"; };
 		E3646003BB3890821196B968 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
 		E676DBE6ACEA9666EE0C827C /* CoachingApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoachingApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F27F7AD8205DB135C922F831 /* GoalsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalsViewModel.swift; sourceTree = "<group>"; };
@@ -171,6 +188,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		4D9781C0CB47718D4CBC4046 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D2C5B15CA8FADFF6BF034B34 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		733E7DAD3C09A35AC8730740 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -182,6 +207,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0348F524CFA18F93C4E170F6 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D4142FD6EF87B1AFF62559B3 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		044BB25A7E53D91E964EE7CF /* Theme */ = {
 			isa = PBXGroup;
 			children = (
@@ -305,6 +338,7 @@
 			isa = PBXGroup;
 			children = (
 				E676DBE6ACEA9666EE0C827C /* CoachingApp.app */,
+				9100F66BF2DE875EF4974BB6 /* CoachingAppTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -388,6 +422,15 @@
 			path = Goals;
 			sourceTree = "<group>";
 		};
+		A3C972201D957CCC7B0406B8 /* CoachingAppTests */ = {
+			isa = PBXGroup;
+			children = (
+				01A1E411DD40428C901696AC /* ChatViewModelTests.swift */,
+				DD0E59AA2EF993F19B042F3A /* GoalsViewModelTests.swift */,
+			);
+			name = CoachingAppTests;
+			sourceTree = "<group>";
+		};
 		ACA99928D7B8BEB5EE53D8A1 /* Goals */ = {
 			isa = PBXGroup;
 			children = (
@@ -405,6 +448,8 @@
 			children = (
 				9620BC07C0A3BAC47BFD022B /* CoachingApp */,
 				7EBAD30BD82C252AEC72D034 /* Products */,
+				0348F524CFA18F93C4E170F6 /* Frameworks */,
+				A3C972201D957CCC7B0406B8 /* CoachingAppTests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -431,6 +476,14 @@
 				944854A79214216C0D73AF45 /* Voice */,
 			);
 			path = Sessions;
+			sourceTree = "<group>";
+		};
+		D4142FD6EF87B1AFF62559B3 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				6ECA374BF9CF7DA85B8B2892 /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 		D68CD0C0741423BB10125940 /* Extensions */ = {
@@ -506,6 +559,24 @@
 			productReference = E676DBE6ACEA9666EE0C827C /* CoachingApp.app */;
 			productType = "com.apple.product-type.application";
 		};
+		E78F7E725B63BFB1BEF1FC4D /* CoachingAppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 40D0FB588A688626D702DCFA /* Build configuration list for PBXNativeTarget "CoachingAppTests" */;
+			buildPhases = (
+				28BFC1E1B692346C5644D1AD /* Sources */,
+				4D9781C0CB47718D4CBC4046 /* Frameworks */,
+				7B57C8ADB04304715E8D841A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DA84A32BBE8F38F1334B4245 /* PBXTargetDependency */,
+			);
+			name = CoachingAppTests;
+			productName = CoachingAppTests;
+			productReference = 9100F66BF2DE875EF4974BB6 /* CoachingAppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -533,15 +604,24 @@
 			packageReferences = (
 				0F07DAE453774CB4225519B7 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
+			productRefGroup = 7EBAD30BD82C252AEC72D034 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				D50D8CCFED1ABA072AC75BD7 /* CoachingApp */,
+				E78F7E725B63BFB1BEF1FC4D /* CoachingAppTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		7B57C8ADB04304715E8D841A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AF37AB8A3674EFBA2A835358 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -553,6 +633,15 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		28BFC1E1B692346C5644D1AD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D1B90E85D3485A76C97F80AB /* ChatViewModelTests.swift in Sources */,
+				8495AEA1D5B0B04866E7133C /* GoalsViewModelTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4E2FB80B4B507834FC66B95E /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -639,6 +728,15 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		DA84A32BBE8F38F1334B4245 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = CoachingApp;
+			target = D50D8CCFED1ABA072AC75BD7 /* CoachingApp */;
+			targetProxy = 26FD18F29F90D51934DD7A3A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
 		1E1B7C8AF7330BC96FDE913F /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -647,6 +745,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 7WL9KY32LF;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ascendra needs microphone access for voice coaching sessions.";
@@ -662,10 +761,31 @@
 				);
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pathvana.ascendra;
+				PRODUCT_MODULE_NAME = CoachingApp;
 				PRODUCT_NAME = Ascendra;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		45E56D9174D6840DDAC17E87 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_TESTABILITY = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pathvana.ascendra.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(SRCROOT)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Ascendra.app/Ascendra";
 			};
 			name = Debug;
 		};
@@ -734,6 +854,27 @@
 			};
 			name = Debug;
 		};
+		AE41B6E416D4A879EBDDB002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_TESTABILITY = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pathvana.ascendra.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(SRCROOT)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Ascendra.app/Ascendra";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		E12359E80C0848FC751965D6 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -741,6 +882,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 7WL9KY32LF;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ascendra needs microphone access for voice coaching sessions.";
@@ -756,6 +898,7 @@
 				);
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pathvana.ascendra;
+				PRODUCT_MODULE_NAME = CoachingApp;
 				PRODUCT_NAME = Ascendra;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -824,6 +967,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		40D0FB588A688626D702DCFA /* Build configuration list for PBXNativeTarget "CoachingAppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AE41B6E416D4A879EBDDB002 /* Release */,
+				45E56D9174D6840DDAC17E87 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		709B94F247A82658D8BC309F /* Build configuration list for PBXNativeTarget "CoachingApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

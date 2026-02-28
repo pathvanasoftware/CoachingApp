@@ -112,7 +112,11 @@ final class VoiceViewModel {
         stopAmplitudeSimulation()
 
         if let sessionId = currentSession?.id {
-            _ = try? await chatService.endSession(sessionId: sessionId)
+            do {
+                _ = try await chatService.endSession(sessionId: sessionId)
+            } catch {
+                print("[VoiceViewModel] Failed to end session: \(error.localizedDescription)")
+            }
         }
 
         voiceState = .idle

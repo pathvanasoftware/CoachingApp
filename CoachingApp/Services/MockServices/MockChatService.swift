@@ -8,6 +8,7 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
 
     private var sessions: [String: CoachingSession] = [:]
     private var messages: [String: [ChatMessage]] = [:]
+    private let lock = NSLock()
 
     // MARK: - Simulated Delay
 
@@ -46,10 +47,31 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
         you should do and what your instinct is telling you. In my experience, when leaders \
         feel that tension, the instinct is usually pointing toward something important. What is \
         your gut telling you here?
-        """
+        """,
     ]
 
-    private var responseIndex = 0
+    private var _responseIndex = 0
+
+    private var responseIndex: Int {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _responseIndex
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _responseIndex = newValue
+        }
+    }
+
+    private func incrementResponseIndex() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        let current = _responseIndex
+        _responseIndex += 1
+        return current
+    }
 
     // MARK: - ChatServiceProtocol
 
@@ -105,8 +127,8 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
         messages[sessionId, default: []].append(userMessage)
 
         // Generate a coaching response
-        let response = coachingResponses[responseIndex % coachingResponses.count]
-        responseIndex += 1
+        let index = incrementResponseIndex()
+        let response = coachingResponses[index % coachingResponses.count]
 
         let assistantMessage = ChatMessage(
             sessionId: sessionId,
@@ -160,8 +182,8 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
         persona: CoachingPersonaType,
         coachingStyle: CoachingStyle? = nil
     ) -> AsyncThrowingStream<String, Error> {
-        let response = coachingResponses[responseIndex % coachingResponses.count]
-        responseIndex += 1
+        let index = incrementResponseIndex()
+        let response = coachingResponses[index % coachingResponses.count]
 
         // Store the user message
         let userMessage = ChatMessage(
