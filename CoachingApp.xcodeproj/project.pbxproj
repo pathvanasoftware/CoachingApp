@@ -177,7 +177,7 @@
 		D7964E32DC5B2FD8D1B0DC14 /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
 		DD0E59AA2EF993F19B042F3A /* GoalsViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GoalsViewModelTests.swift; path = CoachingAppTests/GoalsViewModelTests.swift; sourceTree = "<group>"; };
 		E3646003BB3890821196B968 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
-		E676DBE6ACEA9666EE0C827C /* CoachingApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoachingApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E676DBE6ACEA9666EE0C827C /* Ascendra.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ascendra.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F27F7AD8205DB135C922F831 /* GoalsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalsViewModel.swift; sourceTree = "<group>"; };
 		F2D20062986B09A4FD5A4B27 /* QuickReplyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickReplyView.swift; sourceTree = "<group>"; };
 		FA17F0C5836F143B51D79A18 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
@@ -337,7 +337,7 @@
 		7EBAD30BD82C252AEC72D034 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				E676DBE6ACEA9666EE0C827C /* CoachingApp.app */,
+				E676DBE6ACEA9666EE0C827C /* Ascendra.app */,
 				9100F66BF2DE875EF4974BB6 /* CoachingAppTests.xctest */,
 			);
 			name = Products;
@@ -556,7 +556,7 @@
 				045404485490B9725267842E /* Supabase */,
 			);
 			productName = CoachingApp;
-			productReference = E676DBE6ACEA9666EE0C827C /* CoachingApp.app */;
+			productReference = E676DBE6ACEA9666EE0C827C /* Ascendra.app */;
 			productType = "com.apple.product-type.application";
 		};
 		E78F7E725B63BFB1BEF1FC4D /* CoachingAppTests */ = {
@@ -748,6 +748,8 @@
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 7WL9KY32LF;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Ascendra;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ascendra needs microphone access for voice coaching sessions.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Ascendra uses speech recognition for voice coaching sessions.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -885,6 +887,8 @@
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 7WL9KY32LF;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Ascendra;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ascendra needs microphone access for voice coaching sessions.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Ascendra uses speech recognition for voice coaching sessions.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
