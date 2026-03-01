@@ -13,68 +13,59 @@ struct QuickReplyView: View {
     let onSelect: (QuickReply) -> Void
     var onRequestHumanCoach: (() -> Void)? = nil
 
-    private let columns = [
-        GridItem(.adaptive(minimum: 150), spacing: 8, alignment: .leading)
-    ]
-
     var body: some View {
-        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            // Standard quick reply suggestions
-            ForEach(suggestions) { suggestion in
-                Button(action: {
-                    onSelect(suggestion)
-                }) {
-                    Text(suggestion.text)
-                        .font(.subheadline)
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color(.systemGray5))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color(.systemGray4), lineWidth: 1)
-                        )
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(suggestions) { suggestion in
+                    Button(action: { onSelect(suggestion) }) {
+                        Text(suggestion.text)
+                            .font(.subheadline)
+                            .foregroundColor(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .multilineTextAlignment(.leading)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color(.systemGray5))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color(.systemGray4), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(suggestion.text)
+                    .accessibilityHint("Tap to send this reply")
+                    .accessibilityAddTraits(.isButton)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(suggestion.text)
-                .accessibilityHint("Tap to send this reply")
-                .accessibilityAddTraits(.isButton)
-            }
 
-            // Persistent "Talk to Career Coach" chip
-            if let onRequestHumanCoach = onRequestHumanCoach {
-                Button(action: onRequestHumanCoach) {
-                    Label("Talk to Career Coach", systemImage: "person.circle")
-                        .font(.subheadline)
-                        .foregroundColor(.blue)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.blue.opacity(0.1))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                        )
+                if let onRequestHumanCoach {
+                    Button(action: onRequestHumanCoach) {
+                        Label("Talk to Career Coach", systemImage: "person.circle")
+                            .font(.subheadline)
+                            .foregroundColor(.blue)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color.blue.opacity(0.1))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Talk to Career Coach")
+                    .accessibilityHint("Connect with a human coach")
+                    .accessibilityAddTraits(.isButton)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Talk to Career Coach")
-                .accessibilityHint("Connect with a human coach")
-                .accessibilityAddTraits(.isButton)
             }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 8)
         }
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
