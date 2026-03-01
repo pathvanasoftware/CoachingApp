@@ -14,59 +14,56 @@ struct QuickReplyView: View {
     var onRequestHumanCoach: (() -> Void)? = nil
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(suggestions) { suggestion in
-                    Button(action: { onSelect(suggestion) }) {
-                        Text(suggestion.text)
-                            .font(.subheadline)
-                            .foregroundColor(.primary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .multilineTextAlignment(.leading)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color(.systemGray5))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color(.systemGray4), lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(suggestion.text)
-                    .accessibilityHint("Tap to send this reply")
-                    .accessibilityAddTraits(.isButton)
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(suggestions) { suggestion in
+                Button(action: { onSelect(suggestion) }) {
+                    Text(suggestion.text)
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.systemGray5))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color(.systemGray4), lineWidth: 1)
+                        )
                 }
-
-                if let onRequestHumanCoach {
-                    Button(action: onRequestHumanCoach) {
-                        Label("Talk to Career Coach", systemImage: "person.circle")
-                            .font(.subheadline)
-                            .foregroundColor(.blue)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color.blue.opacity(0.1))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Talk to Career Coach")
-                    .accessibilityHint("Connect with a human coach")
-                    .accessibilityAddTraits(.isButton)
-                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(suggestion.text)
+                .accessibilityHint("Tap to send this reply")
+                .accessibilityAddTraits(.isButton)
             }
-            .padding(.leading, 16)
-            .padding(.trailing, 16)
-            .padding(.vertical, 8)
+
+            if let onRequestHumanCoach {
+                Button(action: onRequestHumanCoach) {
+                    Label("Talk to Career Coach", systemImage: "person.circle")
+                        .font(.subheadline)
+                        .foregroundColor(.blue)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.blue.opacity(0.1))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Talk to Career Coach")
+                .accessibilityHint("Connect with a human coach")
+                .accessibilityAddTraits(.isButton)
+            }
         }
+        .padding(.vertical, 4)
     }
 }
 

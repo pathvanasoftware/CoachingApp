@@ -159,7 +159,6 @@ struct ChatView: View {
                             onSelect: { viewModel.handleQuickReply($0) },
                             onRequestHumanCoach: { viewModel.requestHumanCoach() }
                         )
-                        .padding(.horizontal, -AppTheme.Spacing.md)
                         .id("quickReplies")
                         .transition(.opacity.combined(with: .move(edge: .bottom)))
                     }
