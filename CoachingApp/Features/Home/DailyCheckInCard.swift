@@ -48,6 +48,7 @@ struct DailyCheckInCard: View {
                 }
                 .primaryButtonStyle()
             }
+            .buttonStyle(.borderless)
         }
         .cardStyle()
     }

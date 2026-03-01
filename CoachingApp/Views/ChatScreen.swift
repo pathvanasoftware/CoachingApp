@@ -222,6 +222,44 @@ struct ChatScreen: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 12) {
+                    // Loading indicator when starting
+                    if viewModel.isLoading && viewModel.messages.isEmpty {
+                        VStack(spacing: AppTheme.Spacing.md) {
+                            ProgressView()
+                                .scaleEffect(1.2)
+                            Text("Starting session...")
+                                .font(AppFonts.subheadline)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.top, 100)
+                    }
+                    
+                    // Error message
+                    if let error = viewModel.errorMessage, viewModel.messages.isEmpty {
+                        VStack(spacing: AppTheme.Spacing.md) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.system(size: 40))
+                                .foregroundStyle(AppTheme.warning)
+                            Text(error)
+                                .font(AppFonts.subheadline)
+                                .foregroundStyle(AppTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                            Button("Retry") {
+                                Task {
+                                    await viewModel.startSession(
+                                        type: .checkIn,
+                                        persona: appState.selectedPersona,
+                                        inputMode: .text
+                                    )
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.top, 100)
+                    }
+                    
                     // Messages
                     ForEach(viewModel.messages) { message in
                         messageRow(for: message)
