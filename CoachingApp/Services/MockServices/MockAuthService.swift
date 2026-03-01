@@ -65,6 +65,34 @@ final class MockAuthService: AuthServiceProtocol, @unchecked Sendable {
         return user
     }
 
+    func signUpWithEmail(email: String, password: String, fullName: String?) async throws -> User {
+        isLoading = true
+        defer { isLoading = false }
+
+        try await Task.sleep(nanoseconds: simulatedDelay)
+
+        if shouldFailSignIn {
+            throw AuthError.invalidCredentials
+        }
+
+        let user = User(
+            id: UUID().uuidString,
+            email: email,
+            fullName: fullName ?? "New User",
+            organizationId: nil,
+            seatTier: .starter,
+            preferredPersona: .directChallenger,
+            preferredInputMode: .text,
+            hasCompletedOnboarding: false,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+
+        isAuthenticated = true
+        currentUser = user
+        return user
+    }
+
     func signInWithApple(identityToken: Data, nonce: String) async throws -> User {
         isLoading = true
         defer { isLoading = false }
@@ -78,6 +106,34 @@ final class MockAuthService: AuthServiceProtocol, @unchecked Sendable {
         isAuthenticated = true
         currentUser = mockUser
         return mockUser
+    }
+
+    func signInWithGoogle() async throws -> User {
+        isLoading = true
+        defer { isLoading = false }
+
+        try await Task.sleep(nanoseconds: simulatedDelay)
+
+        if shouldFailSignIn {
+            throw AuthError.googleSignInFailed("Mock Google Sign-In failure")
+        }
+
+        let googleUser = User(
+            id: UUID().uuidString,
+            email: "user@gmail.com",
+            fullName: "Google User",
+            organizationId: nil,
+            seatTier: .starter,
+            preferredPersona: .directChallenger,
+            preferredInputMode: .text,
+            hasCompletedOnboarding: false,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+
+        isAuthenticated = true
+        currentUser = googleUser
+        return googleUser
     }
 
     func signOut() async throws {

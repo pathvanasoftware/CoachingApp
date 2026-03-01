@@ -5,6 +5,9 @@ import AuthenticationServices
 final class AuthViewModel {
     var email: String = ""
     var password: String = ""
+    var fullName: String = ""
+    var confirmPassword: String = ""
+    var isSignUp: Bool = false
     var isLoading: Bool = false
     var errorMessage: String?
 
@@ -29,6 +32,40 @@ final class AuthViewModel {
             appState.signIn(userId: user.id, email: user.email, name: user.fullName)
         } catch {
             errorMessage = "Sign in failed. Please check your credentials and try again."
+        }
+
+        isLoading = false
+    }
+
+    @MainActor
+    func signUpWithEmail(appState: AppState) async {
+        guard !email.isEmpty, !password.isEmpty else {
+            errorMessage = "Please enter your email and password."
+            return
+        }
+
+        guard password.count >= 8 else {
+            errorMessage = "Password must be at least 8 characters."
+            return
+        }
+
+        guard password == confirmPassword else {
+            errorMessage = "Passwords do not match."
+            return
+        }
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let user = try await authService.signUpWithEmail(
+                email: email,
+                password: password,
+                fullName: fullName.isEmpty ? nil : fullName
+            )
+            appState.signIn(userId: user.id, email: user.email, name: user.fullName)
+        } catch {
+            errorMessage = "Sign up failed. Please try again."
         }
 
         isLoading = false
@@ -63,5 +100,33 @@ final class AuthViewModel {
         case .failure:
             errorMessage = "Apple Sign In was cancelled or failed."
         }
+    }
+
+    @MainActor
+    func signInWithGoogle(appState: AppState) async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let user = try await authService.signInWithGoogle()
+            appState.signIn(userId: user.id, email: user.email, name: user.fullName)
+        } catch let error as AuthError {
+            if case .oauthCancelled = error {
+                // User cancelled - don't show error
+            } else {
+                errorMessage = error.errorDescription
+            }
+        } catch {
+            errorMessage = "Google Sign In failed. Please try again."
+        }
+
+        isLoading = false
+    }
+
+    func toggleMode() {
+        isSignUp.toggle()
+        errorMessage = nil
+        password = ""
+        confirmPassword = ""
     }
 }

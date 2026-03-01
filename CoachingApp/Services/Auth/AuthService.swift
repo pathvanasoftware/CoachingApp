@@ -4,7 +4,9 @@ import Foundation
 
 protocol AuthServiceProtocol: Sendable {
     func signInWithEmail(email: String, password: String) async throws -> User
+    func signUpWithEmail(email: String, password: String, fullName: String?) async throws -> User
     func signInWithApple(identityToken: Data, nonce: String) async throws -> User
+    func signInWithGoogle() async throws -> User
     func signOut() async throws
     func getCurrentUser() async throws -> User?
     func refreshSession() async throws
@@ -35,6 +37,20 @@ struct RefreshRequest: Codable {
 struct RefreshResponse: Codable {
     let accessToken: String
     let refreshToken: String
+}
+
+struct SignUpRequest: Codable {
+    let email: String
+    let password: String
+    let data: SignUpData?
+}
+
+struct SignUpData: Codable {
+    let fullName: String
+
+    enum CodingKeys: String, CodingKey {
+        case fullName = "full_name"
+    }
 }
 
 // MARK: - Auth Service
@@ -84,6 +100,28 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
         return response.user
     }
 
+    // MARK: - Sign Up with Email
+
+    func signUpWithEmail(email: String, password: String, fullName: String?) async throws -> User {
+        isLoading = true
+        authError = nil
+        defer { isLoading = false }
+
+        let signUpData = fullName.map { SignUpData(fullName: $0) }
+        let request = SignUpRequest(email: email, password: password, data: signUpData)
+
+        let response: AuthResponse = try await apiClient.post(
+            path: "/auth/v1/signup",
+            body: request
+        )
+
+        try storeTokens(access: response.accessToken, refresh: response.refreshToken)
+
+        isAuthenticated = true
+        currentUser = response.user
+        return response.user
+    }
+
     // MARK: - Sign In with Apple
 
     func signInWithApple(identityToken: Data, nonce: String) async throws -> User {
@@ -106,6 +144,66 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
         isAuthenticated = true
         currentUser = response.user
         return response.user
+    }
+
+    // MARK: - Sign In with Google (OAuth)
+
+    func signInWithGoogle() async throws -> User {
+        isLoading = true
+        authError = nil
+        defer { isLoading = false }
+
+        guard let supabaseURL = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String,
+              !supabaseURL.isEmpty else {
+            throw AuthError.missingConfiguration
+        }
+
+        let callbackURLScheme = "com.pathvana.ascendra"
+        let redirectURL = "\(callbackURLScheme)://auth-callback"
+
+        guard var components = URLComponents(string: "\(supabaseURL)/auth/v1/authorize") else {
+            throw AuthError.invalidURL
+        }
+        components.queryItems = [
+            URLQueryItem(name: "provider", value: "google"),
+            URLQueryItem(name: "redirect_to", value: redirectURL)
+        ]
+
+        guard let authURL = components.url else {
+            throw AuthError.invalidURL
+        }
+
+        let callbackURL = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
+            let session = ASWebAuthenticationSession(
+                url: authURL,
+                callbackURLScheme: callbackURLScheme
+            ) { callbackURL, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if let callbackURL {
+                    continuation.resume(returning: callbackURL)
+                } else {
+                    continuation.resume(throwing: AuthError.oauthCancelled)
+                }
+            }
+            session.presentationContextProvider = AuthenticationContextProvider.shared
+            session.prefersEphemeralWebBrowserSession = false
+            _ = session.start()
+        }
+
+        guard let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
+              let queryItems = components.queryItems,
+              let accessToken = queryItems.first(where: { $0.name == "access_token" })?.value,
+              let refreshToken = queryItems.first(where: { $0.name == "refresh_token" })?.value else {
+            throw AuthError.invalidOAuthResponse
+        }
+
+        try storeTokens(access: accessToken, refresh: refreshToken)
+
+        let user: User = try await apiClient.get(path: "/auth/v1/user", queryItems: nil)
+        isAuthenticated = true
+        currentUser = user
+        return user
     }
 
     // MARK: - Sign Out
@@ -213,6 +311,11 @@ enum AuthError: Error, LocalizedError {
     case sessionExpired
     case keychainSaveFailed
     case appleSignInFailed(String)
+    case googleSignInFailed(String)
+    case missingConfiguration
+    case invalidURL
+    case oauthCancelled
+    case invalidOAuthResponse
     case unknown(Error)
 
     var errorDescription: String? {
@@ -229,8 +332,30 @@ enum AuthError: Error, LocalizedError {
             return "Failed to securely save authentication credentials."
         case .appleSignInFailed(let reason):
             return "Apple Sign-In failed: \(reason)"
+        case .googleSignInFailed(let reason):
+            return "Google Sign-In failed: \(reason)"
+        case .missingConfiguration:
+            return "Authentication is not configured. Please contact support."
+        case .invalidURL:
+            return "Invalid authentication URL."
+        case .oauthCancelled:
+            return "Sign in was cancelled."
+        case .invalidOAuthResponse:
+            return "Invalid response from authentication provider."
         case .unknown(let error):
             return "Authentication error: \(error.localizedDescription)"
         }
+    }
+}
+
+// MARK: - Authentication Context Provider
+
+import AuthenticationServices
+
+private final class AuthenticationContextProvider: NSObject, ASWebAuthenticationPresentationContextProviding {
+    static let shared = AuthenticationContextProvider()
+
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        ASPresentationAnchor()
     }
 }
