@@ -116,6 +116,33 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
         }
     }
 
+    // MARK: - Response Selection
+
+    /// Selects a coaching response based on the user's message content.
+    /// This makes the mock feel more realistic by responding contextually.
+    private func selectResponse(for userMessage: String) -> String {
+        let text = userMessage.lowercased()
+
+        // Match user message themes to appropriate coaching responses
+        if text.contains("avoiding") || text.contains("putting off") || text.contains("procrastinating") {
+            return coachingResponses[0]  // "what's the one thing you're most avoiding"
+        } else if text.contains("success") || text.contains("win") || text.contains("goal") || text.contains("achieve") {
+            return coachingResponses[1]  // "what would success look like"
+        } else if text.contains("emotion") || text.contains("feeling") || text.contains("overwhelmed") || text.contains("team") || text.contains("manager") {
+            return coachingResponses[2]  // "managing everyone's emotions"
+        } else if text.contains("meeting") || text.contains("presentation") || text.contains("executive") || text.contains("presence") || text.contains("assertive") {
+            return coachingResponses[3]  // "executive presence / show up"
+        } else if text.contains("action") || text.contains("do") || text.contains("step") || text.contains("week") || text.contains("try") {
+            return coachingResponses[4]  // "one small action"
+        } else if text.contains("gut") || text.contains("instinct") || text.contains("intuition") || text.contains("feel") || text.contains("tension") {
+            return coachingResponses[5]  // "instinct is telling me"
+        } else {
+            // Cycle through for variety when no clear match
+            let index = incrementResponseIndex()
+            return coachingResponses[index % coachingResponses.count]
+        }
+    }
+
     private static var _responseIndex = 0
 
     private func incrementResponseIndex() -> Int {
@@ -244,9 +271,6 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
         persona: CoachingPersonaType,
         coachingStyle: CoachingStyle? = nil
     ) -> AsyncThrowingStream<String, Error> {
-        let index = incrementResponseIndex()
-        let response = coachingResponses[index % coachingResponses.count]
-
         // Store the user message (only for non-greeting calls; greeting uses empty message)
         if !message.isEmpty {
             let userMessage = ChatMessage(
@@ -259,6 +283,8 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
             Self._lock.unlock()
         }
 
+        // Select response based on user's message content
+        let response = message.isEmpty ? coachingResponses[0] : selectResponse(for: message)
         let suggestions = generateSuggestions(for: response)
 
         return AsyncThrowingStream { continuation in
