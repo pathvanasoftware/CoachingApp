@@ -51,8 +51,8 @@ final class ChatViewModel {
     // MARK: - Init
 
     init(
-        chatService: ChatServiceProtocol = MockChatService(),
-        streamingService: StreamingServiceProtocol = MockChatService()
+        chatService: ChatServiceProtocol = MockChatService.shared,
+        streamingService: StreamingServiceProtocol = MockChatService.shared
     ) {
         self.chatService = chatService
         self.streamingService = streamingService

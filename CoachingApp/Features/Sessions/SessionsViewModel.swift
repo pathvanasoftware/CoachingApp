@@ -15,7 +15,7 @@ final class SessionsViewModel {
 
     // MARK: - Init
 
-    init(chatService: ChatServiceProtocol = MockChatService()) {
+    init(chatService: ChatServiceProtocol = MockChatService.shared) {
         self.chatService = chatService
     }
 

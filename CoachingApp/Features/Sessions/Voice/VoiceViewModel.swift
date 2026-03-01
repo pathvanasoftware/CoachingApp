@@ -62,7 +62,7 @@ final class VoiceViewModel {
         persona: CoachingPersonaType = .directChallenger,
         speechRecognition: SpeechRecognitionService = SpeechRecognitionService(),
         textToSpeech: TextToSpeechService = TextToSpeechService(),
-        chatService: ChatServiceProtocol = MockChatService()
+        chatService: ChatServiceProtocol = MockChatService.shared
     ) {
         self.persona = persona
         self.speechRecognition = speechRecognition

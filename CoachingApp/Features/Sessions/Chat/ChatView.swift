@@ -24,11 +24,11 @@ struct ChatView: View {
         self.persona = persona
         self.existingSession = nil
 
-        let mock = MockChatService()
+        let shared = MockChatService.shared
         self._viewModel = State(
             initialValue: ChatViewModel(
-                chatService: chatService ?? mock,
-                streamingService: streamingService ?? mock
+                chatService: chatService ?? shared,
+                streamingService: streamingService ?? shared
             )
         )
     }
@@ -43,11 +43,11 @@ struct ChatView: View {
         self.persona = nil
         self.existingSession = session
 
-        let mock = MockChatService()
+        let shared = MockChatService.shared
         self._viewModel = State(
             initialValue: ChatViewModel(
-                chatService: chatService ?? mock,
-                streamingService: streamingService ?? mock
+                chatService: chatService ?? shared,
+                streamingService: streamingService ?? shared
             )
         )
     }

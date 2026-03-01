@@ -11,7 +11,7 @@ struct SessionDetailView: View {
 
     init(
         session: CoachingSession,
-        chatService: ChatServiceProtocol = MockChatService()
+        chatService: ChatServiceProtocol = MockChatService.shared
     ) {
         self.session = session
         self.chatService = chatService

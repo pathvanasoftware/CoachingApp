@@ -4,11 +4,25 @@ import Foundation
 
 final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unchecked Sendable {
 
-    // MARK: - In-Memory Storage
+    // MARK: - Singleton (shared instance for all ViewModels)
+    
+    static let shared = MockChatService()
 
-    private var sessions: [String: CoachingSession] = [:]
-    private var messages: [String: [ChatMessage]] = [:]
-    private let lock = NSLock()
+    // MARK: - In-Memory Storage (shared across all instances via singleton)
+
+    private static var _sessions: [String: CoachingSession] = [:]
+    private static var _messages: [String: [ChatMessage]] = [:]
+    private static let _lock = NSLock()
+    
+    private var sessions: [String: CoachingSession] {
+        get { Self._lock.lock(); defer { Self._lock.unlock() }; return Self._sessions }
+        set { Self._lock.lock(); defer { Self._lock.unlock() }; Self._sessions = newValue }
+    }
+    
+    private var messages: [String: [ChatMessage]] {
+        get { Self._lock.lock(); defer { Self._lock.unlock() }; return Self._messages }
+        set { Self._lock.lock(); defer { Self._lock.unlock() }; Self._messages = newValue }
+    }
 
     // MARK: - Simulated Delay
 
@@ -50,26 +64,13 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
         """,
     ]
 
-    private var _responseIndex = 0
-
-    private var responseIndex: Int {
-        get {
-            lock.lock()
-            defer { lock.unlock() }
-            return _responseIndex
-        }
-        set {
-            lock.lock()
-            defer { lock.unlock() }
-            _responseIndex = newValue
-        }
-    }
+    private static var _responseIndex = 0
 
     private func incrementResponseIndex() -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        let current = _responseIndex
-        _responseIndex += 1
+        Self._lock.lock()
+        defer { Self._lock.unlock() }
+        let current = Self._responseIndex
+        Self._responseIndex += 1
         return current
     }
 
