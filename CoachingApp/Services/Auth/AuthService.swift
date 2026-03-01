@@ -1,4 +1,5 @@
 import Foundation
+import AuthenticationServices
 
 // MARK: - Auth Service Protocol
 
@@ -19,37 +20,66 @@ struct AuthCredentials: Codable {
     let password: String
 }
 
+struct SignUpCredentials: Codable {
+    let email: String
+    let password: String
+    let fullName: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case email, password
+        case fullName = "full_name"
+    }
+}
+
 struct AppleSignInCredentials: Codable {
     let identityToken: String
     let nonce: String
+    
+    enum CodingKeys: String, CodingKey {
+        case identityToken = "identity_token"
+        case nonce
+    }
+}
+
+struct GoogleSignInRequest: Codable {
+    let code: String
 }
 
 struct AuthResponse: Codable {
     let accessToken: String
     let refreshToken: String
     let user: User
+    
+    enum CodingKeys: String, CodingKey {
+        case accessToken = "access_token"
+        case refreshToken = "refresh_token"
+        case user
+    }
 }
 
 struct RefreshRequest: Codable {
     let refreshToken: String
+    
+    enum CodingKeys: String, CodingKey {
+        case refreshToken = "refresh_token"
+    }
 }
 
 struct RefreshResponse: Codable {
     let accessToken: String
     let refreshToken: String
-}
-
-struct SignUpRequest: Codable {
-    let email: String
-    let password: String
-    let data: SignUpData?
-}
-
-struct SignUpData: Codable {
-    let fullName: String
-
+    
     enum CodingKeys: String, CodingKey {
-        case fullName = "full_name"
+        case accessToken = "access_token"
+        case refreshToken = "refresh_token"
+    }
+}
+
+struct GoogleOAuthResponse: Codable {
+    let authUrl: String
+    
+    enum CodingKeys: String, CodingKey {
+        case authUrl = "auth_url"
     }
 }
 
@@ -89,7 +119,7 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
 
         let credentials = AuthCredentials(email: email, password: password)
         let response: AuthResponse = try await apiClient.post(
-            path: "/auth/v1/token?grant_type=password",
+            path: "/auth/login",
             body: credentials
         )
 
@@ -107,12 +137,10 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
         authError = nil
         defer { isLoading = false }
 
-        let signUpData = fullName.map { SignUpData(fullName: $0) }
-        let request = SignUpRequest(email: email, password: password, data: signUpData)
-
+        let credentials = SignUpCredentials(email: email, password: password, fullName: fullName)
         let response: AuthResponse = try await apiClient.post(
-            path: "/auth/v1/signup",
-            body: request
+            path: "/auth/register",
+            body: credentials
         )
 
         try storeTokens(access: response.accessToken, refresh: response.refreshToken)
@@ -135,7 +163,7 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
 
         let credentials = AppleSignInCredentials(identityToken: tokenString, nonce: nonce)
         let response: AuthResponse = try await apiClient.post(
-            path: "/auth/v1/token?grant_type=apple",
+            path: "/auth/apple",
             body: credentials
         )
 
@@ -153,30 +181,23 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
         authError = nil
         defer { isLoading = false }
 
-        guard let supabaseURL = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String,
-              !supabaseURL.isEmpty else {
-            throw AuthError.missingConfiguration
-        }
+        // Get OAuth URL from backend
+        let oauthResponse: GoogleOAuthResponse = try await apiClient.get(
+            path: "/auth/google/url",
+            queryItems: [
+                URLQueryItem(name: "redirect_uri", value: "com.pathvana.ascendra://auth-callback")
+            ]
+        )
 
-        let callbackURLScheme = "com.pathvana.ascendra"
-        let redirectURL = "\(callbackURLScheme)://auth-callback"
-
-        guard var components = URLComponents(string: "\(supabaseURL)/auth/v1/authorize") else {
-            throw AuthError.invalidURL
-        }
-        components.queryItems = [
-            URLQueryItem(name: "provider", value: "google"),
-            URLQueryItem(name: "redirect_to", value: redirectURL)
-        ]
-
-        guard let authURL = components.url else {
+        guard let authURL = URL(string: oauthResponse.authUrl) else {
             throw AuthError.invalidURL
         }
 
+        // Open OAuth flow
         let callbackURL = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
             let session = ASWebAuthenticationSession(
                 url: authURL,
-                callbackURLScheme: callbackURLScheme
+                callbackURLScheme: "com.pathvana.ascendra"
             ) { callbackURL, error in
                 if let error {
                     continuation.resume(throwing: error)
@@ -191,19 +212,25 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
             _ = session.start()
         }
 
+        // Extract auth code from callback
         guard let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
               let queryItems = components.queryItems,
-              let accessToken = queryItems.first(where: { $0.name == "access_token" })?.value,
-              let refreshToken = queryItems.first(where: { $0.name == "refresh_token" })?.value else {
+              let code = queryItems.first(where: { $0.name == "code" })?.value else {
             throw AuthError.invalidOAuthResponse
         }
 
-        try storeTokens(access: accessToken, refresh: refreshToken)
+        // Exchange code for tokens
+        let request = GoogleSignInRequest(code: code)
+        let response: AuthResponse = try await apiClient.post(
+            path: "/auth/google/callback",
+            body: request
+        )
 
-        let user: User = try await apiClient.get(path: "/auth/v1/user", queryItems: nil)
+        try storeTokens(access: response.accessToken, refresh: response.refreshToken)
+
         isAuthenticated = true
-        currentUser = user
-        return user
+        currentUser = response.user
+        return response.user
     }
 
     // MARK: - Sign Out
@@ -215,7 +242,7 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
         // Attempt server-side sign out (best effort)
         do {
             let emptyBody: [String: String] = [:]
-            try await apiClient.post(path: "/auth/v1/logout", body: emptyBody)
+            try await apiClient.post(path: "/auth/logout", body: emptyBody)
         } catch {
             // Continue with local sign-out even if server call fails
         }
@@ -231,7 +258,7 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
         }
 
         do {
-            let user: User = try await apiClient.get(path: "/auth/v1/user", queryItems: nil)
+            let user: User = try await apiClient.get(path: "/auth/me", queryItems: nil)
             currentUser = user
             isAuthenticated = true
             return user
@@ -255,7 +282,7 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
 
         let request = RefreshRequest(refreshToken: refreshToken)
         let response: RefreshResponse = try await apiClient.post(
-            path: "/auth/v1/token?grant_type=refresh_token",
+            path: "/auth/refresh",
             body: request
         )
 
@@ -312,7 +339,6 @@ enum AuthError: Error, LocalizedError {
     case keychainSaveFailed
     case appleSignInFailed(String)
     case googleSignInFailed(String)
-    case missingConfiguration
     case invalidURL
     case oauthCancelled
     case invalidOAuthResponse
@@ -334,8 +360,6 @@ enum AuthError: Error, LocalizedError {
             return "Apple Sign-In failed: \(reason)"
         case .googleSignInFailed(let reason):
             return "Google Sign-In failed: \(reason)"
-        case .missingConfiguration:
-            return "Authentication is not configured. Please contact support."
         case .invalidURL:
             return "Invalid authentication URL."
         case .oauthCancelled:
@@ -349,8 +373,6 @@ enum AuthError: Error, LocalizedError {
 }
 
 // MARK: - Authentication Context Provider
-
-import AuthenticationServices
 
 private final class AuthenticationContextProvider: NSObject, ASWebAuthenticationPresentationContextProviding {
     static let shared = AuthenticationContextProvider()
