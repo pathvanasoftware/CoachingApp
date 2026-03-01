@@ -90,6 +90,7 @@ struct ChatScreen: View {
             await viewModel.startSession(
                 type: .checkIn,
                 persona: appState.selectedPersona,
+                userId: appState.currentUserId ?? "test-user-001",
                 inputMode: .text
             )
 

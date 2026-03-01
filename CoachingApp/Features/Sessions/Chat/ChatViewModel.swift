@@ -70,7 +70,7 @@ final class ChatViewModel {
     func startSession(
         type: SessionType,
         persona: CoachingPersonaType,
-        userId: String = "mock-user-id",
+        userId: String = "test-user-001",
         inputMode: InputMode = .text
     ) async {
         isLoading = true
