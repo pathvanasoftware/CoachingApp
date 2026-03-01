@@ -12,11 +12,21 @@ enum APIEnvironment: String, CaseIterable {
         case .localhost:
             return "http://localhost:8000/api/v1"
         case .production:
-            // TODO: Replace with actual production URL after deployment
             return "https://coachingapp-api.railway.app/api/v1"
         case .staging:
-            // TODO: Replace with staging URL if needed
             return "https://staging-coachingapp.railway.app/api/v1"
+        }
+    }
+
+    /// Full URL for the SSE chat-stream endpoint (not under /api/v1)
+    var chatStreamURL: String {
+        switch self {
+        case .localhost:
+            return "http://localhost:8000/api/chat/chat-stream"
+        case .production:
+            return "https://coachingapp-api.railway.app/api/chat/chat-stream"
+        case .staging:
+            return "https://staging-coachingapp.railway.app/api/chat/chat-stream"
         }
     }
 
@@ -44,8 +54,8 @@ final class AppState {
     var selectedCoachingStyle: CoachingStyle = .auto
     var showDebugDiagnostics: Bool = false
     
-    // Force use mock services (no real API calls)
-    var useMockServices: Bool = true
+    // Use mock services (no real API calls). Defaults to false — real Railway backend.
+    var useMockServices: Bool = false
     
     var apiEnvironment: APIEnvironment = {
         if let saved = UserDefaults.standard.string(forKey: "com.coachingapp.apiEnvironment"),

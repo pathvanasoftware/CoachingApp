@@ -5,6 +5,7 @@ import SwiftData
 struct CoachingAppApp: App {
     @State private var appState = AppState()
     @State private var authService = AuthService()
+    @State private var services = ServiceContainer()
 
     var body: some Scene {
         WindowGroup {
@@ -21,6 +22,7 @@ struct CoachingAppApp: App {
             }
             .environment(appState)
             .environment(authService)
+            .environment(services)
             .task {
                 await restoreSession()
             }

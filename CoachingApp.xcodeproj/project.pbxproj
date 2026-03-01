@@ -47,6 +47,7 @@
 		79646EA9779957BCBC320E3B /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C8928E058D5F864FCDDD393 /* LoadingView.swift */; };
 		796B85D4DEF9A04DCBC9FDE1 /* CoachingCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16078495C28DD5C7423D4D3A /* CoachingCard.swift */; };
 		816BC7B2F201095E4BB2EDBA /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF96D0756A6FAFEFC04CD747 /* AppState.swift */; };
+		B2C3D4E5F6A70002B2C3D4E5 /* ServiceContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A70001B2C3D4E5 /* ServiceContainer.swift */; };
 		8495AEA1D5B0B04866E7133C /* GoalsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD0E59AA2EF993F19B042F3A /* GoalsViewModelTests.swift */; };
 		850BCF08C98C09968318E94B /* SessionsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCF99931C548DA0039434E2 /* SessionsListView.swift */; };
 		8BB8D418726C3E7268F982B9 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220FF949F181D5486FBC78A3 /* ProfileView.swift */; };
@@ -170,6 +171,7 @@
 		B55D3CFD42AD0230A4897CDF /* View+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+Extensions.swift"; sourceTree = "<group>"; };
 		BCF77702997FF8DB979F3A6F /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 		BF96D0756A6FAFEFC04CD747 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		B2C3D4E5F6A70001B2C3D4E5 /* ServiceContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceContainer.swift; sourceTree = "<group>"; };
 		C564238A5809391FB09B87E8 /* SessionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDetailView.swift; sourceTree = "<group>"; };
 		C77086F4A75EA17CB32F54DA /* GoalProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalProgressBar.swift; sourceTree = "<group>"; };
 		CA2BCA2B8EBC7FF4C6666129 /* CoachingPersona.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachingPersona.swift; sourceTree = "<group>"; };
@@ -349,6 +351,7 @@
 			isa = PBXGroup;
 			children = (
 				BF96D0756A6FAFEFC04CD747 /* AppState.swift */,
+				B2C3D4E5F6A70001B2C3D4E5 /* ServiceContainer.swift */,
 				2E02DD628CCC5E872EFA8CDF /* CoachingAppApp.swift */,
 			);
 			path = App;
@@ -656,6 +659,7 @@
 				6247399F51543E689ECB70CD /* AddGoalView.swift in Sources */,
 				E71AD1349B1358DE652CFD5D /* AppFonts.swift in Sources */,
 				816BC7B2F201095E4BB2EDBA /* AppState.swift in Sources */,
+				B2C3D4E5F6A70002B2C3D4E5 /* ServiceContainer.swift in Sources */,
 				C4C88F67E23E55E551643CE9 /* AppTheme.swift in Sources */,
 				55C1725426E5038E5F9866D7 /* AssessmentView.swift in Sources */,
 				9B443E6B8E841524DB1C9DD5 /* AuthService.swift in Sources */,

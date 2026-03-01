@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ChatView: View {
     @Environment(AppState.self) private var appState
+    @Environment(ServiceContainer.self) private var services
     @State private var viewModel: ChatViewModel
 
     // Configuration for starting a new session
@@ -128,6 +129,9 @@ struct ChatView: View {
             }
         }
         .task {
+            // Wire real services from the environment before starting the session
+            viewModel.chatService = services.chatService
+            viewModel.streamingService = services.streamingService
             await initializeSession()
         }
         .animation(.easeInOut(duration: 0.2), value: viewModel.isStreaming)
@@ -239,6 +243,7 @@ struct ChatView: View {
         )
     }
     .environment(AppState())
+    .environment(ServiceContainer())
 }
 
 #Preview("Supportive Strategist") {
@@ -249,4 +254,5 @@ struct ChatView: View {
         )
     }
     .environment(AppState())
+    .environment(ServiceContainer())
 }

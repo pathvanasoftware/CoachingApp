@@ -3,6 +3,7 @@ import AuthenticationServices
 
 struct SignInView: View {
     @Environment(AppState.self) private var appState
+    @Environment(AuthService.self) private var authService
     @State private var viewModel = AuthViewModel()
 
     var body: some View {
@@ -173,6 +174,9 @@ struct SignInView: View {
             .padding(.horizontal, AppTheme.Spacing.lg)
         }
         .background(AppTheme.background)
+        .onAppear {
+            viewModel.authService = authService
+        }
     }
 }
 

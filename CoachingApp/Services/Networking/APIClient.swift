@@ -229,13 +229,6 @@ final class APIClient: APIClientProtocol, @unchecked Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        guard let anonKey = ProcessInfo.processInfo.environment["SUPABASE_ANON_KEY"]
-            ?? Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String,
-              !anonKey.isEmpty else {
-            throw APIError.missingAPIKey
-        }
-        request.setValue(anonKey, forHTTPHeaderField: "apikey")
-
         // Inject auth token if available
         if let token = authTokenProvider?() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

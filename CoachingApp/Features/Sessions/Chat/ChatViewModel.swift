@@ -30,8 +30,8 @@ final class ChatViewModel {
 
     // MARK: - Dependencies
 
-    private let chatService: ChatServiceProtocol
-    private let streamingService: StreamingServiceProtocol
+    var chatService: ChatServiceProtocol
+    var streamingService: StreamingServiceProtocol
     private let historyStorage = ChatHistoryStorage.shared
 
     // MARK: - Private State

@@ -29,27 +29,16 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
     private let baseURL: String
     private var authTokenProvider: (() -> String?)?
 
-    private var supabaseAnonKey: String? {
-        if let envValue = ProcessInfo.processInfo.environment["SUPABASE_ANON_KEY"], !envValue.isEmpty {
-            return envValue
-        }
-        if let plistValue = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String,
-           !plistValue.isEmpty {
-            return plistValue
-        }
-        return nil
-    }
-
     // Use centralized API configuration from AppState
     private static var defaultBaseURL: String {
         if let saved = UserDefaults.standard.string(forKey: "com.coachingapp.apiEnvironment"),
            let env = APIEnvironment(rawValue: saved) {
-            return env.baseURL
+            return env.chatStreamURL
         }
         #if DEBUG
-        return APIEnvironment.localhost.baseURL
+        return APIEnvironment.localhost.chatStreamURL
         #else
-        return APIEnvironment.production.baseURL
+        return APIEnvironment.production.chatStreamURL
         #endif
     }
 
@@ -102,7 +91,7 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
         coachingStyle: CoachingStyle?,
         continuation: AsyncThrowingStream<String, Error>.Continuation
     ) async throws {
-        guard let url = URL(string: "\(baseURL)/chat-stream") else {
+        guard let url = URL(string: baseURL) else {
             throw StreamingError.invalidURL
         }
 
@@ -113,12 +102,6 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
 
         if let token = authTokenProvider?() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        if let anonKey = supabaseAnonKey {
-            request.setValue(anonKey, forHTTPHeaderField: "apikey")
-        } else {
-            throw StreamingError.missingAPIKey
         }
 
         let body = StreamingRequest(
@@ -234,7 +217,6 @@ enum StreamingError: Error, LocalizedError {
     case connectionLost
     case decodingFailed
     case cancelled
-    case missingAPIKey
 
     var errorDescription: String? {
         switch self {
@@ -250,8 +232,6 @@ enum StreamingError: Error, LocalizedError {
             return "Failed to decode streamed data."
         case .cancelled:
             return "The streaming request was cancelled."
-        case .missingAPIKey:
-            return "API key is missing. Please configure SUPABASE_ANON_KEY environment variable."
         }
     }
 }

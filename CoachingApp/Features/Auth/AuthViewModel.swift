@@ -11,7 +11,7 @@ final class AuthViewModel {
     var isLoading: Bool = false
     var errorMessage: String?
 
-    private let authService: AuthServiceProtocol
+    var authService: AuthServiceProtocol
 
     init(authService: AuthServiceProtocol = MockAuthService()) {
         self.authService = authService
