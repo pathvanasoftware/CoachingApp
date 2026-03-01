@@ -44,6 +44,10 @@ final class AppState {
     var selectedPersona: CoachingPersonaType = .directChallenger
     var selectedCoachingStyle: CoachingStyle = .auto
     var showDebugDiagnostics: Bool = false
+    
+    // Force use mock services (no real API calls)
+    var useMockServices: Bool = true
+    
     var apiEnvironment: APIEnvironment = {
         if let saved = UserDefaults.standard.string(forKey: "com.coachingapp.apiEnvironment"),
            let env = APIEnvironment(rawValue: saved) {
@@ -65,6 +69,9 @@ final class AppState {
         }
         if args.contains("--debug-diagnostics") {
             showDebugDiagnostics = true
+        }
+        if args.contains("--use-real-api") {
+            useMockServices = false
         }
     }
 

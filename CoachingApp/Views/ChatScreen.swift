@@ -15,8 +15,18 @@ struct ChatScreen: View {
     @State private var showSaveIndicator = false
     @State private var showSummary = false
 
-    init(viewModel: ChatViewModel = ChatViewModel()) {
-        _viewModel = State(initialValue: viewModel)
+    init(viewModel: ChatViewModel? = nil) {
+        // Use provided viewModel or create one based on mock mode
+        if let viewModel = viewModel {
+            _viewModel = State(initialValue: viewModel)
+        } else {
+            // Default to mock service
+            let mock = MockChatService()
+            _viewModel = State(initialValue: ChatViewModel(
+                chatService: mock,
+                streamingService: mock
+            ))
+        }
     }
 
     var body: some View {
