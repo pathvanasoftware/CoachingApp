@@ -146,6 +146,21 @@ struct ChatView: View {
                         )
                         .id(message.id)
                     }
+
+                    // Quick reply chips — shown below the last coach message,
+                    // hidden while the model is still streaming
+                    if !viewModel.isStreaming,
+                       !viewModel.currentQuickReplies.isEmpty,
+                       viewModel.messages.last?.isFromCoach == true {
+                        QuickReplyView(
+                            suggestions: viewModel.currentQuickReplies,
+                            onSelect: { viewModel.handleQuickReply($0) },
+                            onRequestHumanCoach: { viewModel.requestHumanCoach() }
+                        )
+                        .padding(.horizontal, AppTheme.Spacing.md)
+                        .id("quickReplies")
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    }
                 }
                 .padding(.horizontal, AppTheme.Spacing.md)
                 .padding(.vertical, AppTheme.Spacing.sm)
@@ -155,6 +170,9 @@ struct ChatView: View {
                 scrollToBottom(proxy: proxy)
             }
             .onChange(of: viewModel.messages.last?.content) {
+                scrollToBottom(proxy: proxy)
+            }
+            .onChange(of: viewModel.currentQuickReplies.count) {
                 scrollToBottom(proxy: proxy)
             }
         }
