@@ -3,7 +3,7 @@ import Foundation
 struct User: Identifiable, Codable {
     let id: String
     var email: String
-    var fullName: String
+    var fullName: String?
     var organizationId: String?
     var seatTier: SeatTier
     var preferredPersona: CoachingPersonaType
@@ -15,7 +15,7 @@ struct User: Identifiable, Codable {
     init(
         id: String = UUID().uuidString,
         email: String,
-        fullName: String,
+        fullName: String? = nil,
         organizationId: String? = nil,
         seatTier: SeatTier = .starter,
         preferredPersona: CoachingPersonaType = .directChallenger,

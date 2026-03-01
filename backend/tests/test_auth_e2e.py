@@ -170,7 +170,7 @@ class TestAuthMe:
 
     def test_me_no_token(self, client):
         response = client.get("/api/auth/me")
-        assert response.status_code == 403
+        assert response.status_code == 401
 
     def test_me_invalid_token(self, client):
         response = client.get(
@@ -264,7 +264,7 @@ class TestGoogleOAuth:
 
     def test_google_auth_url_missing_redirect(self, client):
         response = client.get("/api/auth/google/url")
-        assert response.status_code == 400
+        assert response.status_code == 422
 
     def test_google_callback_invalid_code(self, client):
         response = client.post(

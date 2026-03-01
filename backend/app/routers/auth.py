@@ -52,7 +52,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
 @router.post("/login")
 async def login(request: LoginRequest):
-    user = user_service.verify_password(request.email, request.password)
+    user = user_service.verify_user_password(request.email, request.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     return create_auth_response(user)

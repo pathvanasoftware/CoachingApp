@@ -132,9 +132,9 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
             return coachingResponses[2]  // "managing everyone's emotions"
         } else if text.contains("meeting") || text.contains("presentation") || text.contains("executive") || text.contains("presence") || text.contains("assertive") {
             return coachingResponses[3]  // "executive presence / show up"
-        } else if text.contains("action") || text.contains("do") || text.contains("step") || text.contains("week") || text.contains("try") {
+        } else if text.contains("action") || text.contains("next step") || text.contains("this week") || text.contains("try") || text.contains("change") {
             return coachingResponses[4]  // "one small action"
-        } else if text.contains("gut") || text.contains("instinct") || text.contains("intuition") || text.contains("feel") || text.contains("tension") {
+        } else if text.contains("gut") || text.contains("instinct") || text.contains("intuition") || text.contains("tension") || text.contains("pulled in") {
             return coachingResponses[5]  // "instinct is telling me"
         } else {
             // Cycle through for variety when no clear match
@@ -205,8 +205,7 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
             content: content
         )
 
-        let index = incrementResponseIndex()
-        let response = coachingResponses[index % coachingResponses.count]
+        let response = selectResponse(for: content)
 
         let assistantMessage = ChatMessage(
             sessionId: sessionId,

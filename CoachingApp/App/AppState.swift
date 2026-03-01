@@ -34,13 +34,12 @@ enum APIEnvironment: String, CaseIterable {
 
 @Observable
 final class AppState {
-    // Bypass auth for testing by default
-    var isAuthenticated: Bool = true
-    var isLoading: Bool = false
+    var isAuthenticated: Bool = false
+    var isLoading: Bool = true   // start loading so splash doesn't flash SignInView
     var hasCompletedOnboarding: Bool = true
-    var currentUserId: String? = "test-user-001"
-    var currentUserEmail: String? = "test@example.com"
-    var currentUserName: String? = "Test User"
+    var currentUserId: String? = nil
+    var currentUserEmail: String? = nil
+    var currentUserName: String? = nil
     var selectedPersona: CoachingPersonaType = .directChallenger
     var selectedCoachingStyle: CoachingStyle = .auto
     var showDebugDiagnostics: Bool = false
