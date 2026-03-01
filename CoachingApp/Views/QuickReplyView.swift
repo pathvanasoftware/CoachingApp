@@ -63,7 +63,8 @@ struct QuickReplyView: View {
                     .accessibilityAddTraits(.isButton)
                 }
             }
-            .padding(.horizontal, 4)
+            .padding(.leading, 16)
+            .padding(.trailing, 16)
             .padding(.vertical, 8)
         }
     }

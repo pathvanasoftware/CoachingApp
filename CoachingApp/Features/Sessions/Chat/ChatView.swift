@@ -148,7 +148,9 @@ struct ChatView: View {
                     }
 
                     // Quick reply chips — shown below the last coach message,
-                    // hidden while the model is still streaming
+                    // hidden while the model is still streaming.
+                    // Negative horizontal padding breaks out of the LazyVStack's
+                    // padding so the scroll view can reach the screen edges.
                     if !viewModel.isStreaming,
                        !viewModel.currentQuickReplies.isEmpty,
                        viewModel.messages.last?.isFromCoach == true {
@@ -157,7 +159,7 @@ struct ChatView: View {
                             onSelect: { viewModel.handleQuickReply($0) },
                             onRequestHumanCoach: { viewModel.requestHumanCoach() }
                         )
-                        .padding(.horizontal, AppTheme.Spacing.md)
+                        .padding(.horizontal, -AppTheme.Spacing.md)
                         .id("quickReplies")
                         .transition(.opacity.combined(with: .move(edge: .bottom)))
                     }
