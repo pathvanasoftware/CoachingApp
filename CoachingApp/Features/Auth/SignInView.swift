@@ -13,9 +13,11 @@ struct SignInView: View {
 
                 // MARK: - App Logo & Title
                 VStack(spacing: AppTheme.Spacing.md) {
-                    Image(systemName: "brain.head.profile.fill")
-                        .font(.system(size: 64))
-                        .foregroundStyle(AppTheme.primary)
+                    Image("AppLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 96, height: 96)
+                        .clipShape(RoundedRectangle(cornerRadius: 22))
 
                     Text("Ascendra")
                         .font(AppFonts.largeTitle)
