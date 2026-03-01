@@ -29,12 +29,12 @@ struct SessionsListView: View {
             }
             .task {
                 await viewModel.loadSessions(
-                    userId: appState.currentUserId ?? "mock-user-id"
+                    userId: appState.currentUserId ?? "test-user-001"
                 )
             }
             .refreshable {
                 await viewModel.loadSessions(
-                    userId: appState.currentUserId ?? "mock-user-id"
+                    userId: appState.currentUserId ?? "test-user-001"
                 )
             }
         }

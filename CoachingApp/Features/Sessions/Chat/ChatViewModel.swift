@@ -40,13 +40,8 @@ final class ChatViewModel {
     private var pendingHumanCoachRequest: Bool = false
     private var pendingDiagnostics: CoachingDiagnostics?
 
-    // Quick reply suggestions based on context
-    private let quickReplySuggestions: [QuickReply] = [
-        QuickReply(id: "1", text: "Tell me more", type: .clarification),
-        QuickReply(id: "2", text: "What should I do next?", type: .action),
-        QuickReply(id: "3", text: "How can I improve?", type: .guidance),
-        QuickReply(id: "4", text: "I'd like to talk to a human coach", type: .reflection)
-    ]
+    // Dynamic quick reply suggestions, updated after each assistant message
+    var currentQuickReplies: [QuickReply] = []
 
     // MARK: - Init
 
@@ -282,6 +277,7 @@ final class ChatViewModel {
         // Finalize the message
         if let lastIndex = messages.indices.last {
             messages[lastIndex].isStreaming = false
+            generateQuickReplies(from: messages[lastIndex])
         }
 
         isStreaming = false
@@ -348,6 +344,7 @@ final class ChatViewModel {
             // Finalize the message (only if stream succeeded)
             if !streamFailed, let lastIndex = self.messages.indices.last {
                 self.messages[lastIndex].isStreaming = false
+                self.generateQuickReplies(from: self.messages[lastIndex])
 
                 // Mark user message as sent
                 if let userMessageIndex = self.messages.indices.dropLast().last,
@@ -370,6 +367,50 @@ final class ChatViewModel {
 
     // MARK: - Quick Reply Support
 
+    /// Generate context-aware quick replies from the latest assistant message and its diagnostics.
+    @MainActor
+    private func generateQuickReplies(from message: ChatMessage) {
+        let content = message.content.lowercased()
+        let emotion = message.diagnostics?.emotionDetected ?? "neutral"
+        let goal = message.diagnostics?.goalLink ?? "professional_growth"
+
+        var replies: [QuickReply] = []
+
+        // 1. Question-style response — offer to elaborate
+        if content.contains("?") {
+            replies.append(QuickReply(id: UUID().uuidString, text: "Let me think about that...", type: .reflection))
+        }
+
+        // 2. Emotion-aware replies
+        switch emotion {
+        case "distressed":
+            replies.append(QuickReply(id: UUID().uuidString, text: "I'm feeling overwhelmed", type: .reflection))
+            replies.append(QuickReply(id: UUID().uuidString, text: "What's a small first step?", type: .action))
+        case "uncertain":
+            replies.append(QuickReply(id: UUID().uuidString, text: "Help me get clarity", type: .clarification))
+            replies.append(QuickReply(id: UUID().uuidString, text: "What would you do in my shoes?", type: .guidance))
+        default:
+            replies.append(QuickReply(id: UUID().uuidString, text: "Tell me more", type: .clarification))
+            replies.append(QuickReply(id: UUID().uuidString, text: "What should I do next?", type: .action))
+        }
+
+        // 3. Goal-aware replies
+        switch goal {
+        case "career_advancement":
+            replies.append(QuickReply(id: UUID().uuidString, text: "How does this affect my promotion?", type: .goalOriented))
+        case "leadership_effectiveness":
+            replies.append(QuickReply(id: UUID().uuidString, text: "How can I lead my team better?", type: .goalOriented))
+        default:
+            replies.append(QuickReply(id: UUID().uuidString, text: "How can I improve?", type: .guidance))
+        }
+
+        // 4. Always offer human coach option (last)
+        replies.append(QuickReply(id: UUID().uuidString, text: "I'd like to talk to a human coach", type: .reflection))
+
+        // Cap at 4 replies
+        currentQuickReplies = Array(replies.prefix(4))
+    }
+
     func shouldShowQuickReplies(for messageId: String) -> Bool {
         // Show quick replies for the last AI message
         guard let lastMessage = messages.last,
@@ -379,7 +420,7 @@ final class ChatViewModel {
     }
 
     func getQuickReplies(for messageId: String) -> [QuickReply] {
-        return quickReplySuggestions
+        return currentQuickReplies
     }
 
     func handleQuickReply(_ quickReply: QuickReply) {

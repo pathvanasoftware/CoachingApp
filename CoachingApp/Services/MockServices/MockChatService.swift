@@ -14,16 +14,6 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
     private static var _messages: [String: [ChatMessage]] = [:]
     private static let _lock = NSLock()
     
-    private var sessions: [String: CoachingSession] {
-        get { Self._lock.lock(); defer { Self._lock.unlock() }; return Self._sessions }
-        set { Self._lock.lock(); defer { Self._lock.unlock() }; Self._sessions = newValue }
-    }
-    
-    private var messages: [String: [ChatMessage]] {
-        get { Self._lock.lock(); defer { Self._lock.unlock() }; return Self._messages }
-        set { Self._lock.lock(); defer { Self._lock.unlock() }; Self._messages = newValue }
-    }
-
     // MARK: - Simulated Delay
 
     private let responseDelay: UInt64 = 500_000_000 // 0.5 seconds
@@ -91,9 +81,6 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
             inputMode: inputMode
         )
 
-        sessions[session.id] = session
-        messages[session.id] = []
-
         // Add an initial greeting from the coach
         let greeting: String
         switch persona {
@@ -108,7 +95,11 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
             role: .assistant,
             content: greeting
         )
-        messages[session.id]?.append(greetingMessage)
+
+        Self._lock.lock()
+        Self._sessions[session.id] = session
+        Self._messages[session.id] = [greetingMessage]
+        Self._lock.unlock()
 
         return session
     }
@@ -119,15 +110,12 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
     ) async throws -> ChatMessage {
         try await Task.sleep(nanoseconds: responseDelay)
 
-        // Store the user message
         let userMessage = ChatMessage(
             sessionId: sessionId,
             role: .user,
             content: content
         )
-        messages[sessionId, default: []].append(userMessage)
 
-        // Generate a coaching response
         let index = incrementResponseIndex()
         let response = coachingResponses[index % coachingResponses.count]
 
@@ -136,13 +124,16 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
             role: .assistant,
             content: response
         )
-        messages[sessionId, default: []].append(assistantMessage)
 
-        // Update session message count
-        if var session = sessions[sessionId] {
-            session.messageCount = messages[sessionId]?.count ?? 0
-            sessions[sessionId] = session
+        Self._lock.lock()
+        Self._messages[sessionId, default: []].append(userMessage)
+        Self._messages[sessionId, default: []].append(assistantMessage)
+        let msgCount = Self._messages[sessionId]?.count ?? 0
+        if var session = Self._sessions[sessionId] {
+            session.messageCount = msgCount
+            Self._sessions[sessionId] = session
         }
+        Self._lock.unlock()
 
         return assistantMessage
     }
@@ -150,14 +141,16 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
     func endSession(sessionId: String) async throws -> CoachingSession {
         try await Task.sleep(nanoseconds: responseDelay)
 
-        guard var session = sessions[sessionId] else {
+        Self._lock.lock()
+        guard var session = Self._sessions[sessionId] else {
+            Self._lock.unlock()
             throw ChatServiceError.sessionNotFound
         }
-
         session.endedAt = Date()
         session.durationSeconds = Int(Date().timeIntervalSince(session.startedAt))
         session.summary = "Mock session completed with \(session.messageCount) messages exchanged."
-        sessions[sessionId] = session
+        Self._sessions[sessionId] = session
+        Self._lock.unlock()
 
         return session
     }
@@ -165,14 +158,20 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
     func getSessionHistory(userId: String) async throws -> [CoachingSession] {
         try await Task.sleep(nanoseconds: responseDelay)
 
-        return sessions.values
+        Self._lock.lock()
+        let result = Self._sessions.values
             .filter { $0.userId == userId }
             .sorted { $0.startedAt > $1.startedAt }
+        Self._lock.unlock()
+        return result
     }
 
     func getMessages(sessionId: String) async throws -> [ChatMessage] {
         try await Task.sleep(nanoseconds: responseDelay)
-        return messages[sessionId] ?? []
+        Self._lock.lock()
+        let result = Self._messages[sessionId] ?? []
+        Self._lock.unlock()
+        return result
     }
 
     // MARK: - StreamingServiceProtocol
@@ -186,13 +185,17 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
         let index = incrementResponseIndex()
         let response = coachingResponses[index % coachingResponses.count]
 
-        // Store the user message
-        let userMessage = ChatMessage(
-            sessionId: sessionId,
-            role: .user,
-            content: message
-        )
-        messages[sessionId, default: []].append(userMessage)
+        // Store the user message (only for non-greeting calls; greeting uses empty message)
+        if !message.isEmpty {
+            let userMessage = ChatMessage(
+                sessionId: sessionId,
+                role: .user,
+                content: message
+            )
+            Self._lock.lock()
+            Self._messages[sessionId, default: []].append(userMessage)
+            Self._lock.unlock()
+        }
 
         return AsyncThrowingStream { continuation in
             Task {
@@ -216,7 +219,13 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
                     role: .assistant,
                     content: response
                 )
-                self.messages[sessionId, default: []].append(assistantMessage)
+                Self._lock.lock()
+                Self._messages[sessionId, default: []].append(assistantMessage)
+                if var session = Self._sessions[sessionId] {
+                    session.messageCount = Self._messages[sessionId]?.count ?? 0
+                    Self._sessions[sessionId] = session
+                }
+                Self._lock.unlock()
 
                 continuation.finish()
             }

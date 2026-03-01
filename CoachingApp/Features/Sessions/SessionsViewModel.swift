@@ -66,7 +66,7 @@ final class SessionsViewModel {
     // MARK: - Actions
 
     @MainActor
-    func loadSessions(userId: String = "mock-user-id") async {
+    func loadSessions(userId: String = "test-user-001") async {
         isLoading = true
         errorMessage = nil
 
