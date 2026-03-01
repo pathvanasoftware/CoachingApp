@@ -2,62 +2,6 @@ import json
 import os
 from typing import Dict, Any, Optional
 
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-MEMORY_DIR = os.path.join(BASE_DIR, "data", "memory")
-
-
-def _ensure_dir() -> None:
-    os.makedirs(MEMORY_DIR, exist_ok=True)
-
-
-def _path_for(user_id: str) -> str:
-    safe = (user_id or "anonymous").replace("/", "_")
-    return os.path.join(MEMORY_DIR, f"{safe}.json")
-
-
-def load_profile(user_id: str) -> Dict[str, Any]:
-    _ensure_dir()
-    path = _path_for(user_id)
-    if not os.path.exists(path):
-        return {
-            "user_id": user_id,
-            "goals": [],
-            "patterns": [],
-            "preferences": {},
-            "last_topics": [],
-            "emotion_timeline": [],
-            "style_usage": {},
-            "goal_progress_signals": {},
-            "session_events": []
-        }
-
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            if isinstance(data, dict):
-                return data
-    except Exception:
-        pass
-
-    return {
-        "user_id": user_id,
-        "goals": [],
-        "patterns": [],
-        "preferences": {},
-        "last_topics": [],
-        "emotion_timeline": [],
-        "style_usage": {},
-        "goal_progress_signals": {},
-        "session_events": []
-    }
-
-
-def save_profile(user_id: str, profile: Dict[str, Any]) -> None:
-    _ensure_dir()
-    path = _path_for(user_id)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(profile, f, ensure_ascii=False, indent=2)
-
 
 def update_profile_from_turn(
     user_id: str,
@@ -66,7 +10,7 @@ def update_profile_from_turn(
     *,
     style_used: str = "strategic",
     emotion_primary: str = "neutral",
-    context_triggers: Dict[str, str] | None = None,
+    context_triggers: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
     profile = load_profile(user_id)
 

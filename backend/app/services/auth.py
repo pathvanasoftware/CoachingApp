@@ -2,12 +2,21 @@ import os
 import json
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Dict, Any
 import jwt
-from passlib.context import CryptContext
+import bcrypt
 import httpx
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password(password: str, hashed: str) -> bool:
+    if isinstance(hashed, str):
+        return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
+    else:
+        return bcrypt.checkpw(password.encode("utf-8"), hashed)
 
 JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_urlsafe(32))
 JWT_ALGORITHM = "HS256"
@@ -103,7 +112,7 @@ class UserService:
         apple_id: Optional[str] = None,
     ) -> User:
         conn = self._get_conn()
-        password_hash = pwd_context.hash(password)
+        password_hash = hash_password(password)
         now = datetime.now(timezone.utc).isoformat()
         conn.execute(
             """INSERT INTO users 
@@ -155,7 +164,7 @@ class UserService:
             return None
         return self._row_to_user(row)
 
-    def verify_password(self, email: str, password: str) -> Optional[User]:
+    def verify_user_password(self, email: str, password: str) -> Optional[User]:
         conn = self._get_conn()
         row = conn.execute(
             "SELECT * FROM users WHERE email = ?", (email,)
@@ -164,7 +173,7 @@ class UserService:
         if not row:
             return None
         password_hash = row[2]
-        if pwd_context.verify(password, password_hash):
+        if verify_password(password, password_hash):
             return self._row_to_user(row)
         return None
 
