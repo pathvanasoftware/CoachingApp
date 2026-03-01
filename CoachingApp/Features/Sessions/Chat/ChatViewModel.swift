@@ -265,9 +265,8 @@ final class ChatViewModel {
         do {
             for try await token in stream {
                 guard let lastIndex = messages.indices.last else { break }
-                if applyDiagnosticsIfMetaToken(token, messageIndex: lastIndex) {
-                    continue
-                }
+                if applyDiagnosticsIfMetaToken(token, messageIndex: lastIndex) { continue }
+                if applySuggestionsIfSuggestionsToken(token) { continue }
                 messages[lastIndex].content += token
             }
         } catch {
@@ -277,7 +276,6 @@ final class ChatViewModel {
         // Finalize the message
         if let lastIndex = messages.indices.last {
             messages[lastIndex].isStreaming = false
-            generateQuickReplies(from: messages[lastIndex])
         }
 
         isStreaming = false
@@ -318,9 +316,8 @@ final class ChatViewModel {
                 for try await token in stream {
                     guard !Task.isCancelled else { break }
                     guard let lastIndex = self.messages.indices.last else { break }
-                    if self.applyDiagnosticsIfMetaToken(token, messageIndex: lastIndex) {
-                        continue
-                    }
+                    if self.applyDiagnosticsIfMetaToken(token, messageIndex: lastIndex) { continue }
+                    if self.applySuggestionsIfSuggestionsToken(token) { continue }
                     self.messages[lastIndex].content += token
                 }
             } catch {
@@ -344,7 +341,6 @@ final class ChatViewModel {
             // Finalize the message (only if stream succeeded)
             if !streamFailed, let lastIndex = self.messages.indices.last {
                 self.messages[lastIndex].isStreaming = false
-                self.generateQuickReplies(from: self.messages[lastIndex])
 
                 // Mark user message as sent
                 if let userMessageIndex = self.messages.indices.dropLast().last,
@@ -366,50 +362,6 @@ final class ChatViewModel {
     }
 
     // MARK: - Quick Reply Support
-
-    /// Generate context-aware quick replies from the latest assistant message and its diagnostics.
-    @MainActor
-    private func generateQuickReplies(from message: ChatMessage) {
-        let content = message.content.lowercased()
-        let emotion = message.diagnostics?.emotionDetected ?? "neutral"
-        let goal = message.diagnostics?.goalLink ?? "professional_growth"
-
-        var replies: [QuickReply] = []
-
-        // 1. Question-style response — offer to elaborate
-        if content.contains("?") {
-            replies.append(QuickReply(id: UUID().uuidString, text: "Let me think about that...", type: .reflection))
-        }
-
-        // 2. Emotion-aware replies
-        switch emotion {
-        case "distressed":
-            replies.append(QuickReply(id: UUID().uuidString, text: "I'm feeling overwhelmed", type: .reflection))
-            replies.append(QuickReply(id: UUID().uuidString, text: "What's a small first step?", type: .action))
-        case "uncertain":
-            replies.append(QuickReply(id: UUID().uuidString, text: "Help me get clarity", type: .clarification))
-            replies.append(QuickReply(id: UUID().uuidString, text: "What would you do in my shoes?", type: .guidance))
-        default:
-            replies.append(QuickReply(id: UUID().uuidString, text: "Tell me more", type: .clarification))
-            replies.append(QuickReply(id: UUID().uuidString, text: "What should I do next?", type: .action))
-        }
-
-        // 3. Goal-aware replies
-        switch goal {
-        case "career_advancement":
-            replies.append(QuickReply(id: UUID().uuidString, text: "How does this affect my promotion?", type: .goalOriented))
-        case "leadership_effectiveness":
-            replies.append(QuickReply(id: UUID().uuidString, text: "How can I lead my team better?", type: .goalOriented))
-        default:
-            replies.append(QuickReply(id: UUID().uuidString, text: "How can I improve?", type: .guidance))
-        }
-
-        // 4. Always offer human coach option (last)
-        replies.append(QuickReply(id: UUID().uuidString, text: "I'd like to talk to a human coach", type: .reflection))
-
-        // Cap at 4 replies
-        currentQuickReplies = Array(replies.prefix(4))
-    }
 
     func shouldShowQuickReplies(for messageId: String) -> Bool {
         // Show quick replies for the last AI message
@@ -527,6 +479,22 @@ final class ChatViewModel {
             recommendedStyleShift: recommendedStyleShift
         )
 
+        return true
+    }
+
+    /// Parse a __SUGGESTIONS__: token emitted by the mock (and eventually real) service.
+    /// Returns true if the token was consumed (caller should not append it to message content).
+    @MainActor
+    private func applySuggestionsIfSuggestionsToken(_ token: String) -> Bool {
+        guard token.hasPrefix("__SUGGESTIONS__:") else { return false }
+        let raw = String(token.dropFirst("__SUGGESTIONS__:".count))
+        guard let data = raw.data(using: .utf8),
+              let texts = try? JSONSerialization.jsonObject(with: data) as? [String] else {
+            return true
+        }
+        currentQuickReplies = texts.prefix(4).enumerated().map { index, text in
+            QuickReply(id: UUID().uuidString, text: text, type: .clarification)
+        }
         return true
     }
 

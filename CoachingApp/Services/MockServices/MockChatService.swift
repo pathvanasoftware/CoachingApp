@@ -54,6 +54,68 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
         """,
     ]
 
+    // MARK: - Suggestion Generation
+
+    /// Derives natural follow-up reply suggestions directly from the coach's response text.
+    /// Each coaching response asks a specific question or surfaces a specific tension —
+    /// the suggestions are direct, specific reactions to that content.
+    private func generateSuggestions(for response: String) -> [String] {
+        let text = response.lowercased()
+
+        // Map each canned response to replies that feel like a natural human reaction to it
+        if text.contains("most avoiding") {
+            return [
+                "I've been avoiding having a difficult conversation",
+                "Honestly, I'm avoiding making a decision",
+                "I'm not sure — I haven't thought about it that way",
+                "Tell me more about what you noticed"
+            ]
+        } else if text.contains("what would success look like") {
+            return [
+                "Success would mean my team respects my decisions",
+                "It would feel like I'm in control again",
+                "I'm not sure what success looks like right now",
+                "I need help defining what I actually want"
+            ]
+        } else if text.contains("managing everyone's emotions") {
+            return [
+                "That pattern started when I became a manager",
+                "I'd be afraid of what happens if I stop doing that",
+                "How do I actually let go of that?",
+                "I never realized I was doing that"
+            ]
+        } else if text.contains("executive presence") || text.contains("show up") {
+            return [
+                "In last week's all-hands I went blank",
+                "I let someone talk over me in a key meeting",
+                "I wasn't assertive when I needed to be",
+                "I can think of several examples — where should I start?"
+            ]
+        } else if text.contains("one small action") || text.contains("this week") {
+            return [
+                "I could have that conversation I've been putting off",
+                "I could ask for feedback from my manager",
+                "I'm not sure what action would make the most difference",
+                "I've tried before and it didn't stick — what's different now?"
+            ]
+        } else if text.contains("instinct") || text.contains("gut") {
+            return [
+                "My gut says I should leave this role",
+                "My instinct is telling me to push back harder",
+                "I'm trying to ignore my gut because it scares me",
+                "I don't trust my instincts right now"
+            ]
+        } else {
+            // Fallback: extract the coach's question and offer direct responses
+            return [
+                "Let me think about that...",
+                "I haven't looked at it that way before",
+                "Can you help me unpack that further?",
+                "I'd like to explore that more"
+            ]
+        }
+    }
+
     private static var _responseIndex = 0
 
     private func incrementResponseIndex() -> Int {
@@ -197,6 +259,8 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
             Self._lock.unlock()
         }
 
+        let suggestions = generateSuggestions(for: response)
+
         return AsyncThrowingStream { continuation in
             Task {
                 // Split response into words and stream them with small delays
@@ -211,6 +275,13 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
                     // Simulate variable typing speed (30-80ms per token)
                     let delay = UInt64.random(in: 30_000_000...80_000_000)
                     try await Task.sleep(nanoseconds: delay)
+                }
+
+                // Emit suggestions as a structured meta token so ChatViewModel
+                // can parse them the same way it handles __META__: from the real backend
+                if let data = try? JSONSerialization.data(withJSONObject: suggestions),
+                   let json = String(data: data, encoding: .utf8) {
+                    continuation.yield("__SUGGESTIONS__:\(json)")
                 }
 
                 // Store the complete assistant message
