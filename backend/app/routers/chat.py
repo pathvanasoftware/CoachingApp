@@ -4,7 +4,7 @@ import asyncio
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from app.services.llm import CoachingRequest, CoachingResponse, get_coaching_response, generate_session_summary, _anthropic_available, _openai_available
 
 router = APIRouter()
@@ -22,9 +22,9 @@ def _require_llm_or_503():
 class ChatStreamRequest(BaseModel):
     sessionId: str
     message: str
-    persona: str | None = None
-    coachingStyle: str | None = None
-    userId: str | None = "anonymous"
+    persona: Optional[str] = None
+    coachingStyle: Optional[str] = None
+    userId: Optional[str] = "anonymous"
 
 @router.post("/", response_model=CoachingResponse)
 async def chat(request: CoachingRequest) -> CoachingResponse:
@@ -71,6 +71,8 @@ async def chat_stream(request: ChatStreamRequest):
             "progressive_skill_building": result.progressive_skill_building,
             "outcome_prediction": result.outcome_prediction,
             "quick_replies": result.quick_replies,
+            "model_used": result.model_used,
+            "upgrade_reasons": result.upgrade_reasons,
         }
         yield f"data: {json.dumps({'meta': meta}, ensure_ascii=False)}\n\n"
 
@@ -87,7 +89,7 @@ async def chat_stream(request: ChatStreamRequest):
 
 class SessionSummaryRequest(BaseModel):
     messages: List[dict]
-    userId: str | None = "anonymous"
+    userId: Optional[str] = "anonymous"
 
 
 @router.post("/session-summary")

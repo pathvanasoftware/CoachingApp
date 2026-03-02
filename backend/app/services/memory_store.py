@@ -2,6 +2,47 @@ import json
 import os
 from typing import Dict, Any, Optional
 
+MEMORY_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "profiles")
+_PROFILE_DIR = MEMORY_DIR
+
+
+def _profile_path(user_id: str) -> str:
+    os.makedirs(MEMORY_DIR, exist_ok=True)
+    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in user_id)
+    return os.path.join(MEMORY_DIR, f"{safe}.json")
+
+
+def _default_profile(user_id: str) -> Dict[str, Any]:
+    return {
+        "user_id": user_id,
+        "goals": [],
+        "patterns": [],
+        "last_topics": [],
+        "emotion_timeline": [],
+        "session_events": [],
+        "escalation_risk": "none",
+    }
+
+
+def load_profile(user_id: str) -> Dict[str, Any]:
+    path = _profile_path(user_id)
+    if os.path.exists(path):
+        try:
+            with open(path) as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return _default_profile(user_id)
+
+
+def save_profile(user_id: str, profile: Dict[str, Any]) -> None:
+    path = _profile_path(user_id)
+    try:
+        with open(path, "w") as f:
+            json.dump(profile, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
 
 def update_profile_from_turn(
     user_id: str,

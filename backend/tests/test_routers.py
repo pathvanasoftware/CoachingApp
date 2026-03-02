@@ -32,7 +32,7 @@ def test_quick_replies_endpoint():
 
 
 def test_chat_stream_endpoint(monkeypatch):
-    monkeypatch.setenv("REQUIRE_OPENAI_KEY", "0")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-fake-key-for-testing")
 
     async def _fake(_req):
         return CoachingResponse(
