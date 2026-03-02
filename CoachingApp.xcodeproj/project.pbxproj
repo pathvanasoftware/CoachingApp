@@ -104,6 +104,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		6B4762015CA9A208D9B1D7E0 /* CoachingApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CoachingApp.entitlements; sourceTree = "<group>"; };
 		00144B000DE48A254BD46C26 /* PersonaAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonaAvatar.swift; sourceTree = "<group>"; };
 		01A1E411DD40428C901696AC /* ChatViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ChatViewModelTests.swift; path = CoachingAppTests/ChatViewModelTests.swift; sourceTree = "<group>"; };
 		08AB5419BC86639C4FBB74C3 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
@@ -384,6 +385,7 @@
 			isa = PBXGroup;
 			children = (
 				860B3F2C1F2EE72B263EAD5B /* App */,
+				6B4762015CA9A208D9B1D7E0 /* CoachingApp.entitlements */,
 				F1DFF563CBD9BBB421272578 /* Components */,
 				D68CD0C0741423BB10125940 /* Extensions */,
 				B89955BC4301E82F762FB911 /* Features */,
@@ -752,6 +754,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_ENTITLEMENTS = CoachingApp/CoachingApp.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 7WL9KY32LF;
@@ -891,6 +894,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_ENTITLEMENTS = CoachingApp/CoachingApp.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 7WL9KY32LF;

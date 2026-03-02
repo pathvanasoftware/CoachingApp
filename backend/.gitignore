@@ -3,3 +3,6 @@ __pycache__/
 .coverage
 app/data/memory/*.json
 data/
+
+# Environment variables (secrets)
+.env
