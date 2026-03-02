@@ -264,7 +264,9 @@ class TestGoogleOAuth:
 
     def test_google_auth_url_missing_redirect(self, client):
         response = client.get("/api/auth/google/url")
-        assert response.status_code == 422
+        assert response.status_code == 200
+        data = response.json()
+        assert "auth_url" in data
 
     def test_google_callback_invalid_code(self, client):
         response = client.post(

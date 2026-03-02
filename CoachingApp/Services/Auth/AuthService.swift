@@ -181,9 +181,9 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
         authError = nil
         defer { isLoading = false }
 
-        // Get OAuth URL from backend
-        // Use backend as redirect (which will redirect to app with tokens)
-        let redirectUri = "http://localhost:8000/auth/google/callback"
+        // Get OAuth URL from backend.
+        // Backend callback then redirects to app scheme with auth tokens.
+        let redirectUri = googleRedirectURI()
         let oauthResponse: GoogleOAuthResponse = try await apiClient.get(
             path: "/auth/google/url",
             queryItems: [
@@ -229,6 +229,21 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
         isAuthenticated = true
         currentUser = user
         return user
+    }
+
+    private func googleRedirectURI() -> String {
+        if let saved = UserDefaults.standard.string(forKey: "com.coachingapp.apiEnvironment"),
+           let env = APIEnvironment(rawValue: saved) {
+            switch env {
+            case .localhost:
+                return "http://localhost:8000/api/auth/google/callback"
+            case .production:
+                return "https://coachingapp-backend-production.up.railway.app/api/auth/google/callback"
+            case .staging:
+                return "https://staging-coachingapp.railway.app/api/auth/google/callback"
+            }
+        }
+        return "https://coachingapp-backend-production.up.railway.app/api/auth/google/callback"
     }
 
     func signOut() async throws {

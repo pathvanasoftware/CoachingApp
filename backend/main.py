@@ -15,6 +15,7 @@ app.add_middleware(
 
 app.include_router(health.router, tags=["Health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["AuthV1"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 # Compatibility prefix used by iOS client
 app.include_router(chat.router, prefix="/api/v1", tags=["ChatV1"])

@@ -1,6 +1,7 @@
 import os
 import json
 import secrets
+from urllib.parse import urlencode
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 import jwt
@@ -25,7 +26,10 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "com.pathvana.ascendra://auth-callback")
+GOOGLE_REDIRECT_URI = os.getenv(
+    "GOOGLE_REDIRECT_URI",
+    "https://coachingapp-backend-production.up.railway.app/api/auth/google/callback",
+)
 
 
 class User:
@@ -263,7 +267,7 @@ async def get_google_auth_url(redirect_uri: str) -> str:
         "scope": "openid email profile",
         "access_type": "offline",
     }
-    query = "&".join(f"{k}={v}" for k, v in params.items())
+    query = urlencode(params)
     return f"https://accounts.google.com/o/oauth2/v2/auth?{query}"
 
 

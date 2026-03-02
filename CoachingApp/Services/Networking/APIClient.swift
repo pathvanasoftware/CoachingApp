@@ -141,11 +141,7 @@ final class APIClient: APIClientProtocol, @unchecked Sendable {
            let env = APIEnvironment(rawValue: saved) {
             return env.baseURL
         }
-        #if DEBUG
-        return APIEnvironment.localhost.baseURL
-        #else
         return APIEnvironment.production.baseURL
-        #endif
     }
 
     // MARK: - Public Methods

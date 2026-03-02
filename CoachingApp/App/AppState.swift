@@ -62,11 +62,7 @@ final class AppState {
            let env = APIEnvironment(rawValue: saved) {
             return env
         }
-        #if DEBUG
-        return .localhost
-        #else
         return .production
-        #endif
     }()
     var preferredInputMode: InputMode = .text
     var engagementStreak: Int = 0

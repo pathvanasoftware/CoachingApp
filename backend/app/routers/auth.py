@@ -14,6 +14,7 @@ from app.services.auth import (
     get_google_auth_url,
     exchange_google_code,
     verify_apple_token,
+    GOOGLE_REDIRECT_URI,
 )
 
 router = APIRouter()
@@ -105,18 +106,16 @@ async def apple_signin(request: AppleSignInRequest):
 
 
 @router.get("/google/url")
-async def google_auth_url(redirect_uri: str):
-    if not redirect_uri:
-        raise HTTPException(status_code=400, detail="redirect_uri is required")
-    
-    auth_url = await get_google_auth_url(redirect_uri)
+async def google_auth_url(redirect_uri: Optional[str] = None):
+    effective_redirect_uri = redirect_uri or GOOGLE_REDIRECT_URI
+    auth_url = await get_google_auth_url(effective_redirect_uri)
     return {"auth_url": auth_url}
 
 
 @router.post("/google/callback")
 async def google_callback(request: GoogleCallbackRequest):
     """API endpoint for exchanging Google auth code (used by native SDK)"""
-    redirect_uri = "http://localhost:8000/auth/google/callback"
+    redirect_uri = GOOGLE_REDIRECT_URI
     
     google_user = await exchange_google_code(request.code, redirect_uri)
     if not google_user:
@@ -150,7 +149,7 @@ async def google_callback(request: GoogleCallbackRequest):
 @router.get("/google/callback")
 async def google_callback_get(code: str):
     """Handle OAuth redirect from Google - returns HTML that redirects to app with tokens"""
-    redirect_uri = "http://localhost:8000/auth/google/callback"
+    redirect_uri = GOOGLE_REDIRECT_URI
     
     google_user = await exchange_google_code(code, redirect_uri)
     if not google_user:
