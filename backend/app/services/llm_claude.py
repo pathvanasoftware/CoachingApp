@@ -391,7 +391,8 @@ async def get_coaching_response_claude(
             parsed = json.loads(raw[start:end])
             ai_response = parsed.get("response", "").strip() or raw.strip()
             quick_replies = [str(x).strip() for x in parsed.get("quick_replies", []) if str(x).strip()][:4]
-            suggested_actions = parsed.get("suggested_actions")
+            sa = parsed.get("suggested_actions")
+            suggested_actions = [str(x).strip() for x in sa if str(x).strip()] if isinstance(sa, list) else None
         else:
             ai_response = raw.strip() or "I'm here to help. Could you tell me more?"
             quick_replies = []
