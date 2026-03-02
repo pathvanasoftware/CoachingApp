@@ -1,6 +1,5 @@
 import os
 import json
-from openai import AsyncOpenAI
 from typing import List, Optional
 from pydantic import BaseModel
 from app.services.style_router import route_style, STYLE_PROMPTS
@@ -12,11 +11,65 @@ from app.services.behavior_tracker import update_behavior_signals, style_prefere
 from app.services.goal_architecture import infer_goal_hierarchy, build_goal_anchor, progressive_skill_building, outcome_prediction
 from app.prompts.proprietary_frameworks import get_framework_for_context
 
-def get_openai_client() -> AsyncOpenAI:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY not configured")
-    return AsyncOpenAI(api_key=api_key)
+# ---------------------------------------------------------------------------
+# LLM provider selection — Claude primary, OpenAI fallback
+# ---------------------------------------------------------------------------
+
+def _anthropic_available() -> bool:
+    return bool(os.getenv("ANTHROPIC_API_KEY"))
+
+def _openai_available() -> bool:
+    return bool(os.getenv("OPENAI_API_KEY"))
+
+def _require_any_llm():
+    if not _anthropic_available() and not _openai_available():
+        raise ValueError("No LLM API key configured. Set ANTHROPIC_API_KEY (preferred) or OPENAI_API_KEY.")
+
+async def _chat_complete(messages: list, max_tokens: int = 800, temperature: float = 0.7) -> str:
+    """
+    Send a chat completion request.
+    Uses Claude (claude-sonnet-4-5) if ANTHROPIC_API_KEY is set,
+    falls back to OpenAI (gpt-4) if only OPENAI_API_KEY is set.
+    Returns the raw text content of the first choice.
+    """
+    if _anthropic_available():
+        import anthropic
+        client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+        # Anthropic separates system messages from the conversation turns.
+        system_parts = [m["content"] for m in messages if m["role"] == "system"]
+        user_turns = [m for m in messages if m["role"] != "system"]
+
+        system_prompt = "\n\n".join(system_parts)
+
+        kwargs = dict(
+            model="claude-sonnet-4-5",
+            max_tokens=max_tokens,
+            messages=user_turns,
+        )
+        if system_prompt:
+            kwargs["system"] = system_prompt
+
+        response = await client.messages.create(**kwargs)
+        # Extract text from the first TextBlock in content
+        for block in response.content:
+            if hasattr(block, "text"):
+                return block.text
+        return ""
+
+    elif _openai_available():
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = await client.chat.completions.create(
+            model="gpt-4",
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+        return response.choices[0].message.content or ""
+
+    else:
+        raise ValueError("No LLM API key configured. Set ANTHROPIC_API_KEY (preferred) or OPENAI_API_KEY.")
 
 GROW_SYSTEM_PROMPT = """You are an expert Career & Executive Coach using the GROW model.
 
@@ -144,18 +197,15 @@ Return ONLY valid JSON with this exact structure:
 Focus on what the coachee discovered, decisions made, and concrete next actions."""
     
     try:
-        client = get_openai_client()
-        response = await client.chat.completions.create(
-            model="gpt-4",
+        _require_any_llm()
+        raw = await _chat_complete(
             messages=[
                 {"role": "system", "content": "You are an expert at summarizing coaching sessions."},
-                {"role": "user", "content": summary_prompt}
+                {"role": "user", "content": summary_prompt},
             ],
             max_tokens=500,
-            temperature=0.3
+            temperature=0.3,
         )
-        
-        raw = response.choices[0].message.content or ""
         parsed = _safe_parse_structured_output(raw)
         
         if parsed and isinstance(parsed.get("summary"), str):
@@ -372,7 +422,7 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
     messages.append({"role": "user", "content": request.message})
     
     try:
-        client = get_openai_client()
+        _require_any_llm()
 
         # Ask model to generate BOTH coaching response + contextual quick-reply options.
         structured_messages = messages + [{
@@ -385,14 +435,7 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
             )
         }]
 
-        response = await client.chat.completions.create(
-            model="gpt-4",
-            messages=structured_messages,
-            max_tokens=800,
-            temperature=0.7
-        )
-
-        raw = response.choices[0].message.content or ""
+        raw = await _chat_complete(structured_messages, max_tokens=800, temperature=0.7)
         parsed = _safe_parse_structured_output(raw)
 
         if parsed and isinstance(parsed.get("response"), str):

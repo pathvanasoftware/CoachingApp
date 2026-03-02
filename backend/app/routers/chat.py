@@ -5,9 +5,18 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List
-from app.services.llm import CoachingRequest, CoachingResponse, get_coaching_response, generate_session_summary
+from app.services.llm import CoachingRequest, CoachingResponse, get_coaching_response, generate_session_summary, _anthropic_available, _openai_available
 
 router = APIRouter()
+
+
+def _require_llm_or_503():
+    """Raise 503 if no LLM API key is configured."""
+    if not _anthropic_available() and not _openai_available():
+        raise HTTPException(
+            status_code=503,
+            detail="No LLM API key configured. Set ANTHROPIC_API_KEY (preferred) or OPENAI_API_KEY."
+        )
 
 
 class ChatStreamRequest(BaseModel):
@@ -20,8 +29,7 @@ class ChatStreamRequest(BaseModel):
 @router.post("/", response_model=CoachingResponse)
 async def chat(request: CoachingRequest) -> CoachingResponse:
     """Handle coaching chat messages"""
-    if os.getenv("REQUIRE_OPENAI_KEY", "1") == "1" and not os.getenv("OPENAI_API_KEY"):
-        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is required in strict mode")
+    _require_llm_or_503()
     return await get_coaching_response(request)
 
 @router.post("/quick-replies")
@@ -35,8 +43,7 @@ async def get_quick_replies(message: str, response: str = "") -> dict:
 async def chat_stream(request: ChatStreamRequest):
     """SSE stream for iOS client. First emits metadata, then token chunks."""
 
-    if os.getenv("REQUIRE_OPENAI_KEY", "1") == "1" and not os.getenv("OPENAI_API_KEY"):
-        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is required in strict mode")
+    _require_llm_or_503()
 
     coaching_req = CoachingRequest(
         message=request.message,
@@ -86,8 +93,7 @@ class SessionSummaryRequest(BaseModel):
 @router.post("/session-summary")
 async def session_summary(request: SessionSummaryRequest):
     """Generate a comprehensive summary of the coaching session"""
-    if os.getenv("REQUIRE_OPENAI_KEY", "1") == "1" and not os.getenv("OPENAI_API_KEY"):
-        raise HTTPException(status_code=503, detail="OPENAI_API_KEY is required in strict mode")
+    _require_llm_or_503()
     
     summary = await generate_session_summary(request.messages, request.userId or "anonymous")
     return summary
