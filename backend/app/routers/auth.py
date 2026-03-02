@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
@@ -114,8 +115,8 @@ async def google_auth_url(redirect_uri: str):
 
 @router.post("/google/callback")
 async def google_callback(request: GoogleCallbackRequest):
-    # We need the know the redirect_uri used - extract from stored state or use default
-    redirect_uri = "com.pathvana.ascendra://auth-callback"
+    """API endpoint for exchanging Google auth code (used by native SDK)"""
+    redirect_uri = "http://localhost:8000/auth/google/callback"
     
     google_user = await exchange_google_code(request.code, redirect_uri)
     if not google_user:
@@ -144,6 +145,59 @@ async def google_callback(request: GoogleCallbackRequest):
         user = user_service.update_user(user.id, google_id=google_id)
     
     return create_auth_response(user)
+
+
+@router.get("/google/callback")
+async def google_callback_get(code: str):
+    """Handle OAuth redirect from Google - returns HTML that redirects to app with tokens"""
+    redirect_uri = "http://localhost:8000/auth/google/callback"
+    
+    google_user = await exchange_google_code(code, redirect_uri)
+    if not google_user:
+        return HTMLResponse(content="<html><body><h1>Authentication failed</h1></body></html>", status_code=401)
+    
+    google_id = google_user.get("id")
+    email = google_user.get("email")
+    full_name = google_user.get("name")
+    
+    # Check if user exists
+    user = user_service.get_user_by_google_id(google_id)
+    if not user and email:
+        user = user_service.get_user_by_email(email)
+    
+    if not user:
+        # Create new user
+        user = user_service.create_user(
+            id=str(uuid.uuid4()),
+            email=email or f"google_{google_id}@placeholder.com",
+            password=str(uuid.uuid4()),
+            full_name=full_name,
+            google_id=google_id,
+        )
+    elif not user_service.get_user_by_google_id(google_id):
+        # Link Google ID to existing user
+        user = user_service.update_user(user.id, google_id=google_id)
+    
+    auth_response = create_auth_response(user)
+    access_token = auth_response["access_token"]
+    refresh_token = auth_response["refresh_token"]
+    
+    # Return HTML that redirects to app with tokens
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Redirecting to Ascendra...</title>
+    </head>
+    <body>
+        <script>
+            window.location.href = "com.pathvana.ascendra://auth-callback?access_token={access_token}&refresh_token={refresh_token}";
+        </script>
+        <p>Redirecting to Ascendra app...</p>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html)
 
 
 @router.post("/logout")

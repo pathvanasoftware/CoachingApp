@@ -182,10 +182,12 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
         defer { isLoading = false }
 
         // Get OAuth URL from backend
+        // Use backend as redirect (which will redirect to app with tokens)
+        let redirectUri = "http://localhost:8000/auth/google/callback"
         let oauthResponse: GoogleOAuthResponse = try await apiClient.get(
             path: "/auth/google/url",
             queryItems: [
-                URLQueryItem(name: "redirect_uri", value: "com.pathvana.ascendra://auth-callback")
+                URLQueryItem(name: "redirect_uri", value: redirectUri)
             ]
         )
 
@@ -212,28 +214,22 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
             _ = session.start()
         }
 
-        // Extract auth code from callback
+        // Extract tokens from callback (backend returns access_token & refresh_token directly)
         guard let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
               let queryItems = components.queryItems,
-              let code = queryItems.first(where: { $0.name == "code" })?.value else {
+              let accessToken = queryItems.first(where: { $0.name == "access_token" })?.value,
+              let refreshToken = queryItems.first(where: { $0.name == "refresh_token" })?.value else {
             throw AuthError.invalidOAuthResponse
         }
 
-        // Exchange code for tokens
-        let request = GoogleSignInRequest(code: code)
-        let response: AuthResponse = try await apiClient.post(
-            path: "/auth/google/callback",
-            body: request
-        )
-
-        try storeTokens(access: response.accessToken, refresh: response.refreshToken)
+        // Store tokens and fetch user
+        try storeTokens(access: accessToken, refresh: refreshToken)
+        let user: User = try await apiClient.get(path: "/auth/me", queryItems: nil)
 
         isAuthenticated = true
-        currentUser = response.user
-        return response.user
+        currentUser = user
+        return user
     }
-
-    // MARK: - Sign Out
 
     func signOut() async throws {
         isLoading = true
