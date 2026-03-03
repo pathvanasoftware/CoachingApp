@@ -107,7 +107,9 @@ struct SignInView: View {
                     // Password field
                     SecureField("Password", text: $viewModel.password)
                         .textFieldStyle(.plain)
-                        .textContentType(.password)
+                        .textContentType(viewModel.isSignUp ? .newPassword : .password)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
                         .padding(AppTheme.Spacing.md)
                         .background(AppTheme.secondaryBackground)
                         .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
@@ -116,7 +118,9 @@ struct SignInView: View {
                     if viewModel.isSignUp {
                         SecureField("Confirm Password", text: $viewModel.confirmPassword)
                             .textFieldStyle(.plain)
-                            .textContentType(.newPassword)
+                            .textContentType(.none)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
                             .padding(AppTheme.Spacing.md)
                             .background(AppTheme.secondaryBackground)
                             .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
