@@ -29,6 +29,7 @@ final class AuthViewModel {
 
         do {
             let user = try await authService.signInWithEmail(email: email, password: password)
+            appState.useMockServices = false
             appState.signIn(userId: user.id, email: user.email, name: user.fullName ?? "")
         } catch {
             errorMessage = "Sign in failed. Please check your credentials and try again."
@@ -63,6 +64,7 @@ final class AuthViewModel {
                 password: password,
                 fullName: fullName.isEmpty ? nil : fullName
             )
+            appState.useMockServices = false
             appState.signIn(userId: user.id, email: user.email, name: user.fullName ?? "")
         } catch {
             errorMessage = "Sign up failed. Please try again."
@@ -90,6 +92,7 @@ final class AuthViewModel {
                         identityToken: identityToken,
                         nonce: ""
                     )
+                    appState.useMockServices = false
                     appState.signIn(userId: user.id, email: user.email, name: user.fullName ?? "")
                 } catch {
                     errorMessage = "Apple Sign In failed. Please try again."
@@ -109,6 +112,7 @@ final class AuthViewModel {
 
         do {
             let user = try await authService.signInWithGoogle()
+            appState.useMockServices = false
             appState.signIn(userId: user.id, email: user.email, name: user.fullName ?? "")
         } catch let error as AuthError {
             if case .oauthCancelled = error {
