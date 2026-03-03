@@ -75,6 +75,9 @@ final class AppState {
         if args.contains("--debug-diagnostics") {
             showDebugDiagnostics = true
         }
+        if args.contains("--use-mock-api") {
+            useMockServices = true
+        }
         if args.contains("--use-real-api") {
             useMockServices = false
         }

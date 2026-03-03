@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SessionsListView: View {
     @Environment(AppState.self) private var appState
+    @Environment(ServiceContainer.self) private var services
     @State private var viewModel = SessionsViewModel()
 
     var body: some View {
@@ -28,11 +29,16 @@ struct SessionsListView: View {
                 }
             }
             .task {
+                viewModel.chatService = services.chatService
+                if let mockService = services.chatService as? MockChatService {
+                    mockService.seedDemoSessionsIfNeeded(userId: appState.currentUserId ?? "test-user-001")
+                }
                 await viewModel.loadSessions(
                     userId: appState.currentUserId ?? "test-user-001"
                 )
             }
             .refreshable {
+                viewModel.chatService = services.chatService
                 await viewModel.loadSessions(
                     userId: appState.currentUserId ?? "test-user-001"
                 )

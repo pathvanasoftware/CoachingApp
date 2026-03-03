@@ -4,6 +4,7 @@ import AuthenticationServices
 struct SignInView: View {
     @Environment(AppState.self) private var appState
     @Environment(AuthService.self) private var authService
+    @Environment(ServiceContainer.self) private var services
     @State private var viewModel = AuthViewModel()
 
     var body: some View {
@@ -69,6 +70,8 @@ struct SignInView: View {
 
 #if DEBUG
                     Button {
+                        appState.useMockServices = true
+                        services.configure(useMockServices: true)
                         appState.signIn(
                             userId: "test-user-001",
                             email: "debug@pathvana.local",

@@ -12,11 +12,77 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
 
     private static var _sessions: [String: CoachingSession] = [:]
     private static var _messages: [String: [ChatMessage]] = [:]
+    private static var _seededUsers: Set<String> = []
     private static let _lock = NSLock()
     
     // MARK: - Simulated Delay
 
     private let responseDelay: UInt64 = 500_000_000 // 0.5 seconds
+
+    func seedDemoSessionsIfNeeded(userId: String) {
+        Self._lock.lock()
+        defer { Self._lock.unlock() }
+
+        guard !Self._seededUsers.contains(userId) else { return }
+
+        let now = Date()
+
+        let recentCompleted = CoachingSession(
+            userId: userId,
+            persona: .directChallenger,
+            sessionType: .checkIn,
+            inputMode: .text,
+            startedAt: now.addingTimeInterval(-60 * 60 * 6),
+            endedAt: now.addingTimeInterval(-60 * 60 * 5.5),
+            summary: "Clarified priorities for a difficult stakeholder conversation.",
+            durationSeconds: 1800,
+            messageCount: 8
+        )
+
+        let earlierCompleted = CoachingSession(
+            userId: userId,
+            persona: .supportiveStrategist,
+            sessionType: .deepDive,
+            inputMode: .text,
+            startedAt: now.addingTimeInterval(-60 * 60 * 24 * 3),
+            endedAt: now.addingTimeInterval(-60 * 60 * 24 * 3 + 2100),
+            summary: "Mapped burnout triggers and designed a sustainable weekly plan.",
+            durationSeconds: 2100,
+            messageCount: 12
+        )
+
+        let activeSession = CoachingSession(
+            userId: userId,
+            persona: .directChallenger,
+            sessionType: .freeform,
+            inputMode: .text,
+            startedAt: now.addingTimeInterval(-60 * 20),
+            endedAt: nil,
+            summary: nil,
+            durationSeconds: nil,
+            messageCount: 2
+        )
+
+        Self._sessions[recentCompleted.id] = recentCompleted
+        Self._messages[recentCompleted.id] = [
+            ChatMessage(sessionId: recentCompleted.id, role: .user, content: "I keep delaying a tough conversation."),
+            ChatMessage(sessionId: recentCompleted.id, role: .assistant, content: "Name the exact sentence you're avoiding saying."),
+        ]
+
+        Self._sessions[earlierCompleted.id] = earlierCompleted
+        Self._messages[earlierCompleted.id] = [
+            ChatMessage(sessionId: earlierCompleted.id, role: .user, content: "I'm exhausted by constant context switching."),
+            ChatMessage(sessionId: earlierCompleted.id, role: .assistant, content: "Let's identify the two highest-friction transitions in your week."),
+        ]
+
+        Self._sessions[activeSession.id] = activeSession
+        Self._messages[activeSession.id] = [
+            ChatMessage(sessionId: activeSession.id, role: .assistant, content: "Welcome back. What should we focus on in this session?"),
+            ChatMessage(sessionId: activeSession.id, role: .user, content: "I need help resetting priorities for this week."),
+        ]
+
+        Self._seededUsers.insert(userId)
+    }
 
     // MARK: - Canned Coaching Responses
 

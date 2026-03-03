@@ -11,7 +11,7 @@ final class SessionsViewModel {
 
     // MARK: - Dependencies
 
-    private let chatService: ChatServiceProtocol
+    var chatService: ChatServiceProtocol
 
     // MARK: - Init
 

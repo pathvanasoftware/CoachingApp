@@ -6,15 +6,31 @@ import Foundation
 @Observable
 final class ServiceContainer {
 
-    let chatService: ChatService
-    let streamingService: StreamingService
+    var chatService: ChatServiceProtocol
+    var streamingService: StreamingServiceProtocol
+
+    private let realChatService: ChatService
+    private let realStreamingService: StreamingService
+    private let mockService = MockChatService.shared
 
     init() {
         let apiClient = APIClient()
         apiClient.authTokenProvider = { KeychainService.loadAccessToken() }
-        self.chatService = ChatService(apiClient: apiClient)
-        self.streamingService = StreamingService(
+        self.realChatService = ChatService(apiClient: apiClient)
+        self.realStreamingService = StreamingService(
             authTokenProvider: { KeychainService.loadAccessToken() }
         )
+        self.chatService = realChatService
+        self.streamingService = realStreamingService
+    }
+
+    func configure(useMockServices: Bool) {
+        if useMockServices {
+            chatService = mockService
+            streamingService = mockService
+        } else {
+            chatService = realChatService
+            streamingService = realStreamingService
+        }
     }
 }
