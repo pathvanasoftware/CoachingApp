@@ -758,19 +758,9 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 7WL9KY32LF;
-				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CoachingApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Ascendra;
-				INFOPLIST_KEY_CFBundleURLTypes = (
-					{
-						CFBundleTypeRole = Editor;
-						CFBundleURLSchemes = (
-							com.pathvana.ascendra,
-						);
-					},
-				);
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ascendra needs microphone access for voice coaching sessions.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Ascendra uses speech recognition for voice coaching sessions.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -907,18 +897,9 @@
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 7WL9KY32LF;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CoachingApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Ascendra;
-				INFOPLIST_KEY_CFBundleURLTypes = (
-					{
-						CFBundleTypeRole = Editor;
-						CFBundleURLSchemes = (
-							com.pathvana.ascendra,
-						);
-					},
-				);
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ascendra needs microphone access for voice coaching sessions.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Ascendra uses speech recognition for voice coaching sessions.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
