@@ -760,6 +760,14 @@
 				DEVELOPMENT_TEAM = 7WL9KY32LF;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Ascendra;
+				INFOPLIST_KEY_CFBundleURLTypes = (
+					{
+						CFBundleTypeRole = Editor;
+						CFBundleURLSchemes = (
+							com.pathvana.ascendra,
+						);
+					},
+				);
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ascendra needs microphone access for voice coaching sessions.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Ascendra uses speech recognition for voice coaching sessions.";
@@ -900,6 +908,14 @@
 				DEVELOPMENT_TEAM = 7WL9KY32LF;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Ascendra;
+				INFOPLIST_KEY_CFBundleURLTypes = (
+					{
+						CFBundleTypeRole = Editor;
+						CFBundleURLSchemes = (
+							com.pathvana.ascendra,
+						);
+					},
+				);
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Ascendra needs microphone access for voice coaching sessions.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Ascendra uses speech recognition for voice coaching sessions.";
