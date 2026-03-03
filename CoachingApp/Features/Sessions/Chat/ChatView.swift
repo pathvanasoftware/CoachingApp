@@ -59,8 +59,8 @@ struct ChatView: View {
             // Messages area
             messagesScrollView
 
-            // Typing indicator
-            if viewModel.isStreaming {
+            // Typing indicator (only when there is no streaming coach bubble yet)
+            if showTypingIndicator {
                 TypingIndicatorView(
                     persona: currentPersona
                 )
@@ -155,6 +155,16 @@ struct ChatView: View {
         if appState.useMockServices { return "MOCK" }
         if appState.apiEnvironment == .localhost { return "LOCALHOST" }
         return "LIVE"
+    }
+
+    private var showTypingIndicator: Bool {
+        guard viewModel.isStreaming else { return false }
+        if let last = viewModel.messages.last,
+           last.isFromCoach,
+           last.isStreaming {
+            return false
+        }
+        return true
     }
 
     private var connectionModeColor: Color {
