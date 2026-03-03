@@ -137,8 +137,9 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
         // This avoids per-byte character assembly issues with multi-byte Unicode.
         var eventLines: [String] = []
 
-        for try await line in bytes.lines {
-            if line.isEmpty {
+        for try await rawLine in bytes.lines {
+            let line = rawLine.trimmingCharacters(in: .newlines)
+            if line.trimmingCharacters(in: .whitespaces).isEmpty {
                 let eventString = eventLines.joined(separator: "\n")
                 eventLines.removeAll(keepingCapacity: true)
 

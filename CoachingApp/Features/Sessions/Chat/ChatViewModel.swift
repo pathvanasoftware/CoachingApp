@@ -340,6 +340,7 @@ final class ChatViewModel {
             guard let self else { return }
 
             var streamFailed = false
+            var receivedCoachText = false
 
             do {
                 for try await token in stream {
@@ -347,6 +348,9 @@ final class ChatViewModel {
                     guard let lastIndex = self.messages.indices.last else { break }
                     if self.applyDiagnosticsIfMetaToken(token, messageIndex: lastIndex) { continue }
                     if self.applySuggestionsIfSuggestionsToken(token) { continue }
+                    if !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        receivedCoachText = true
+                    }
                     self.messages[lastIndex].content += token
                 }
             } catch {
@@ -370,6 +374,17 @@ final class ChatViewModel {
             // Finalize the message (only if stream succeeded)
             if !streamFailed, let lastIndex = self.messages.indices.last {
                 self.messages[lastIndex].isStreaming = false
+
+                if !receivedCoachText || self.messages[lastIndex].content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    self.messages[lastIndex].content = "Got it. Let's narrow this to one concrete next step you can take today."
+                    if self.currentQuickReplies.isEmpty {
+                        self.currentQuickReplies = [
+                            QuickReply(id: UUID().uuidString, text: "Help me pick the next step", type: .action),
+                            QuickReply(id: UUID().uuidString, text: "Give me a 10-minute version", type: .guidance),
+                            QuickReply(id: UUID().uuidString, text: "Let's simplify this", type: .clarification),
+                        ]
+                    }
+                }
 
                 // Mark user message as sent
                 if let userMessageIndex = self.messages.indices.dropLast().last,
