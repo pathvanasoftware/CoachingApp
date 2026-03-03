@@ -83,7 +83,36 @@ Crisis Resources (only for explicit self-harm/suicide):
 - International: https://findahelpline.com
 
 Always maintain a warm, professional, and supportive tone.
-Keep responses concise but meaningful (2-4 paragraphs max unless exploring deeply)."""
+Keep responses concise but meaningful.
+Hard limits per turn:
+- Maximum 120 words
+- Ask at most one question total
+- Prefer one short paragraph and one concrete next step"""
+
+
+def _enforce_response_limits(text: str) -> str:
+    """Enforce concise output and at most one question mark."""
+    if not text:
+        return text
+
+    cleaned = " ".join(text.strip().split())
+
+    # Word budget
+    words = cleaned.split(" ")
+    if len(words) > 120:
+        cleaned = " ".join(words[:120]).rstrip(" ,;:-") + "..."
+
+    # At most one question overall (support both ASCII and full-width marks)
+    q_count = 0
+    out_chars: List[str] = []
+    for ch in cleaned:
+        if ch in ("?", "？"):
+            q_count += 1
+            out_chars.append(ch if q_count == 1 else ".")
+        else:
+            out_chars.append(ch)
+
+    return "".join(out_chars)
 
 # ---------------------------------------------------------------------------
 # Client helpers
@@ -366,6 +395,7 @@ async def get_coaching_response_claude(
         build_context_packet(message, [{"role": h.get("role","user"), "content": h.get("content","")} for h in history], context),
         "Return ONLY valid JSON: {\"response\": string, \"quick_replies\": [string×4], \"suggested_actions\": [string]}. "
         "quick_replies must be 3-8 words, user-selectable, tailored to the message. No markdown outside JSON.",
+        "response must be <=120 words and include at most one question mark total.",
     ]))
 
     # ── Trim history ──────────────────────────────────────────────────────
@@ -397,6 +427,8 @@ async def get_coaching_response_claude(
             ai_response = raw.strip() or "I'm here to help. Could you tell me more?"
             quick_replies = []
             suggested_actions = None
+
+        ai_response = _enforce_response_limits(ai_response)
 
         if len(quick_replies) < 2:
             quick_replies = _generate_quick_replies(message, ai_response, context)
