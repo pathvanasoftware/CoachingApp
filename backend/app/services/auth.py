@@ -40,7 +40,7 @@ class User:
         full_name: Optional[str] = None,
         organization_id: Optional[str] = None,
         seat_tier: str = "starter",
-        preferred_persona: str = "directChallenger",
+        preferred_persona: str = "direct_challenger",
         preferred_input_mode: str = "text",
         has_completed_onboarding: bool = False,
         created_at: Optional[datetime] = None,
@@ -58,13 +58,18 @@ class User:
         self.updated_at = updated_at or datetime.now(timezone.utc)
 
     def to_dict(self) -> dict:
+        persona = self.preferred_persona
+        if persona == "directChallenger":
+            persona = "direct_challenger"
+        elif persona == "supportiveStrategist":
+            persona = "supportive_strategist"
         return {
             "id": self.id,
             "email": self.email,
             "full_name": self.full_name,
             "organization_id": self.organization_id,
             "seat_tier": self.seat_tier,
-            "preferred_persona": self.preferred_persona,
+            "preferred_persona": persona,
             "preferred_input_mode": self.preferred_input_mode,
             "has_completed_onboarding": self.has_completed_onboarding,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -90,7 +95,7 @@ class UserService:
                 full_name TEXT,
                 organization_id TEXT,
                 seat_tier TEXT DEFAULT 'starter',
-                preferred_persona TEXT DEFAULT 'directChallenger',
+                preferred_persona TEXT DEFAULT 'direct_challenger',
                 preferred_input_mode TEXT DEFAULT 'text',
                 has_completed_onboarding INTEGER DEFAULT 0,
                 created_at TEXT,
@@ -210,7 +215,7 @@ class UserService:
             full_name=row[3],
             organization_id=row[4],
             seat_tier=row[5] or "starter",
-            preferred_persona=row[6] or "directChallenger",
+            preferred_persona=row[6] or "direct_challenger",
             preferred_input_mode=row[7] or "text",
             has_completed_onboarding=bool(row[8]),
             created_at=datetime.fromisoformat(row[9]) if row[9] else None,

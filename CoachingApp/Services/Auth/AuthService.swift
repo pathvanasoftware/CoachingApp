@@ -193,16 +193,10 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
         let redirectUri = googleRedirectURI()
         print("[GoogleAuth] Getting OAuth URL with redirect_uri: \(redirectUri)")
         
-        let oauthResponse: GoogleOAuthResponse = try await apiClient.get(
-            path: "/auth/google/url",
-            queryItems: [
-                URLQueryItem(name: "redirect_uri", value: redirectUri)
-            ]
-        )
-        
-        print("[GoogleAuth] Got auth URL: \(oauthResponse.authUrl)")
+        let authURLString = try await fetchGoogleAuthURL(redirectUri: redirectUri)
+        print("[GoogleAuth] Got auth URL: \(authURLString)")
 
-        guard let authURL = URL(string: oauthResponse.authUrl) else {
+        guard let authURL = URL(string: authURLString) else {
             print("[GoogleAuth] ERROR: Invalid URL")
             throw AuthError.invalidURL
         }
@@ -257,7 +251,7 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
 
         // Store tokens and fetch user
         try storeTokens(access: accessToken, refresh: refreshToken)
-        let user: User = try await apiClient.get(path: "/auth/me", queryItems: nil)
+        let user = try await fetchCurrentUserFlexible()
 
         print("[GoogleAuth] Success! User: \(user.email)")
         isAuthenticated = true
@@ -278,6 +272,77 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
             }
         }
         return "https://coachingapp-backend-production.up.railway.app/api/auth/google/callback"
+    }
+
+    private func fetchGoogleAuthURL(redirectUri: String) async throws -> String {
+        do {
+            let oauthResponse: GoogleOAuthResponse = try await apiClient.get(
+                path: "/auth/google/url",
+                queryItems: [URLQueryItem(name: "redirect_uri", value: redirectUri)]
+            )
+            return oauthResponse.authUrl
+        } catch APIError.decodingError(let decodeError) {
+            let (data, response) = try await apiClient.dataRequest(
+                method: .get,
+                path: "/auth/google/url?redirect_uri=\(redirectUri.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? redirectUri)"
+            )
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw APIError.invalidResponse
+            }
+            guard (200...299).contains(httpResponse.statusCode) else {
+                throw APIError.httpError(statusCode: httpResponse.statusCode, data: data)
+            }
+            if let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let authURL = obj["auth_url"] as? String ?? obj["authUrl"] as? String {
+                return authURL
+            }
+            throw AuthError.googleSignInFailed("Invalid OAuth URL response: \(decodeError.localizedDescription)")
+        }
+    }
+
+    private func fetchCurrentUserFlexible() async throws -> User {
+        do {
+            let user: User = try await apiClient.get(path: "/auth/me", queryItems: nil)
+            return user
+        } catch APIError.decodingError(_) {
+            let (data, response) = try await apiClient.dataRequest(method: .get, path: "/auth/me")
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw APIError.invalidResponse
+            }
+            guard (200...299).contains(httpResponse.statusCode) else {
+                throw APIError.httpError(statusCode: httpResponse.statusCode, data: data)
+            }
+            guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let id = obj["id"] as? String,
+                  let email = obj["email"] as? String else {
+                throw AuthError.googleSignInFailed("Invalid user payload from /auth/me")
+            }
+
+            let seatRaw = (obj["seat_tier"] as? String) ?? (obj["seatTier"] as? String) ?? "starter"
+            let seatTier = SeatTier(rawValue: seatRaw) ?? .starter
+
+            let personaRaw = (obj["preferred_persona"] as? String) ?? (obj["preferredPersona"] as? String) ?? "direct_challenger"
+            let normalizedPersona = personaRaw
+                .replacingOccurrences(of: "directChallenger", with: "direct_challenger")
+                .replacingOccurrences(of: "supportiveStrategist", with: "supportive_strategist")
+            let preferredPersona = CoachingPersonaType(rawValue: normalizedPersona) ?? .directChallenger
+
+            let inputRaw = (obj["preferred_input_mode"] as? String) ?? (obj["preferredInputMode"] as? String) ?? "text"
+            let preferredInputMode = InputMode(rawValue: inputRaw) ?? .text
+
+            return User(
+                id: id,
+                email: email,
+                fullName: (obj["full_name"] as? String) ?? (obj["fullName"] as? String),
+                organizationId: (obj["organization_id"] as? String) ?? (obj["organizationId"] as? String),
+                seatTier: seatTier,
+                preferredPersona: preferredPersona,
+                preferredInputMode: preferredInputMode,
+                hasCompletedOnboarding: (obj["has_completed_onboarding"] as? Bool) ?? (obj["hasCompletedOnboarding"] as? Bool) ?? false,
+                createdAt: Date(),
+                updatedAt: Date()
+            )
+        }
     }
 
     func signOut() async throws {
