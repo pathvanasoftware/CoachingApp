@@ -143,7 +143,9 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
             // SSE events are separated by double newlines
             while let eventRange = buffer.range(of: "\n\n") {
                 let eventString = String(buffer[buffer.startIndex..<eventRange.lowerBound])
-                buffer.removeSubrange(buffer.startIndex...eventRange.upperBound)
+                // Remove processed event + delimiter. Use half-open range because
+                // eventRange.upperBound can equal endIndex.
+                buffer.removeSubrange(buffer.startIndex..<eventRange.upperBound)
 
                 if let token = parseSSEEvent(eventString) {
                     if token == "[DONE]" {

@@ -4,6 +4,7 @@ struct SessionsListView: View {
     @Environment(AppState.self) private var appState
     @Environment(ServiceContainer.self) private var services
     @State private var viewModel = SessionsViewModel()
+    @State private var showNewSession = false
 
     var body: some View {
         NavigationStack {
@@ -19,14 +20,17 @@ struct SessionsListView: View {
             .navigationTitle("Sessions")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        newSessionDestination
+                    Button {
+                        showNewSession = true
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.system(size: 22))
                             .foregroundStyle(AppTheme.primary)
                     }
                 }
+            }
+            .navigationDestination(isPresented: $showNewSession) {
+                newSessionDestination
             }
             .task {
                 viewModel.chatService = services.chatService
@@ -56,7 +60,7 @@ struct SessionsListView: View {
             message: "Start a coaching session to see your history here.",
             buttonTitle: "Start Session"
         ) {
-            // Button action handled by navigation
+            showNewSession = true
         }
     }
 
