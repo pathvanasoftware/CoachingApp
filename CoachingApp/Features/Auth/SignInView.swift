@@ -39,7 +39,7 @@ struct SignInView: View {
                     Button {
                         Task {
                             appState.useMockServices = false
-                            services.configure(useMockServices: false)
+                            services.configure(useMockServices: false, apiEnvironment: appState.apiEnvironment)
                             await viewModel.signInWithGoogle(appState: appState)
                         }
                     } label: {
@@ -65,7 +65,7 @@ struct SignInView: View {
                         request.requestedScopes = [.fullName, .email]
                     } onCompletion: { result in
                         appState.useMockServices = false
-                        services.configure(useMockServices: false)
+                        services.configure(useMockServices: false, apiEnvironment: appState.apiEnvironment)
                         viewModel.signInWithApple(result: result, appState: appState)
                     }
                     .signInWithAppleButtonStyle(.black)
@@ -75,7 +75,7 @@ struct SignInView: View {
 #if DEBUG
                     Button {
                         appState.useMockServices = true
-                        services.configure(useMockServices: true)
+                        services.configure(useMockServices: true, apiEnvironment: appState.apiEnvironment)
                         appState.signIn(
                             userId: "test-user-001",
                             email: "debug@pathvana.local",
@@ -163,7 +163,7 @@ struct SignInView: View {
                     Button {
                         Task {
                             appState.useMockServices = false
-                            services.configure(useMockServices: false)
+                            services.configure(useMockServices: false, apiEnvironment: appState.apiEnvironment)
                             if viewModel.isSignUp {
                                 await viewModel.signUpWithEmail(appState: appState)
                             } else {

@@ -9,21 +9,26 @@ final class ServiceContainer {
     var chatService: ChatServiceProtocol
     var streamingService: StreamingServiceProtocol
 
-    private let realStreamingService: StreamingService
+    private var realStreamingService: StreamingService
     private let mockService = MockChatService.shared
 
     init() {
-        let apiClient = APIClient()
-        apiClient.authTokenProvider = { KeychainService.loadAccessToken() }
-        self.realStreamingService = StreamingService(
+        let streaming = StreamingService(
+            baseURL: APIEnvironment.production.chatStreamURL,
             authTokenProvider: { KeychainService.loadAccessToken() }
         )
+        self.realStreamingService = streaming
         // Use local session lifecycle service by default; streaming decides mock/real AI.
         self.chatService = mockService
-        self.streamingService = realStreamingService
+        self.streamingService = streaming
     }
 
-    func configure(useMockServices: Bool) {
+    func configure(useMockServices: Bool, apiEnvironment: APIEnvironment) {
+        realStreamingService = StreamingService(
+            baseURL: apiEnvironment.chatStreamURL,
+            authTokenProvider: { KeychainService.loadAccessToken() }
+        )
+
         if useMockServices {
             chatService = mockService
             streamingService = mockService

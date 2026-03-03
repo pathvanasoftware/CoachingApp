@@ -24,10 +24,13 @@ struct CoachingAppApp: App {
             .environment(authService)
             .environment(services)
             .onChange(of: appState.useMockServices) { _, useMock in
-                services.configure(useMockServices: useMock)
+                services.configure(useMockServices: useMock, apiEnvironment: appState.apiEnvironment)
+            }
+            .onChange(of: appState.apiEnvironment) { _, env in
+                services.configure(useMockServices: appState.useMockServices, apiEnvironment: env)
             }
             .task {
-                services.configure(useMockServices: appState.useMockServices)
+                services.configure(useMockServices: appState.useMockServices, apiEnvironment: appState.apiEnvironment)
                 await restoreSession()
             }
         }
