@@ -98,6 +98,10 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
     // MARK: - Dependencies
 
     private let apiClient: APIClient
+    
+    // MARK: - Session Storage (must retain ASWebAuthenticationSession)
+    
+    private var webAuthSession: ASWebAuthenticationSession?
 
     // MARK: - Init
 
@@ -200,7 +204,8 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
             let session = ASWebAuthenticationSession(
                 url: authURL,
                 callbackURLScheme: "com.pathvana.ascendra"
-            ) { callbackURL, error in
+            ) { [weak self] callbackURL, error in
+                self?.webAuthSession = nil
                 if let error {
                     continuation.resume(throwing: error)
                 } else if let callbackURL {
@@ -211,6 +216,7 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
             }
             session.presentationContextProvider = AuthenticationContextProvider.shared
             session.prefersEphemeralWebBrowserSession = false
+            self.webAuthSession = session
             _ = session.start()
         }
 
