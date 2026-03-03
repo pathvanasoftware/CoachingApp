@@ -236,6 +236,7 @@ final class ChatViewModel {
     @MainActor
     private func streamInitialGreeting(for session: CoachingSession) async {
         isStreaming = true
+        var receivedCoachText = false
 
         // Create a placeholder assistant message
         let assistantMessage = ChatMessage(
@@ -259,7 +260,7 @@ final class ChatViewModel {
 
         let stream = streamingService.streamResponse(
             sessionId: session.id,
-            message: "",
+            message: "Start this coaching session with one short, practical opening question.",
             persona: session.persona,
             coachingStyle: selectedCoachingStyle
         )
@@ -269,6 +270,9 @@ final class ChatViewModel {
                 guard let lastIndex = messages.indices.last else { break }
                 if applyDiagnosticsIfMetaToken(token, messageIndex: lastIndex) { continue }
                 if applySuggestionsIfSuggestionsToken(token) { continue }
+                if !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    receivedCoachText = true
+                }
                 messages[lastIndex].content += token
             }
         } catch {
@@ -278,12 +282,35 @@ final class ChatViewModel {
         // Finalize the message
         if let lastIndex = messages.indices.last {
             messages[lastIndex].isStreaming = false
+            if !receivedCoachText || messages[lastIndex].content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                messages[lastIndex].content = initialPrompt(for: session)
+                if currentQuickReplies.isEmpty {
+                    currentQuickReplies = [
+                        QuickReply(id: UUID().uuidString, text: "I feel stuck on priorities", type: .clarification),
+                        QuickReply(id: UUID().uuidString, text: "I need help with a tough conversation", type: .guidance),
+                        QuickReply(id: UUID().uuidString, text: "I want a clear action plan", type: .action)
+                    ]
+                }
+            }
         }
 
         isStreaming = false
         if pendingHumanCoachRequest {
             pendingHumanCoachRequest = false
             evaluateHumanCoachRequest()
+        }
+    }
+
+    private func initialPrompt(for session: CoachingSession) -> String {
+        switch session.sessionType {
+        case .checkIn:
+            return "Before we dive in, what is the one thing that would make today feel like progress for you?"
+        case .deepDive:
+            return "What challenge feels most important to unpack deeply right now, and why this one?"
+        case .freeform:
+            return "What would you like to focus on first in this session?"
+        case .goalReview:
+            return "Which goal would you like to review, and what changed since your last check-in?"
         }
     }
 
