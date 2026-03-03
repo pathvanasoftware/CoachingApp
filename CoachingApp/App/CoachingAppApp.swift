@@ -23,6 +23,9 @@ struct CoachingAppApp: App {
             .environment(appState)
             .environment(authService)
             .environment(services)
+            .onChange(of: appState.useMockServices) { _, useMock in
+                services.configure(useMockServices: useMock)
+            }
             .task {
                 services.configure(useMockServices: appState.useMockServices)
                 await restoreSession()

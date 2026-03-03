@@ -38,6 +38,8 @@ struct SignInView: View {
                     // Google Sign In
                     Button {
                         Task {
+                            appState.useMockServices = false
+                            services.configure(useMockServices: false)
                             await viewModel.signInWithGoogle(appState: appState)
                         }
                     } label: {
@@ -62,6 +64,8 @@ struct SignInView: View {
                     SignInWithAppleButton(.signIn) { request in
                         request.requestedScopes = [.fullName, .email]
                     } onCompletion: { result in
+                        appState.useMockServices = false
+                        services.configure(useMockServices: false)
                         viewModel.signInWithApple(result: result, appState: appState)
                     }
                     .signInWithAppleButtonStyle(.black)
@@ -158,6 +162,8 @@ struct SignInView: View {
                     // Submit button
                     Button {
                         Task {
+                            appState.useMockServices = false
+                            services.configure(useMockServices: false)
                             if viewModel.isSignUp {
                                 await viewModel.signUpWithEmail(appState: appState)
                             } else {
