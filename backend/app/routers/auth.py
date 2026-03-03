@@ -182,17 +182,21 @@ async def google_callback_get(code: str):
     refresh_token = auth_response["refresh_token"]
     
     # Return HTML that redirects to app with tokens
+    # Using meta refresh as fallback (more reliable than JS in ASWebAuthenticationSession)
+    app_url = f"com.pathvana.ascendra://auth-callback?access_token={access_token}&refresh_token={refresh_token}"
     html = f"""
     <!DOCTYPE html>
     <html>
     <head>
+        <meta http-equiv="refresh" content="0;url={app_url}">
         <title>Redirecting to Ascendra...</title>
+        <script>
+            window.location.href = "{app_url}";
+        </script>
     </head>
     <body>
-        <script>
-            window.location.href = "com.pathvana.ascendra://auth-callback?access_token={access_token}&refresh_token={refresh_token}";
-        </script>
         <p>Redirecting to Ascendra app...</p>
+        <p><a href="{app_url}">Click here if not redirected</a></p>
     </body>
     </html>
     """

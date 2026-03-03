@@ -188,18 +188,24 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
         // Get OAuth URL from backend.
         // Backend callback then redirects to app scheme with auth tokens.
         let redirectUri = googleRedirectURI()
+        print("[GoogleAuth] Getting OAuth URL with redirect_uri: \(redirectUri)")
+        
         let oauthResponse: GoogleOAuthResponse = try await apiClient.get(
             path: "/auth/google/url",
             queryItems: [
                 URLQueryItem(name: "redirect_uri", value: redirectUri)
             ]
         )
+        
+        print("[GoogleAuth] Got auth URL: \(oauthResponse.authUrl)")
 
         guard let authURL = URL(string: oauthResponse.authUrl) else {
+            print("[GoogleAuth] ERROR: Invalid URL")
             throw AuthError.invalidURL
         }
 
         // Open OAuth flow
+        print("[GoogleAuth] Starting ASWebAuthenticationSession...")
         let callbackURL = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
             let session = ASWebAuthenticationSession(
                 url: authURL,
@@ -207,31 +213,46 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
             ) { [weak self] callbackURL, error in
                 self?.webAuthSession = nil
                 if let error {
+                    print("[GoogleAuth] ASWebAuthenticationSession error: \(error.localizedDescription)")
                     continuation.resume(throwing: error)
                 } else if let callbackURL {
+                    print("[GoogleAuth] Got callback URL: \(callbackURL.absoluteString)")
                     continuation.resume(returning: callbackURL)
                 } else {
+                    print("[GoogleAuth] ERROR: No callback URL and no error")
                     continuation.resume(throwing: AuthError.oauthCancelled)
                 }
             }
             session.presentationContextProvider = AuthenticationContextProvider.shared
             session.prefersEphemeralWebBrowserSession = false
             self.webAuthSession = session
-            _ = session.start()
+            let started = session.start()
+            print("[GoogleAuth] Session started: \(started)")
         }
 
         // Extract tokens from callback (backend returns access_token & refresh_token directly)
+        print("[GoogleAuth] Parsing callback URL components...")
         guard let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
-              let queryItems = components.queryItems,
-              let accessToken = queryItems.first(where: { $0.name == "access_token" })?.value,
-              let refreshToken = queryItems.first(where: { $0.name == "refresh_token" })?.value else {
+              let queryItems = components.queryItems else {
+            print("[GoogleAuth] ERROR: Could not parse URL components")
             throw AuthError.invalidOAuthResponse
         }
+        
+        print("[GoogleAuth] Query items: \(queryItems.map { "\($0.name)=\($0.value ?? "nil")" })")
+        
+        guard let accessToken = queryItems.first(where: { $0.name == "access_token" })?.value,
+              let refreshToken = queryItems.first(where: { $0.name == "refresh_token" })?.value else {
+            print("[GoogleAuth] ERROR: Missing access_token or refresh_token in callback")
+            throw AuthError.invalidOAuthResponse
+        }
+        
+        print("[GoogleAuth] Got tokens, fetching user...")
 
         // Store tokens and fetch user
         try storeTokens(access: accessToken, refresh: refreshToken)
         let user: User = try await apiClient.get(path: "/auth/me", queryItems: nil)
 
+        print("[GoogleAuth] Success! User: \(user.email)")
         isAuthenticated = true
         currentUser = user
         return user
