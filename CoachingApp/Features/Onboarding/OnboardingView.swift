@@ -90,13 +90,13 @@ struct OnboardingView: View {
             AssessmentView(viewModel: viewModel)
                 .tag(OnboardingStep.assessment)
 
-            InputModePreferenceView(
-                selectedMode: Binding(
-                    get: { viewModel.onboardingData.preferredInputMode },
-                    set: { viewModel.onboardingData.preferredInputMode = $0 }
+            CoachingStyleSelectionView(
+                selectedStyle: Binding(
+                    get: { viewModel.onboardingData.selectedCoachingStyle },
+                    set: { viewModel.onboardingData.selectedCoachingStyle = $0 }
                 )
             )
-            .tag(OnboardingStep.inputMode)
+            .tag(OnboardingStep.coachingStyle)
 
             PersonaSelectionView(
                 selectedPersona: Binding(

@@ -26,6 +26,7 @@
 		4054A5EABA4D926FCAD92B1A /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B5993C248ED4F6C099E78D7 /* Router.swift */; };
 		40AE0A081785BD0E2D69D77F /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C999B9474915838E65E2E72 /* SignInView.swift */; };
 		428EEEA38F09D78A027A5D95 /* InputModePreferenceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410802DFEB486C8B99E72FE0 /* InputModePreferenceView.swift */; };
+		C1A2B3C4D5E6F78900112234 /* CoachingStyleSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A2B3C4D5E6F78900112233 /* CoachingStyleSelectionView.swift */; };
 		42A779950DF48BF566001E69 /* StreakView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76718E01C8495598AEEB868D /* StreakView.swift */; };
 		4AB6E07DCEBCFE83B9E70A7C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1EFF206BF9A1A1DD38A1684C /* Assets.xcassets */; };
 		4E806383604564C4C5AEAEF3 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 045404485490B9725267842E /* Supabase */; };
@@ -131,6 +132,7 @@
 		3B818D830E9D40F296D8D6B9 /* GoalService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalService.swift; sourceTree = "<group>"; };
 		3EA6E4927B469313E9026BF4 /* String+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Extensions.swift"; sourceTree = "<group>"; };
 		410802DFEB486C8B99E72FE0 /* InputModePreferenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputModePreferenceView.swift; sourceTree = "<group>"; };
+		C1A2B3C4D5E6F78900112233 /* CoachingStyleSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachingStyleSelectionView.swift; sourceTree = "<group>"; };
 		42E1D9844D394F7E052E0BFB /* Date+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Extensions.swift"; sourceTree = "<group>"; };
 		4593F6A8D11F00B578FD5B94 /* ChatScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatScreen.swift; sourceTree = "<group>"; };
 		47B03152E74EBE5449FFF416 /* StreamingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingService.swift; sourceTree = "<group>"; };
@@ -274,6 +276,7 @@
 			isa = PBXGroup;
 			children = (
 				CA7FBD711FB8BE6D8C7972DC /* AssessmentView.swift */,
+				C1A2B3C4D5E6F78900112233 /* CoachingStyleSelectionView.swift */,
 				8BCDFC67756BAB1D86B7ED21 /* FirstGoalSetupView.swift */,
 				410802DFEB486C8B99E72FE0 /* InputModePreferenceView.swift */,
 				5D02B0ABB2D5CB7AD4AA9AF5 /* OnboardingView.swift */,
@@ -690,6 +693,7 @@
 				0EA1B554A3C19D01C8CE245E /* HomeView.swift in Sources */,
 				26022EA996EF77A758CA0C3A /* HomeViewModel.swift in Sources */,
 				428EEEA38F09D78A027A5D95 /* InputModePreferenceView.swift in Sources */,
+				C1A2B3C4D5E6F78900112234 /* CoachingStyleSelectionView.swift in Sources */,
 				7063255EAD3F492C29F590B1 /* KeychainService.swift in Sources */,
 				97004D0E2E28836CE94C4582 /* LiveTranscriptionView.swift in Sources */,
 				79646EA9779957BCBC320E3B /* LoadingView.swift in Sources */,

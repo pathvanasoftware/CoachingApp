@@ -2,7 +2,7 @@ import Foundation
 
 struct OnboardingData {
     var assessmentAnswers: [AssessmentAnswer] = []
-    var preferredInputMode: InputMode = .text
+    var selectedCoachingStyle: CoachingStyle = .auto
     var selectedPersona: CoachingPersonaType = .directChallenger
     var firstGoalTitle: String = ""
     var firstGoalDescription: String = ""
@@ -29,7 +29,7 @@ struct AssessmentQuestion: Identifiable {
 enum OnboardingStep: Int, CaseIterable {
     case welcome = 0
     case assessment = 1
-    case inputMode = 2
+    case coachingStyle = 2
     case personaSelection = 3
     case firstGoal = 4
 
@@ -37,7 +37,7 @@ enum OnboardingStep: Int, CaseIterable {
         switch self {
         case .welcome: return "Welcome"
         case .assessment: return "About You"
-        case .inputMode: return "Interaction Style"
+        case .coachingStyle: return "Coaching Style"
         case .personaSelection: return "Your Coach"
         case .firstGoal: return "First Goal"
         }

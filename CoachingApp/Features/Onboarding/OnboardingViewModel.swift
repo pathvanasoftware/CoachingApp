@@ -38,7 +38,7 @@ final class OnboardingViewModel {
             // and refine details later in chat sessions.
             return true
 
-        case .inputMode:
+        case .coachingStyle:
             // Always valid — has a default selection
             return true
 
@@ -110,7 +110,7 @@ final class OnboardingViewModel {
         isCompleting = true
 
         // Apply onboarding selections to AppState
-        appState.preferredInputMode = onboardingData.preferredInputMode
+        appState.selectedCoachingStyle = onboardingData.selectedCoachingStyle
         appState.selectedPersona = onboardingData.selectedPersona
 
         if !onboardingData.userName.isEmpty {
