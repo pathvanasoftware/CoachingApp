@@ -112,7 +112,18 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
         )
         request.httpBody = try JSONEncoder().encode(body)
 
-        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        let bytes: URLSession.AsyncBytes
+        let response: URLResponse
+        do {
+            (bytes, response) = try await URLSession.shared.bytes(for: request)
+        } catch let urlError as URLError {
+            let host = url.host?.lowercased() ?? ""
+            let isLocal = host == "localhost" || host == "127.0.0.1" || host == "::1"
+            if isLocal {
+                throw StreamingError.localhostUnavailable(url.absoluteString)
+            }
+            throw urlError
+        }
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw StreamingError.invalidResponse
@@ -217,6 +228,7 @@ enum StreamingError: Error, LocalizedError {
     case connectionLost
     case decodingFailed
     case cancelled
+    case localhostUnavailable(String)
 
     var errorDescription: String? {
         switch self {
@@ -232,6 +244,8 @@ enum StreamingError: Error, LocalizedError {
             return "Failed to decode streamed data."
         case .cancelled:
             return "The streaming request was cancelled."
+        case .localhostUnavailable(let url):
+            return "Cannot reach local backend at \(url). Switch API Environment to Production in app settings."
         }
     }
 }

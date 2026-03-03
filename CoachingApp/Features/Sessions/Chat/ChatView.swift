@@ -94,6 +94,13 @@ struct ChatView: View {
                     if viewModel.currentSession?.isActive == true {
                         SessionTimerView(elapsedSeconds: viewModel.elapsedSeconds)
                     }
+                    Text(connectionModeLabel)
+                        .font(AppFonts.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(connectionModeColor.opacity(0.18))
+                        .foregroundStyle(connectionModeColor)
+                        .clipShape(Capsule())
                 }
             }
 
@@ -135,6 +142,18 @@ struct ChatView: View {
             await initializeSession()
         }
         .animation(.easeInOut(duration: 0.2), value: viewModel.isStreaming)
+    }
+
+    private var connectionModeLabel: String {
+        if appState.useMockServices { return "MOCK" }
+        if appState.apiEnvironment == .localhost { return "LOCALHOST" }
+        return "LIVE"
+    }
+
+    private var connectionModeColor: Color {
+        if appState.useMockServices { return .orange }
+        if appState.apiEnvironment == .localhost { return .red }
+        return .green
     }
 
     // MARK: - Subviews

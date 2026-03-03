@@ -272,7 +272,7 @@ final class ChatViewModel {
                 messages[lastIndex].content += token
             }
         } catch {
-            errorMessage = "Streaming error: \(error.localizedDescription)"
+            errorMessage = error.localizedDescription
         }
 
         // Finalize the message
@@ -325,7 +325,7 @@ final class ChatViewModel {
             } catch {
                 if !Task.isCancelled {
                     streamFailed = true
-                    self.errorMessage = "Network error. Please check your connection and retry."
+                    self.errorMessage = error.localizedDescription
 
                     // Mark the user message as failed
                     if let userMessageIndex = self.messages.indices.dropLast().last,

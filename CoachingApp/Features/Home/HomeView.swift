@@ -62,7 +62,9 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $isShowingChat) {
-            ChatScreen()
+            NavigationStack {
+                ChatView(sessionType: .checkIn, persona: appState.selectedPersona)
+            }
         }
     }
 
