@@ -9,18 +9,17 @@ final class ServiceContainer {
     var chatService: ChatServiceProtocol
     var streamingService: StreamingServiceProtocol
 
-    private let realChatService: ChatService
     private let realStreamingService: StreamingService
     private let mockService = MockChatService.shared
 
     init() {
         let apiClient = APIClient()
         apiClient.authTokenProvider = { KeychainService.loadAccessToken() }
-        self.realChatService = ChatService(apiClient: apiClient)
         self.realStreamingService = StreamingService(
             authTokenProvider: { KeychainService.loadAccessToken() }
         )
-        self.chatService = realChatService
+        // Use local session lifecycle service by default; streaming decides mock/real AI.
+        self.chatService = mockService
         self.streamingService = realStreamingService
     }
 
@@ -29,7 +28,9 @@ final class ServiceContainer {
             chatService = mockService
             streamingService = mockService
         } else {
-            chatService = realChatService
+            // Backend currently exposes chat endpoints, not session CRUD endpoints.
+            // Keep session lifecycle local while routing AI responses to real backend stream.
+            chatService = mockService
             streamingService = realStreamingService
         }
     }

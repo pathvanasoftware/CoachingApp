@@ -30,7 +30,8 @@ struct SessionsListView: View {
             }
             .task {
                 viewModel.chatService = services.chatService
-                if let mockService = services.chatService as? MockChatService {
+                if appState.useMockServices,
+                   let mockService = services.chatService as? MockChatService {
                     mockService.seedDemoSessionsIfNeeded(userId: appState.currentUserId ?? "test-user-001")
                 }
                 await viewModel.loadSessions(

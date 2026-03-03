@@ -8,12 +8,12 @@ struct PersonaSelectionView: View {
             VStack(spacing: AppTheme.Spacing.xl) {
                 // Header
                 VStack(spacing: AppTheme.Spacing.sm) {
-                    Text("Choose your\ncoaching style")
+                    Text("Choose your\ncoach persona")
                         .font(AppFonts.title2)
                         .foregroundStyle(AppTheme.textPrimary)
                         .multilineTextAlignment(.center)
 
-                    Text("Each persona has a distinct approach.\nYou can switch anytime.")
+                    Text("These are two coach personas. Coaching style (directive / facilitative / supportive / strategic) can change per conversation.")
                         .font(AppFonts.subheadline)
                         .foregroundStyle(AppTheme.textSecondary)
                         .multilineTextAlignment(.center)
