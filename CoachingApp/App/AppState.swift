@@ -67,6 +67,10 @@ final class AppState {
     var preferredInputMode: InputMode = .text
     var engagementStreak: Int = 0
 
+    // Active session state (persists across tab switches)
+    var activeSession: CoachingSession?
+    var activeSessionMessages: [ChatMessage] = []
+
     init() {
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--force-onboarding") {

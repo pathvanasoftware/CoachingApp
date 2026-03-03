@@ -4,6 +4,7 @@ struct ChatView: View {
     @Environment(AppState.self) private var appState
     @Environment(ServiceContainer.self) private var services
     @State private var viewModel: ChatViewModel
+    @State private var hasInitialized = false
 
     // Configuration for starting a new session
     private let sessionType: SessionType?
@@ -139,7 +140,13 @@ struct ChatView: View {
             // Wire real services from the environment before starting the session
             viewModel.chatService = services.chatService
             viewModel.streamingService = services.streamingService
+            guard !hasInitialized else { return }
+            hasInitialized = true
             await initializeSession()
+        }
+        .onDisappear {
+            appState.activeSession = viewModel.currentSession
+            appState.activeSessionMessages = viewModel.messages
         }
         .animation(.easeInOut(duration: 0.2), value: viewModel.isStreaming)
     }
@@ -240,8 +247,16 @@ struct ChatView: View {
 
     @MainActor
     private func initializeSession() async {
+        if viewModel.currentSession != nil { return }
+
         if let existingSession {
             await viewModel.loadExistingSession(existingSession)
+        } else if let restored = appState.activeSession, restored.isActive {
+            viewModel.currentSession = restored
+            viewModel.messages = appState.activeSessionMessages
+            if restored.isActive {
+                viewModel.startTimer()
+            }
         } else if let sessionType, let persona {
             await viewModel.startSession(
                 type: sessionType,
