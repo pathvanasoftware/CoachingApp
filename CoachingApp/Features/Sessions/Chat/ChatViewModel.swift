@@ -496,6 +496,19 @@ final class ChatViewModel {
         let recommendedStyleShift = json["recommended_style_shift"] as? String
         let riskLevel = (json["outcome_prediction"] as? [String: Any])?["risk_level"] as? String
 
+        if let replies = json["quick_replies"] as? [String], !replies.isEmpty {
+            currentQuickReplies = replies.prefix(4).enumerated().map { index, text in
+                let type: QuickReplyType
+                switch index {
+                case 0: type = .clarification
+                case 1: type = .guidance
+                case 2: type = .action
+                default: type = .reflection
+                }
+                return QuickReply(id: UUID().uuidString, text: text, type: type)
+            }
+        }
+
         messages[messageIndex].diagnostics = CoachingDiagnostics(
             styleUsed: style,
             emotionDetected: emotion,
