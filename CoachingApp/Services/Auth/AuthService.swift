@@ -1,5 +1,8 @@
 import Foundation
 import AuthenticationServices
+#if canImport(UIKit)
+import UIKit
+#endif
 
 // MARK: - Auth Service Protocol
 
@@ -228,6 +231,10 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
             self.webAuthSession = session
             let started = session.start()
             print("[GoogleAuth] Session started: \(started)")
+            if !started {
+                self.webAuthSession = nil
+                continuation.resume(throwing: AuthError.googleSignInFailed("Unable to start authentication session"))
+            }
         }
 
         // Extract tokens from callback (backend returns access_token & refresh_token directly)
@@ -416,6 +423,12 @@ private final class AuthenticationContextProvider: NSObject, ASWebAuthentication
     static let shared = AuthenticationContextProvider()
 
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        ASPresentationAnchor()
+#if canImport(UIKit)
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = scene.windows.first(where: { $0.isKeyWindow }) {
+            return window
+        }
+#endif
+        return ASPresentationAnchor()
     }
 }

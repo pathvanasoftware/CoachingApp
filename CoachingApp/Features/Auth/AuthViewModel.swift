@@ -117,7 +117,7 @@ final class AuthViewModel {
                 errorMessage = error.errorDescription
             }
         } catch {
-            errorMessage = "Google Sign In failed. Please try again."
+            errorMessage = "Google Sign In failed: \(error.localizedDescription)"
         }
 
         isLoading = false
