@@ -12,7 +12,7 @@ enum APIEnvironment: String, CaseIterable {
         case .localhost:
             return "http://localhost:8000/api/v1"
         case .production:
-            return "https://coachingapp-api.railway.app/api/v1"
+            return "https://coachingapp-backend-production.up.railway.app/api/v1"
         case .staging:
             return "https://staging-coachingapp.railway.app/api/v1"
         }
@@ -24,7 +24,7 @@ enum APIEnvironment: String, CaseIterable {
         case .localhost:
             return "http://localhost:8000/api/chat/chat-stream"
         case .production:
-            return "https://coachingapp-api.railway.app/api/chat/chat-stream"
+            return "https://coachingapp-backend-production.up.railway.app/api/chat/chat-stream"
         case .staging:
             return "https://staging-coachingapp.railway.app/api/chat/chat-stream"
         }
