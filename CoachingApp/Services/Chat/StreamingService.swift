@@ -133,19 +133,14 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
             throw StreamingError.httpError(statusCode: httpResponse.statusCode)
         }
 
-        // Parse SSE (Server-Sent Events) stream
-        var buffer = ""
+        // Parse SSE (Server-Sent Events) stream using UTF-8 line decoding.
+        // This avoids per-byte character assembly issues with multi-byte Unicode.
+        var eventLines: [String] = []
 
-        for try await byte in bytes {
-            let character = Character(UnicodeScalar(byte))
-            buffer.append(character)
-
-            // SSE events are separated by double newlines
-            while let eventRange = buffer.range(of: "\n\n") {
-                let eventString = String(buffer[buffer.startIndex..<eventRange.lowerBound])
-                // Remove processed event + delimiter. Use half-open range because
-                // eventRange.upperBound can equal endIndex.
-                buffer.removeSubrange(buffer.startIndex..<eventRange.upperBound)
+        for try await line in bytes.lines {
+            if line.isEmpty {
+                let eventString = eventLines.joined(separator: "\n")
+                eventLines.removeAll(keepingCapacity: true)
 
                 if let token = parseSSEEvent(eventString) {
                     if token == "[DONE]" {
@@ -154,15 +149,16 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
                     }
                     continuation.yield(token)
                 }
+            } else {
+                eventLines.append(line)
             }
         }
 
-        // Process any remaining buffer
-        if !buffer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            if let token = parseSSEEvent(buffer) {
-                if token != "[DONE]" {
-                    continuation.yield(token)
-                }
+        // Process any remaining buffered event lines.
+        if !eventLines.isEmpty {
+            let eventString = eventLines.joined(separator: "\n")
+            if let token = parseSSEEvent(eventString), token != "[DONE]" {
+                continuation.yield(token)
             }
         }
 
