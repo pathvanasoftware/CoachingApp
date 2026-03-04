@@ -22,6 +22,7 @@ import os
 import json
 import asyncio
 import logging
+import re
 from typing import List, Dict, Optional, Tuple
 
 from app.services.style_router import route_style, STYLE_PROMPTS
@@ -119,6 +120,73 @@ def _enforce_response_limits(text: str) -> str:
             out_chars.append(ch)
 
     return "".join(out_chars)
+
+
+def _count_user_turns(history: List[Dict], current_message: str) -> int:
+    prior_user_turns = sum(1 for h in history if (h.get("role") or "").lower() == "user")
+    return prior_user_turns + (1 if (current_message or "").strip() else 0)
+
+
+def _is_context_rich(message: str) -> bool:
+    """
+    Heuristic: context is rich when at least two specificity signals are present.
+    Signals: timeframe, stakeholders/team, metrics/symptoms, concrete events.
+    """
+    m = (message or "").lower()
+
+    timeframe = bool(re.search(r"\b(today|this week|next week|q[1-4]|quarter|month|by friday|deadline|timeline)\b", m))
+    stakeholders = bool(re.search(r"\b(manager|team|vp|director|peer|stakeholder|customer|client)\b", m))
+    metrics = bool(re.search(r"\b(kpi|metric|revenue|churn|quality|defect|missed|late|throughput|performance)\b", m))
+    events = bool(re.search(r"\b(reorg|launch|incident|handoff|meeting|review|retro|1:1|one-on-one)\b", m))
+
+    signals = sum([timeframe, stakeholders, metrics, events])
+    return signals >= 2
+
+
+def _build_clarifying_question(message: str) -> str:
+    m = (message or "").lower()
+    if "performance" in m or "team" in m:
+        return "Which part is slipping most right now: quality, speed, or ownership?"
+    if "stuck" in m or "off" in m:
+        return "What specific moment this week made you feel most stuck?"
+    if "conflict" in m or "manager" in m or "boss" in m:
+        return "What is the exact conversation you are avoiding right now?"
+    if "priority" in m or "overwhelm" in m or "busy" in m:
+        return "If you could solve only one thing this week, what would create the biggest relief?"
+    return "What is the single most important outcome you need from this situation this week?"
+
+
+def _is_broad_problem_statement(message: str) -> bool:
+    m = (message or "").lower()
+    broad_markers = [
+        "slipping", "stuck", "off", "not sure", "uncertain", "overwhelmed",
+        "burnout", "things are off", "team performance", "isn't working",
+    ]
+    specific_request_markers = [
+        "strategy", "plan", "framework", "negotiate", "script", "decision",
+        "job offer", "promotion", "trade-off", "options", "roadmap",
+    ]
+    has_broad_marker = any(k in m for k in broad_markers)
+    has_specific_request = any(k in m for k in specific_request_markers)
+    return has_broad_marker and not has_specific_request
+
+
+def _enforce_inquiry_first(text: str, message: str, should_enforce: bool) -> str:
+    if not should_enforce:
+        return text
+
+    cleaned = " ".join((text or "").strip().split())
+    if not cleaned:
+        return f"Thanks for sharing that. {_build_clarifying_question(message)}"
+
+    has_question = ("?" in cleaned) or ("？" in cleaned)
+    has_framework_pattern = bool(re.search(r"\b(1\.|2\.|3\.|first\b|second\b|third\b|framework\b)", cleaned.lower()))
+    too_long_for_early_turn = len(cleaned.split()) > 70
+
+    if has_question and not has_framework_pattern and not too_long_for_early_turn:
+        return cleaned
+
+    return f"Thanks for naming that. {_build_clarifying_question(message)}"
 
 # ---------------------------------------------------------------------------
 # Client helpers
@@ -383,6 +451,12 @@ async def get_coaching_response_claude(
     goal_anchor    = build_goal_anchor(goal_link, goal_hierarchy)
     framework      = get_framework_for_context(message, emotion, goal_link)
 
+    # Explicit early-turn logic: first 3 user turns + sparse context => inquiry-first enforcement.
+    user_turn_count = _count_user_turns(history, message)
+    early_turn = user_turn_count <= 3
+    context_rich = _is_context_rich(message)
+    enforce_inquiry_first = early_turn and not context_rich and _is_broad_problem_statement(message)
+
     # ── Model selection ───────────────────────────────────────────────────
     user_context = {"escalation_risk": profile.get("escalation_risk", "none")}
     model, upgrade_reasons = select_model(history, message, user_context)
@@ -399,6 +473,8 @@ async def get_coaching_response_claude(
         f"Goal anchor: {goal_anchor}",
         "Structure each turn: (1) brief acknowledgment, (2) one diagnostic question OR one concise recommendation, (3) one concrete next step only when enough context exists.",
         "If the user message is broad (e.g., 'performance is slipping', 'I feel stuck', 'things are off'), ask one clarifying question first and avoid giving a long diagnosis.",
+        f"Turn diagnostics: user_turn_count={user_turn_count}, context_rich={str(context_rich).lower()}, enforce_inquiry_first={str(enforce_inquiry_first).lower()}.",
+        "If enforce_inquiry_first is true: ask exactly one clarifying question and avoid frameworks/advice lists in this turn.",
         build_context_packet(message, [{"role": h.get("role","user"), "content": h.get("content","")} for h in history], context),
         "Return ONLY valid JSON: {\"response\": string, \"quick_replies\": [string×4], \"suggested_actions\": [string]}. "
         "quick_replies must be 3-8 words, user-selectable, tailored to the message. No markdown outside JSON.",
@@ -435,6 +511,7 @@ async def get_coaching_response_claude(
             quick_replies = []
             suggested_actions = None
 
+        ai_response = _enforce_inquiry_first(ai_response, message, enforce_inquiry_first)
         ai_response = _enforce_response_limits(ai_response)
 
         if len(quick_replies) < 2:

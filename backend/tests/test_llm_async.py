@@ -148,3 +148,37 @@ def test_inquiry_first_single_question_only(tmp_path, monkeypatch):
 
     question_count = resp.response.count("?")
     assert question_count <= 1, f"Response should have at most 1 question, got {question_count}"
+
+
+def test_inquiry_first_enforced_on_early_sparse_turn(tmp_path, monkeypatch):
+    """If model returns advice/no question on early sparse turn, server enforces a clarifying question."""
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"You should run a 3-step framework: align priorities, reset ownership, and track weekly KPIs.", "quick_replies":["Help me start","Too much right now","Need a simpler step","What first?"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    req = llm.CoachingRequest(message="My team is slipping", user_id="u9")
+    resp = asyncio.run(llm.get_coaching_response(req))
+
+    assert "?" in resp.response
+    assert "framework" not in resp.response.lower()
+
+
+def test_inquiry_first_not_forced_when_context_rich(tmp_path, monkeypatch):
+    """When context is rich, response is not forced into clarifying-question-only mode."""
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"Start with a weekly scorecard for your manager and team, then review misses in Friday retros.", "quick_replies":["Show scorecard template","What to track","How to run retro","How to align manager"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    req = llm.CoachingRequest(
+        message="My manager needs weekly quality metrics and my team missed Friday deadlines after the reorg",
+        user_id="u10"
+    )
+    resp = asyncio.run(llm.get_coaching_response(req))
+
+    assert "?" not in resp.response
