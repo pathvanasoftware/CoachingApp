@@ -6,7 +6,6 @@ struct SignInView: View {
     @Environment(AuthService.self) private var authService
     @Environment(ServiceContainer.self) private var services
     @State private var viewModel = AuthViewModel()
-    @State private var showEmailAuth = false
 
     var body: some View {
         ScrollView {
@@ -73,161 +72,13 @@ struct SignInView: View {
                     .frame(height: 50)
                     .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
 
-#if DEBUG
-                    Button {
-                        appState.useMockServices = true
-                        services.configure(useMockServices: true, apiEnvironment: appState.apiEnvironment)
-                        appState.signIn(
-                            userId: "test-user-001",
-                            email: "debug@pathvana.local",
-                            name: "Debug User"
-                        )
-                    } label: {
-                        Text("Continue without login (Debug)")
-                            .font(.subheadline.weight(.medium))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(AppTheme.secondaryBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
-                    }
-                    .foregroundStyle(AppTheme.textPrimary)
-#endif
                 }
 
-                if showEmailAuth {
-                    // Divider
-                    HStack {
-                        Rectangle()
-                            .fill(AppTheme.textTertiary.opacity(0.3))
-                            .frame(height: 1)
-                        Text("or")
-                            .font(AppFonts.footnote)
-                            .foregroundStyle(AppTheme.textTertiary)
-                        Rectangle()
-                            .fill(AppTheme.textTertiary.opacity(0.3))
-                            .frame(height: 1)
-                    }
-
-                    // MARK: - Email Form
-                    VStack(spacing: AppTheme.Spacing.md) {
-                        if viewModel.isSignUp {
-                            TextField("Full Name", text: $viewModel.fullName)
-                                .textFieldStyle(.plain)
-                                .textContentType(.name)
-                                .padding(AppTheme.Spacing.md)
-                                .background(AppTheme.secondaryBackground)
-                                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
-                        }
-
-                        TextField("Email", text: $viewModel.email)
-                            .textFieldStyle(.plain)
-                            .keyboardType(.emailAddress)
-                            .textContentType(.emailAddress)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-                            .padding(AppTheme.Spacing.md)
-                            .background(AppTheme.secondaryBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
-
-                        SecureField("Password", text: $viewModel.password)
-                            .textFieldStyle(.plain)
-                            .textContentType(viewModel.isSignUp ? .newPassword : .password)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-                            .padding(AppTheme.Spacing.md)
-                            .background(AppTheme.secondaryBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
-
-                        if viewModel.isSignUp {
-                            SecureField("Confirm Password", text: $viewModel.confirmPassword)
-                                .textFieldStyle(.plain)
-                                .textContentType(.none)
-                                .autocorrectionDisabled()
-                                .textInputAutocapitalization(.never)
-                                .padding(AppTheme.Spacing.md)
-                                .background(AppTheme.secondaryBackground)
-                                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
-                        }
-
-                        if let errorMessage = viewModel.errorMessage {
-                            Text(errorMessage)
-                                .font(AppFonts.footnote)
-                                .foregroundStyle(AppTheme.error)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-
-                        Button {
-                            Task {
-                                appState.useMockServices = false
-                                services.configure(useMockServices: false, apiEnvironment: appState.apiEnvironment)
-                                if viewModel.isSignUp {
-                                    await viewModel.signUpWithEmail(appState: appState)
-                                } else {
-                                    await viewModel.signInWithEmail(appState: appState)
-                                }
-                            }
-                        } label: {
-                            Group {
-                                if viewModel.isLoading {
-                                    ProgressView()
-                                        .tint(.white)
-                                } else {
-                                    Text(viewModel.isSignUp ? "Create Account" : "Sign In")
-                                }
-                            }
-                            .primaryButtonStyle()
-                        }
-                        .disabled(viewModel.isLoading || viewModel.email.isEmpty || viewModel.password.isEmpty)
-                        .opacity(viewModel.email.isEmpty || viewModel.password.isEmpty ? 0.6 : 1.0)
-                    }
-
-                    Button {
-                        viewModel.toggleMode()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(viewModel.isSignUp ? "Already have an account?" : "Don't have an account?")
-                                .foregroundStyle(AppTheme.textSecondary)
-                            Text(viewModel.isSignUp ? "Sign In" : "Sign Up")
-                                .foregroundStyle(AppTheme.primary)
-                                .fontWeight(.semibold)
-                        }
-                        .font(.subheadline)
-                    }
-
-                    Button("Back") {
-                        showEmailAuth = false
-                        viewModel.errorMessage = nil
-                        viewModel.password = ""
-                        viewModel.confirmPassword = ""
-                    }
-                    .font(AppFonts.footnote)
-                    .foregroundStyle(AppTheme.textSecondary)
-                } else {
-                    VStack(spacing: AppTheme.Spacing.sm) {
-                        Button {
-                            if viewModel.isSignUp { viewModel.toggleMode() }
-                            showEmailAuth = true
-                        } label: {
-                            Text("Log in with Email")
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(AppTheme.secondaryBackground)
-                                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
-                        }
-                        .foregroundStyle(AppTheme.textPrimary)
-
-                        Button {
-                            if !viewModel.isSignUp { viewModel.toggleMode() }
-                            showEmailAuth = true
-                        } label: {
-                            Text("Sign up with Email")
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(AppTheme.secondaryBackground)
-                                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
-                        }
-                        .foregroundStyle(AppTheme.textPrimary)
-                    }
+                if let errorMessage = viewModel.errorMessage {
+                    Text(errorMessage)
+                        .font(AppFonts.footnote)
+                        .foregroundStyle(AppTheme.error)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 Spacer()
