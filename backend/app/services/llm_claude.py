@@ -23,7 +23,8 @@ import json
 import asyncio
 import logging
 import re
-from typing import List, Dict, Optional, Tuple
+from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.services.style_router import route_style, STYLE_PROMPTS
 from app.services.emotion_analyzer import detect_emotion
@@ -171,22 +172,238 @@ def _is_broad_problem_statement(message: str) -> bool:
     return has_broad_marker and not has_specific_request
 
 
-def _enforce_inquiry_first(text: str, message: str, should_enforce: bool) -> str:
-    if not should_enforce:
-        return text
+def _is_specific_request(message: str) -> bool:
+    m = (message or "").lower()
+    specific_request_markers = [
+        "strategy", "plan", "framework", "negotiate", "script", "decision",
+        "job offer", "promotion", "trade-off", "options", "roadmap",
+        "how do i", "help me", "what should i do", "give me",
+    ]
+    return any(k in m for k in specific_request_markers)
 
+
+@dataclass
+class ConversationSignals:
+    stakeholder: Optional[str] = None
+    outcome: Optional[str] = None
+    example: Optional[str] = None
+    timeframe: Optional[str] = None
+    constraint: Optional[str] = None
+    leaning: Optional[str] = None
+    topic_signature: List[str] = field(default_factory=list)
+
+
+_STAGE_ORDER = ["diagnose", "reframe", "options", "commit"]
+
+
+def _extract_topic_signature(message: str) -> List[str]:
+    m = (message or "").lower()
+    keyword_groups = [
+        ("trust", r"\btrust\b"),
+        ("stakeholder", r"\bstakeholder\b"),
+        ("manager", r"\b(manager|boss|supervisor)\b"),
+        ("team", r"\bteam\b"),
+        ("performance", r"\b(performance|underperformance|slipping|quality|kpi|metric)\b"),
+        ("promotion", r"\b(promotion|raise|level up|career growth)\b"),
+        ("conflict", r"\b(conflict|tension|pushback|friction)\b"),
+        ("burnout", r"\b(burnout|overwhelm|overwhelmed|stress|stressed)\b"),
+        ("priority", r"\b(priority|prioritization|trade-off|focus)\b"),
+        ("deadline", r"\b(deadline|by friday|timeline|due date|q[1-4]|quarter)\b"),
+        ("reorg", r"\b(reorg|re-?org|restructure|headcount|budget)\b"),
+        ("career", r"\b(career|pivot|transition|new role|job offer|offer)\b"),
+    ]
+
+    topics: List[str] = []
+    for label, pattern in keyword_groups:
+        if re.search(pattern, m):
+            topics.append(label)
+    return topics[:4]
+
+
+def _extract_conversation_signals(message: str) -> ConversationSignals:
+    m = (message or "").lower()
+
+    stakeholder = None
+    for label, pattern in [
+        ("manager", r"\b(manager|boss|supervisor|lead)\b"),
+        ("team", r"\bteam\b"),
+        ("peer", r"\b(peer|colleague)\b"),
+        ("stakeholder", r"\bstakeholder\b"),
+        ("customer", r"\b(customer|client)\b"),
+    ]:
+        if re.search(pattern, m):
+            stakeholder = label
+            break
+
+    outcome = None
+    for label, pattern in [
+        ("trust", r"\btrust\b"),
+        ("promotion", r"\b(promotion|raise|level up)\b"),
+        ("alignment", r"\b(alignment|align)\b"),
+        ("underperformance", r"\b(underperformance|performance|slipping|missed)\b"),
+        ("conflict_resolution", r"\b(conflict|resolve|tension|pushback)\b"),
+        ("prioritization", r"\b(priority|prioritize|overwhelm|focus)\b"),
+        ("career_transition", r"\b(career pivot|transition|new role|job offer)\b"),
+    ]:
+        if re.search(pattern, m):
+            outcome = label
+            break
+
+    example_match = re.search(
+        r"\b(yesterday|last week|last month|in (?:the )?(?:meeting|review|retro|1:1|one-on-one)|after the|when we|when i)\b",
+        m,
+    )
+    example = example_match.group(0) if example_match else None
+
+    timeframe_match = re.search(
+        r"\b(today|this week|next week|this month|next month|q[1-4]|quarter|by friday|deadline|timeline)\b",
+        m,
+    )
+    timeframe = timeframe_match.group(0) if timeframe_match else None
+
+    constraint_match = re.search(
+        r"\b(budget|deadline|headcount|time|resources|reorg|politics|capacity|bandwidth)\b",
+        m,
+    )
+    constraint = constraint_match.group(0) if constraint_match else None
+
+    leaning = None
+    if re.search(r"\b(plan|implement|execute|do next|next step|script)\b", m):
+        leaning = "action"
+    elif re.search(r"\b(strategy|framework|advice|recommend)\b", m):
+        leaning = "advice"
+    elif re.search(r"\b(explore|think through|understand|unpack)\b", m):
+        leaning = "explore"
+    elif re.search(r"\b(not sure|uncertain|confused|unclear)\b", m):
+        leaning = "clarify"
+
+    return ConversationSignals(
+        stakeholder=stakeholder,
+        outcome=outcome,
+        example=example,
+        timeframe=timeframe,
+        constraint=constraint,
+        leaning=leaning,
+        topic_signature=_extract_topic_signature(message),
+    )
+
+
+def _is_user_confused(message: str) -> bool:
+    m = (message or "").lower()
+    return bool(re.search(r"\b(not sure|uncertain|confused|unclear|lost|not following|don't understand)\b", m))
+
+
+def _detect_topic_shift(message: str, previous_topics: List[str], current_topics: List[str]) -> bool:
+    m = (message or "").lower()
+    if re.search(r"\b(different topic|another topic|switch gears|unrelated|separate issue|on another note)\b", m):
+        return True
+
+    prev = set(previous_topics or [])
+    curr = set(current_topics or [])
+    has_soft_shift_cue = bool(re.search(r"\b(anyway|separately|also,? new issue|side note)\b", m))
+    if has_soft_shift_cue and prev and curr and not (prev & curr) and len(prev) >= 2 and len(curr) >= 2:
+        return True
+    return False
+
+
+def _initial_stage(signals: ConversationSignals, context_rich: bool, is_specific_request: bool) -> Tuple[str, str]:
+    if is_specific_request and context_rich and signals.leaning == "action":
+        return "options", "initial_specific_action"
+    if is_specific_request:
+        return "reframe", "initial_specific_request"
+    if context_rich and signals.outcome and signals.constraint:
+        return "options", "initial_context_rich_options"
+    if context_rich and (signals.outcome or signals.example):
+        return "reframe", "initial_context_rich_reframe"
+    return "diagnose", "initial_default"
+
+
+def _rollback_stage(stage: str) -> str:
+    if stage not in _STAGE_ORDER:
+        return "diagnose"
+    idx = _STAGE_ORDER.index(stage)
+    return _STAGE_ORDER[max(0, idx - 1)]
+
+
+def _route_stage(
+    previous_stage: Optional[str],
+    signals: ConversationSignals,
+    *,
+    user_turn_count: int,
+    context_rich: bool,
+    is_specific_request: bool,
+    topic_shift: bool,
+    user_confused: bool,
+) -> Tuple[str, str]:
+    if topic_shift:
+        return "diagnose", "topic_shift"
+
+    if not previous_stage or previous_stage not in _STAGE_ORDER:
+        return _initial_stage(signals, context_rich, is_specific_request)
+
+    if user_confused and previous_stage != "diagnose":
+        return _rollback_stage(previous_stage), "user_confused"
+
+    if previous_stage == "diagnose":
+        if signals.outcome and signals.example:
+            return "reframe", "forward_outcome_example"
+        if signals.outcome and signals.stakeholder and user_turn_count >= 2:
+            return "reframe", "forward_outcome_stakeholder"
+        return "diagnose", "hold_diagnose"
+
+    if previous_stage == "reframe":
+        if signals.stakeholder and signals.constraint:
+            return "options", "forward_stakeholder_constraint"
+        if signals.outcome and signals.leaning in {"advice", "action"}:
+            return "options", "forward_outcome_leaning"
+        return "reframe", "hold_reframe"
+
+    if previous_stage == "options":
+        if signals.leaning == "action":
+            return "commit", "forward_action_commit"
+        return "options", "hold_options"
+
+    return "commit", "hold_commit"
+
+
+def _count_questions(text: str) -> int:
+    return sum(1 for ch in text if ch in ("?", "？"))
+
+
+def _enforce_diagnose_contract(text: str, message: str) -> Tuple[str, bool]:
+    """
+    Diagnose contract (hard guardrail):
+    - exactly one clarifying question
+    - no frameworks/lists
+    - no prescriptive advice
+    Returns (response_text, rewritten_flag).
+    """
     cleaned = " ".join((text or "").strip().split())
     if not cleaned:
-        return f"Thanks for sharing that. {_build_clarifying_question(message)}"
+        return f"Thanks for naming that. {_build_clarifying_question(message)}", True
 
-    has_question = ("?" in cleaned) or ("？" in cleaned)
-    has_framework_pattern = bool(re.search(r"\b(1\.|2\.|3\.|first\b|second\b|third\b|framework\b)", cleaned.lower()))
-    too_long_for_early_turn = len(cleaned.split()) > 70
+    lower = cleaned.lower()
+    question_count = _count_questions(cleaned)
+    has_numbered_list = bool(re.search(r"(?:^|\s)\d+\.", lower))
+    has_framework_pattern = bool(re.search(r"\b(first\b|second\b|third\b|framework\b|strategy\b|approach\b|roadmap\b|step-by-step\b)\b", lower))
+    has_prescriptive_advice = bool(re.search(r"\b(you should|should\b|need to|must\b|recommend\b|suggest\b|start by|focus on|here'?s what to do)\b", lower))
 
-    if has_question and not has_framework_pattern and not too_long_for_early_turn:
-        return cleaned
+    violates_contract = (
+        question_count != 1
+        or has_numbered_list
+        or has_framework_pattern
+        or has_prescriptive_advice
+    )
+    if not violates_contract:
+        return cleaned, False
 
-    return f"Thanks for naming that. {_build_clarifying_question(message)}"
+    return f"Thanks for naming that. {_build_clarifying_question(message)}", True
+
+
+def _enforce_inquiry_first(text: str, message: str, should_enforce: bool) -> Tuple[str, bool]:
+    if not should_enforce:
+        return text, False
+    return _enforce_diagnose_contract(text, message)
 
 
 INTERNAL_PERSONA_PROMPTS: Dict[str, str] = {
@@ -496,21 +713,42 @@ async def get_coaching_response_claude(
     goal_anchor    = build_goal_anchor(goal_link, goal_hierarchy)
     framework      = get_framework_for_context(message, emotion, goal_link)
 
-    # Explicit early-turn logic: first 3 user turns + sparse context => inquiry-first enforcement.
+    # Deterministic stage routing: signal extraction + per-session state.
     user_turn_count = _count_user_turns(history, message)
     early_turn = user_turn_count <= 3
-    context_rich = _is_context_rich(message)
-    enforce_inquiry_first = early_turn and not context_rich and _is_broad_problem_statement(message)
-
-    # Stage heuristic (deterministic, internal)
-    stage = "diagnose" if enforce_inquiry_first else ("reframe" if early_turn else "options")
-
-    # Internal persona routing with per-session lock
     session_id = _extract_session_id(context)
     session_state = profile.get("session_state", {}) if isinstance(profile.get("session_state", {}), dict) else {}
+    session_entry: Dict[str, Any] = {}
+    if session_id:
+        raw_session_entry = session_state.get(session_id)
+        if isinstance(raw_session_entry, dict):
+            session_entry = raw_session_entry
+
+    previous_stage = session_entry.get("stage") if isinstance(session_entry.get("stage"), str) else None
+    raw_previous_topics = session_entry.get("topic_signature")
+    previous_topics = [str(t) for t in raw_previous_topics if isinstance(t, str)] if isinstance(raw_previous_topics, list) else []
+
+    signals = _extract_conversation_signals(message)
+    is_specific_request = _is_specific_request(message)
+    context_rich = _is_context_rich(message) or bool(signals.outcome and (signals.example or signals.timeframe or signals.constraint))
+    topic_shift = _detect_topic_shift(message, previous_topics, signals.topic_signature)
+    user_confused = _is_user_confused(message)
+
+    stage, stage_reason = _route_stage(
+        previous_stage,
+        signals,
+        user_turn_count=user_turn_count,
+        context_rich=context_rich,
+        is_specific_request=is_specific_request,
+        topic_shift=topic_shift,
+        user_confused=user_confused,
+    )
+    enforce_inquiry_first = stage == "diagnose"
+
+    # Internal persona routing with per-session lock
     locked_persona = None
     if session_id:
-        locked_persona = (session_state.get(session_id) or {}).get("persona")
+        locked_persona = session_entry.get("persona")
 
     if locked_persona in INTERNAL_PERSONA_PROMPTS:
         persona_used = locked_persona
@@ -521,14 +759,16 @@ async def get_coaching_response_claude(
             style_used=style_used,
             stage=stage,
         )
-        if session_id:
-            existing = session_state.get(session_id, {}) if isinstance(session_state.get(session_id, {}), dict) else {}
-            existing["persona"] = persona_used
-            existing["stage"] = stage
-            existing["turn_count"] = user_turn_count
-            session_state[session_id] = existing
-            profile["session_state"] = session_state
-            save_profile(user_id, profile)
+    if session_id:
+        session_entry["persona"] = persona_used
+        session_entry["stage"] = stage
+        session_entry["stage_reason"] = stage_reason
+        session_entry["turn_count"] = user_turn_count
+        session_entry["topic_signature"] = signals.topic_signature
+        session_entry["signals"] = asdict(signals)
+        session_state[session_id] = session_entry
+        profile["session_state"] = session_state
+        save_profile(user_id, profile)
 
     # ── Model selection ───────────────────────────────────────────────────
     user_context = {"escalation_risk": profile.get("escalation_risk", "none")}
@@ -540,7 +780,7 @@ async def get_coaching_response_claude(
         GROW_SYSTEM_PROMPT,
         INTERNAL_PERSONA_PROMPTS.get(persona_used),
         f"Coaching style this turn: {style_used}. {style_prompt}",
-        f"Enhanced with thought leader framework:\n{framework}" if framework else None,
+        f"Enhanced with thought leader framework:\n{framework}" if (framework and stage != "diagnose") else None,
         f"Emotion detected: {emotion}. Goal alignment: {goal_link}.",
         f"Persistent profile: {json.dumps(profile, ensure_ascii=False)}",
         f"Goal hierarchy: {json.dumps(goal_hierarchy, ensure_ascii=False)}",
@@ -548,6 +788,7 @@ async def get_coaching_response_claude(
         "Structure each turn: (1) brief acknowledgment, (2) one diagnostic question OR one concise recommendation, (3) one concrete next step only when enough context exists.",
         "If the user message is broad (e.g., 'performance is slipping', 'I feel stuck', 'things are off'), ask one clarifying question first and avoid giving a long diagnosis.",
         f"Conversation stage: {stage}.",
+        f"Stage routing: previous_stage={previous_stage or 'none'}, stage_reason={stage_reason}, topic_shift={str(topic_shift).lower()}, user_confused={str(user_confused).lower()}.",
         f"Turn diagnostics: user_turn_count={user_turn_count}, context_rich={str(context_rich).lower()}, enforce_inquiry_first={str(enforce_inquiry_first).lower()}.",
         "If enforce_inquiry_first is true: ask exactly one clarifying question and avoid frameworks/advice lists in this turn.",
         build_context_packet(message, [{"role": h.get("role","user"), "content": h.get("content","")} for h in history], context),
@@ -586,10 +827,12 @@ async def get_coaching_response_claude(
             quick_replies = []
             suggested_actions = None
 
-        ai_response = _enforce_inquiry_first(ai_response, message, enforce_inquiry_first)
+        ai_response, diagnose_rewritten = _enforce_inquiry_first(ai_response, message, stage == "diagnose")
         ai_response = _enforce_response_limits(ai_response)
 
-        if len(quick_replies) < 2:
+        if diagnose_rewritten:
+            quick_replies = _generate_quick_replies(message, ai_response, context)
+        elif len(quick_replies) < 2:
             quick_replies = _generate_quick_replies(message, ai_response, context)
 
     except Exception as exc:
@@ -636,6 +879,8 @@ async def get_coaching_response_claude(
             "persona_used":              persona_used,
             "persona_override_reason":   persona_override_reason,
             "stage_used":                stage,
+            "stage_reason":              stage_reason,
+            "topic_shift":               topic_shift,
         },
         "context_triggers":          ctx_triggers,
         "recommended_style_shift":   style_shift,

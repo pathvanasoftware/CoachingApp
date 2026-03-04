@@ -11,6 +11,14 @@ def test_health_and_root():
     assert r.status_code == 200
     assert r.json().get("status") == "ok"
 
+    h = client.get("/health")
+    assert h.status_code == 200
+    body = h.json()
+    assert body.get("status") == "ok"
+    assert "git_sha" in body
+    assert "git_sha_short" in body
+    assert "deployed_at" in body
+
 
 def test_debug_profile_endpoint(tmp_path, monkeypatch):
     from app.services import memory_store

@@ -166,6 +166,123 @@ def test_inquiry_first_enforced_on_early_sparse_turn(tmp_path, monkeypatch):
     assert "framework" not in resp.response.lower()
 
 
+def test_inquiry_first_enforced_for_non_keyword_sparse_input(tmp_path, monkeypatch):
+    """Early sparse inputs should trigger diagnose even without old keyword markers."""
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"At a strategic level, you should map stakeholders and use second-order framing.", "quick_replies":["Show me framework","Give examples","How to start","What now"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    req = llm.CoachingRequest(message="Building trust with stakeholders", user_id="u9b")
+    resp = asyncio.run(llm.get_coaching_response(req))
+
+    assert resp.response.count("?") == 1
+    assert "should" not in resp.response.lower()
+
+
+def test_diagnose_contract_rewrites_multiple_questions(tmp_path, monkeypatch):
+    """Diagnose contract should rewrite responses with multiple questions."""
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"What is happening? Why now?", "quick_replies":["Not sure","Need help","Too many issues","Explain"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    req = llm.CoachingRequest(message="Things are off right now", user_id="u9c")
+    resp = asyncio.run(llm.get_coaching_response(req))
+
+    assert resp.response.count("?") == 1
+    assert "Why now?" not in resp.response
+
+
+def test_stage_progression_with_session_signals(tmp_path, monkeypatch):
+    """Stage should progress diagnose -> reframe -> options -> commit for same session."""
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"Thanks for sharing that. What feels most important right now?", "quick_replies":["Option 1","Option 2","Option 3","Option 4"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    req1 = llm.CoachingRequest(
+        message="Building trust with stakeholders",
+        user_id="u-stage-1",
+        context="session_id=s-stage",
+    )
+    req2 = llm.CoachingRequest(
+        message="I need trust and in yesterday's steering meeting they challenged my proposal",
+        user_id="u-stage-1",
+        context="session_id=s-stage",
+    )
+    req3 = llm.CoachingRequest(
+        message="My manager and team need alignment before the Friday deadline and budget is tight",
+        user_id="u-stage-1",
+        context="session_id=s-stage",
+    )
+    req4 = llm.CoachingRequest(
+        message="Give me a concrete plan I can implement this week",
+        user_id="u-stage-1",
+        context="session_id=s-stage",
+    )
+
+    resp1 = asyncio.run(llm.get_coaching_response(req1))
+    resp2 = asyncio.run(llm.get_coaching_response(req2))
+    resp3 = asyncio.run(llm.get_coaching_response(req3))
+    resp4 = asyncio.run(llm.get_coaching_response(req4))
+
+    bs1 = resp1.behavior_signals or {}
+    bs2 = resp2.behavior_signals or {}
+    bs3 = resp3.behavior_signals or {}
+    bs4 = resp4.behavior_signals or {}
+
+    assert bs1.get("stage_used") == "diagnose"
+    assert bs2.get("stage_used") == "reframe"
+    assert bs3.get("stage_used") == "options"
+    assert bs4.get("stage_used") == "commit"
+
+
+def test_stage_rollback_on_topic_shift(tmp_path, monkeypatch):
+    """Topic shift cues should reset session stage back to diagnose."""
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"Thanks for sharing that. What feels most important right now?", "quick_replies":["Option 1","Option 2","Option 3","Option 4"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    req1 = llm.CoachingRequest(
+        message="I need trust and in yesterday's meeting my manager challenged me",
+        user_id="u-stage-2",
+        context="session_id=s-shift",
+    )
+    req2 = llm.CoachingRequest(
+        message="My team has a deadline and budget constraint this week",
+        user_id="u-stage-2",
+        context="session_id=s-shift",
+    )
+    req3 = llm.CoachingRequest(
+        message="Different topic: I am overwhelmed and burned out",
+        user_id="u-stage-2",
+        context="session_id=s-shift",
+    )
+
+    resp1 = asyncio.run(llm.get_coaching_response(req1))
+    resp2 = asyncio.run(llm.get_coaching_response(req2))
+    resp3 = asyncio.run(llm.get_coaching_response(req3))
+
+    bs1 = resp1.behavior_signals or {}
+    bs2 = resp2.behavior_signals or {}
+    bs3 = resp3.behavior_signals or {}
+
+    assert bs1.get("stage_used") == "reframe"
+    assert bs2.get("stage_used") == "options"
+    assert bs3.get("stage_used") == "diagnose"
+    assert bs3.get("stage_reason") == "topic_shift"
+
+
 def test_inquiry_first_not_forced_when_context_rich(tmp_path, monkeypatch):
     """When context is rich, response is not forced into clarifying-question-only mode."""
     from app.services import memory_store, llm_claude
