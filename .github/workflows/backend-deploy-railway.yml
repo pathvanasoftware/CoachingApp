@@ -12,7 +12,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
     defaults:
       run:
         working-directory: backend
@@ -31,7 +31,7 @@ jobs:
         run: npm install -g @railway/cli
 
       - name: Validate Railway token secret
-        run: test -n "$RAILWAY_TOKEN"
+        run: test -n "$RAILWAY_API_TOKEN"
 
       - name: Link Railway service
         run: railway link --project 2234c66a-596b-43e2-9b14-f09aa0281eba --environment a43889c0-ce5c-43d6-9ab5-53ec7428495e --service 01ab53f3-4c3c-4c0e-8733-6ee949141da2
