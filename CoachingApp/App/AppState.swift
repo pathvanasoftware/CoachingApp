@@ -44,6 +44,11 @@ enum APIEnvironment: String, CaseIterable {
 
 @Observable
 final class AppState {
+    private enum DefaultsKey {
+        static let apiEnvironment = "com.coachingapp.apiEnvironment"
+        static let coachingStyle = "com.pathvana.ascendra.coachingStyle"
+    }
+
     var isAuthenticated: Bool = false
     var isLoading: Bool = true   // start loading so splash doesn't flash SignInView
     var hasCompletedOnboarding: Bool = true
@@ -51,14 +56,18 @@ final class AppState {
     var currentUserEmail: String? = nil
     var currentUserName: String? = nil
     var selectedPersona: CoachingPersonaType = .directChallenger
-    var selectedCoachingStyle: CoachingStyle = .auto
+    var selectedCoachingStyle: CoachingStyle = .auto {
+        didSet {
+            UserDefaults.standard.set(selectedCoachingStyle.rawValue, forKey: DefaultsKey.coachingStyle)
+        }
+    }
     var showDebugDiagnostics: Bool = false
     
     // Use mock services (no real API calls). Defaults to false — real Railway backend.
     var useMockServices: Bool = false
     
     var apiEnvironment: APIEnvironment = {
-        if let saved = UserDefaults.standard.string(forKey: "com.coachingapp.apiEnvironment"),
+        if let saved = UserDefaults.standard.string(forKey: DefaultsKey.apiEnvironment),
            let env = APIEnvironment(rawValue: saved) {
             return env
         }
@@ -72,6 +81,11 @@ final class AppState {
     var activeSessionMessages: [ChatMessage] = []
 
     init() {
+        if let savedStyle = UserDefaults.standard.string(forKey: DefaultsKey.coachingStyle),
+           let style = CoachingStyle(rawValue: savedStyle) {
+            selectedCoachingStyle = style
+        }
+
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--force-onboarding") {
             hasCompletedOnboarding = false
@@ -108,6 +122,6 @@ final class AppState {
 
     func switchAPIEnvironment(_ environment: APIEnvironment) {
         apiEnvironment = environment
-        UserDefaults.standard.set(environment.rawValue, forKey: "com.coachingapp.apiEnvironment")
+        UserDefaults.standard.set(environment.rawValue, forKey: DefaultsKey.apiEnvironment)
     }
 }

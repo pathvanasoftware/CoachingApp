@@ -155,9 +155,14 @@ struct ChatView: View {
             // Wire real services from the environment before starting the session
             viewModel.chatService = services.chatService
             viewModel.streamingService = services.streamingService
+            viewModel.selectedCoachingStyle = appState.selectedCoachingStyle
             guard !hasInitialized else { return }
             hasInitialized = true
             await initializeSession()
+        }
+        .onChange(of: appState.selectedCoachingStyle) { _, newStyle in
+            guard viewModel.selectedCoachingStyle != newStyle else { return }
+            viewModel.selectedCoachingStyle = newStyle
         }
         .onDisappear {
             appState.activeSession = viewModel.currentSession

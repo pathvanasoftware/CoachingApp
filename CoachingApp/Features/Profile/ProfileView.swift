@@ -290,10 +290,20 @@ private struct CoachingStyleSettingsView: View {
                         if appState.selectedCoachingStyle == style {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(AppTheme.primary)
+                            Text("Selected")
+                                .font(AppFonts.caption)
+                                .foregroundStyle(AppTheme.primary)
                         }
                     }
+                    .contentShape(Rectangle())
+                    .padding(.vertical, 6)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
+                .listRowBackground(
+                    appState.selectedCoachingStyle == style
+                        ? AppTheme.primary.opacity(0.08)
+                        : Color.clear
+                )
             }
         }
         .navigationTitle("Coach Mode")
