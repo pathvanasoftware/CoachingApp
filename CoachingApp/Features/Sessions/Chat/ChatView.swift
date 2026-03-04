@@ -97,13 +97,23 @@ struct ChatView: View {
                     if viewModel.currentSession?.isActive == true {
                         SessionTimerView(elapsedSeconds: viewModel.elapsedSeconds)
                     }
-                    Text(connectionModeLabel)
-                        .font(AppFonts.caption2)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(connectionModeColor.opacity(0.18))
-                        .foregroundStyle(connectionModeColor)
-                        .clipShape(Capsule())
+                    HStack(spacing: 6) {
+                        Text("Mode: \(coachModeLabel)")
+                            .font(AppFonts.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(AppTheme.primary.opacity(0.14))
+                            .foregroundStyle(AppTheme.primary)
+                            .clipShape(Capsule())
+
+                        Text(connectionModeLabel)
+                            .font(AppFonts.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(connectionModeColor.opacity(0.18))
+                            .foregroundStyle(connectionModeColor)
+                            .clipShape(Capsule())
+                    }
                 }
             }
 
@@ -185,6 +195,10 @@ struct ChatView: View {
             return false
         }
         return true
+    }
+
+    private var coachModeLabel: String {
+        viewModel.selectedCoachingStyle.displayName.replacingOccurrences(of: " (Recommended)", with: "")
     }
 
     private var connectionModeColor: Color {
