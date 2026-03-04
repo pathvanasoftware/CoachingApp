@@ -12,11 +12,11 @@ enum CoachingStyle: String, Codable, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .auto: return "Auto"
-        case .directive: return "Directive"
-        case .facilitative: return "Facilitative"
-        case .supportive: return "Supportive"
-        case .strategic: return "Strategic"
+        case .auto: return "Auto (Recommended)"
+        case .directive: return "Advise"
+        case .facilitative: return "Explore"
+        case .supportive: return "Stabilize"
+        case .strategic: return "Plan"
         }
     }
 

@@ -19,7 +19,6 @@ struct HomeView: View {
 
                     // Daily Check-In Card
                     DailyCheckInCard(
-                        persona: appState.selectedPersona,
                         onStartSession: {
                             isShowingChat = true
                         }

@@ -182,3 +182,37 @@ def test_inquiry_first_not_forced_when_context_rich(tmp_path, monkeypatch):
     resp = asyncio.run(llm.get_coaching_response(req))
 
     assert "?" not in resp.response
+
+
+def test_internal_persona_routing_supportive_on_distress(tmp_path, monkeypatch):
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"Thanks for sharing that. What feels heaviest right now?", "quick_replies":["Workload","Conflict","Uncertainty","All of it"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    req = llm.CoachingRequest(message="I feel overwhelmed and stressed", user_id="u11", context="session_id=s11")
+    resp = asyncio.run(llm.get_coaching_response(req))
+
+    assert resp.behavior_signals is not None
+    assert resp.behavior_signals.get("persona_used") == "supportive"
+
+
+def test_internal_persona_session_lock(tmp_path, monkeypatch):
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"What happened in that meeting?", "quick_replies":["Scope changed","Timeline slipped","Stakeholder conflict","Quality concerns"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    first = llm.CoachingRequest(message="My team is slipping", user_id="u12", context="session_id=s-lock")
+    second = llm.CoachingRequest(message="Need an action plan now", user_id="u12", context="session_id=s-lock")
+
+    resp1 = asyncio.run(llm.get_coaching_response(first))
+    resp2 = asyncio.run(llm.get_coaching_response(second))
+
+    assert resp1.behavior_signals is not None
+    assert resp2.behavior_signals is not None
+    assert resp1.behavior_signals.get("persona_used") == resp2.behavior_signals.get("persona_used")

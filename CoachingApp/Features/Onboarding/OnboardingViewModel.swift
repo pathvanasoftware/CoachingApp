@@ -42,10 +42,6 @@ final class OnboardingViewModel {
             // Always valid — has a default selection
             return true
 
-        case .personaSelection:
-            // Always valid — has a default selection
-            return true
-
         case .firstGoal:
             // Can always proceed (goal is optional / can skip)
             return true
@@ -111,7 +107,6 @@ final class OnboardingViewModel {
 
         // Apply onboarding selections to AppState
         appState.selectedCoachingStyle = onboardingData.selectedCoachingStyle
-        appState.selectedPersona = onboardingData.selectedPersona
 
         if !onboardingData.userName.isEmpty {
             appState.currentUserName = onboardingData.userName
@@ -135,15 +130,6 @@ final class OnboardingViewModel {
             answer: answer
         )
         onboardingData.assessmentAnswers.append(assessmentAnswer)
-
-        // Auto-set persona based on coaching style preference
-        if question.id == "coaching_style" {
-            if answer.lowercased().contains("direct") {
-                onboardingData.selectedPersona = .directChallenger
-            } else if answer.lowercased().contains("supportive") {
-                onboardingData.selectedPersona = .supportiveStrategist
-            }
-        }
 
         // Store role if it's the role question
         if question.id == "role" {

@@ -98,14 +98,6 @@ struct OnboardingView: View {
             )
             .tag(OnboardingStep.coachingStyle)
 
-            PersonaSelectionView(
-                selectedPersona: Binding(
-                    get: { viewModel.onboardingData.selectedPersona },
-                    set: { viewModel.onboardingData.selectedPersona = $0 }
-                )
-            )
-            .tag(OnboardingStep.personaSelection)
-
             FirstGoalSetupView(viewModel: viewModel)
                 .tag(OnboardingStep.firstGoal)
         }

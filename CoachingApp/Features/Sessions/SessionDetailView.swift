@@ -57,7 +57,7 @@ struct SessionDetailView: View {
             PersonaAvatar(persona: session.persona, size: 64)
 
             VStack(spacing: AppTheme.Spacing.xs) {
-                Text(session.persona.displayName)
+                Text("Coach")
                     .font(AppFonts.title3)
                     .foregroundStyle(AppTheme.textPrimary)
 

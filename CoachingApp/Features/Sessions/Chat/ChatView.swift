@@ -92,7 +92,7 @@ struct ChatView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 VStack(spacing: 2) {
-                    Text(currentPersona.displayName)
+                    Text("Coach")
                         .font(AppFonts.headline)
                     if viewModel.currentSession?.isActive == true {
                         SessionTimerView(elapsedSeconds: viewModel.elapsedSeconds)

@@ -95,7 +95,7 @@ struct VoiceModeView: View {
             Spacer()
 
             VStack(spacing: AppTheme.Spacing.xxs) {
-                Text(viewModel.persona.displayName)
+                Text("Coach")
                     .font(AppFonts.headline)
                     .foregroundStyle(AppTheme.textPrimary)
 

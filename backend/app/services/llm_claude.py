@@ -188,6 +188,51 @@ def _enforce_inquiry_first(text: str, message: str, should_enforce: bool) -> str
 
     return f"Thanks for naming that. {_build_clarifying_question(message)}"
 
+
+INTERNAL_PERSONA_PROMPTS: Dict[str, str] = {
+    "supportive": (
+        "Internal persona: supportive coach voice. Be calm, emotionally validating, and psychologically safe. "
+        "Use gentle challenge and avoid aggressive framing."
+    ),
+    "challenger": (
+        "Internal persona: challenger coach voice. Be direct, concise, and accountability-oriented without being hostile. "
+        "Push for specificity and ownership."
+    ),
+}
+
+
+def _extract_session_id(context: Optional[str]) -> Optional[str]:
+    if not context:
+        return None
+    marker = "session_id="
+    idx = context.find(marker)
+    if idx == -1:
+        return None
+    raw = context[idx + len(marker):].strip()
+    if not raw:
+        return None
+    # context today is a compact string; keep only first token
+    return raw.split()[0]
+
+
+def _select_internal_persona(
+    emotion_primary: str,
+    style_used: str,
+    stage: str,
+) -> Tuple[str, str]:
+    """Return (persona_used, override_reason) with deterministic priority."""
+    supportive_emotions = {"high_stress", "low_confidence", "frustration", "distressed"}
+
+    if emotion_primary in supportive_emotions:
+        return "supportive", "emotion_distress"
+    if style_used == "supportive":
+        return "supportive", "style_stabilize"
+    if stage == "commit":
+        return "challenger", "stage_commit"
+    if style_used in {"directive", "strategic"}:
+        return "challenger", "style_advise_plan"
+    return "supportive", "default"
+
 # ---------------------------------------------------------------------------
 # Client helpers
 # ---------------------------------------------------------------------------
@@ -457,6 +502,34 @@ async def get_coaching_response_claude(
     context_rich = _is_context_rich(message)
     enforce_inquiry_first = early_turn and not context_rich and _is_broad_problem_statement(message)
 
+    # Stage heuristic (deterministic, internal)
+    stage = "diagnose" if enforce_inquiry_first else ("reframe" if early_turn else "options")
+
+    # Internal persona routing with per-session lock
+    session_id = _extract_session_id(context)
+    session_state = profile.get("session_state", {}) if isinstance(profile.get("session_state", {}), dict) else {}
+    locked_persona = None
+    if session_id:
+        locked_persona = (session_state.get(session_id) or {}).get("persona")
+
+    if locked_persona in INTERNAL_PERSONA_PROMPTS:
+        persona_used = locked_persona
+        persona_override_reason = "session_lock"
+    else:
+        persona_used, persona_override_reason = _select_internal_persona(
+            emotion_primary=ei.primary,
+            style_used=style_used,
+            stage=stage,
+        )
+        if session_id:
+            existing = session_state.get(session_id, {}) if isinstance(session_state.get(session_id, {}), dict) else {}
+            existing["persona"] = persona_used
+            existing["stage"] = stage
+            existing["turn_count"] = user_turn_count
+            session_state[session_id] = existing
+            profile["session_state"] = session_state
+            save_profile(user_id, profile)
+
     # ── Model selection ───────────────────────────────────────────────────
     user_context = {"escalation_risk": profile.get("escalation_risk", "none")}
     model, upgrade_reasons = select_model(history, message, user_context)
@@ -465,6 +538,7 @@ async def get_coaching_response_claude(
     style_prompt = STYLE_PROMPTS.get(style_used, "")
     system = "\n\n".join(filter(None, [
         GROW_SYSTEM_PROMPT,
+        INTERNAL_PERSONA_PROMPTS.get(persona_used),
         f"Coaching style this turn: {style_used}. {style_prompt}",
         f"Enhanced with thought leader framework:\n{framework}" if framework else None,
         f"Emotion detected: {emotion}. Goal alignment: {goal_link}.",
@@ -473,6 +547,7 @@ async def get_coaching_response_claude(
         f"Goal anchor: {goal_anchor}",
         "Structure each turn: (1) brief acknowledgment, (2) one diagnostic question OR one concise recommendation, (3) one concrete next step only when enough context exists.",
         "If the user message is broad (e.g., 'performance is slipping', 'I feel stuck', 'things are off'), ask one clarifying question first and avoid giving a long diagnosis.",
+        f"Conversation stage: {stage}.",
         f"Turn diagnostics: user_turn_count={user_turn_count}, context_rich={str(context_rich).lower()}, enforce_inquiry_first={str(enforce_inquiry_first).lower()}.",
         "If enforce_inquiry_first is true: ask exactly one clarifying question and avoid frameworks/advice lists in this turn.",
         build_context_packet(message, [{"role": h.get("role","user"), "content": h.get("content","")} for h in history], context),
@@ -532,6 +607,8 @@ async def get_coaching_response_claude(
         emotion_primary=ei.primary,
         context_triggers=ctx_triggers,
     )
+    if session_id and isinstance(session_state, dict) and session_state:
+        profile["session_state"] = session_state
     profile = update_behavior_signals(profile, style_used=style_used, goal_link=goal_link)
     save_profile(user_id, profile)
     style_shift = style_preference_shift(profile)
@@ -556,6 +633,9 @@ async def get_coaching_response_claude(
         "behavior_signals": {
             "style_preference_shift":    style_shift,
             "session_event_count":       len(profile.get("session_events", [])),
+            "persona_used":              persona_used,
+            "persona_override_reason":   persona_override_reason,
+            "stage_used":                stage,
         },
         "context_triggers":          ctx_triggers,
         "recommended_style_shift":   style_shift,

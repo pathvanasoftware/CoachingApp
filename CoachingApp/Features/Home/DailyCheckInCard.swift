@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct DailyCheckInCard: View {
-    let persona: CoachingPersonaType
     var onStartSession: () -> Void
 
     @State private var selectedSessionType: SessionType = .checkIn
@@ -10,16 +9,16 @@ struct DailyCheckInCard: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             // Header
             HStack(spacing: AppTheme.Spacing.md) {
-                PersonaAvatar(persona: persona, size: 48)
+                PersonaAvatar(persona: .directChallenger, size: 48)
 
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                     Text("Ready for a coaching session?")
                         .font(AppFonts.headline)
                         .foregroundStyle(AppTheme.textPrimary)
 
-                    Text(persona.displayName)
+                    Text("AI Leadership Coach")
                         .font(AppFonts.subheadline)
-                        .foregroundStyle(persona.accentColor)
+                        .foregroundStyle(AppTheme.textSecondary)
                 }
 
                 Spacer()
@@ -94,7 +93,6 @@ struct DailyCheckInCard: View {
 
 #Preview {
     DailyCheckInCard(
-        persona: .directChallenger,
         onStartSession: {}
     )
     .padding()

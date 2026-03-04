@@ -9,8 +9,8 @@ struct PersonaAvatar: View {
             .fill(AppTheme.primary)
             .frame(width: size, height: size)
             .overlay(
-                Text(String(persona.displayName.prefix(1)))
-                    .font(.system(size: size * 0.4))
+                Image(systemName: "person.fill")
+                    .font(.system(size: size * 0.36, weight: .semibold))
                     .foregroundStyle(.white)
             )
     }
