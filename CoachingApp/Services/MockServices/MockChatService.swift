@@ -84,6 +84,22 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
         Self._seededUsers.insert(userId)
     }
 
+    func clearUserData(userId: String) {
+        Self._lock.lock()
+        defer { Self._lock.unlock() }
+
+        let sessionIds = Self._sessions.values
+            .filter { $0.userId == userId }
+            .map(\.id)
+
+        for sessionId in sessionIds {
+            Self._sessions.removeValue(forKey: sessionId)
+            Self._messages.removeValue(forKey: sessionId)
+        }
+
+        Self._seededUsers.remove(userId)
+    }
+
     // MARK: - Canned Coaching Responses
 
     private let coachingResponses: [String] = [
