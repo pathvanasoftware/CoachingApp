@@ -10,6 +10,7 @@ final class AuthViewModel {
     var isSignUp: Bool = false
     var isLoading: Bool = false
     var errorMessage: String?
+    private var currentAppleNonce: String?
 
     var authService: AuthServiceProtocol
 
@@ -76,6 +77,14 @@ final class AuthViewModel {
     }
 
     @MainActor
+    func prepareAppleSignInRequest(_ request: ASAuthorizationAppleIDRequest) {
+        let nonce = Self.randomNonceString()
+        currentAppleNonce = nonce
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = nonce
+    }
+
+    @MainActor
     func signInWithApple(result: Result<ASAuthorization, any Error>, appState: AppState) {
         switch result {
         case .success(let authorization):
@@ -85,26 +94,38 @@ final class AuthViewModel {
                 return
             }
 
+            guard let nonce = currentAppleNonce, !nonce.isEmpty else {
+                errorMessage = "Apple Sign In security check failed. Please try again."
+                return
+            }
+
             isLoading = true
             errorMessage = nil
 
             Task {
+                defer { self.currentAppleNonce = nil }
                 do {
                     let user = try await authService.signInWithApple(
                         identityToken: identityToken,
-                        nonce: ""
+                        nonce: nonce
                     )
                     appState.useMockServices = false
                     appState.switchAPIEnvironment(APIEnvironment.production)
                     appState.signIn(userId: user.id, email: user.email, name: user.fullName ?? "")
+                } catch let error as AuthError {
+                    errorMessage = error.errorDescription
                 } catch {
-                    errorMessage = "Apple Sign In failed. Please try again."
+                    errorMessage = "Apple Sign In failed: \(error.localizedDescription)"
                 }
                 isLoading = false
             }
 
-        case .failure:
-            errorMessage = "Apple Sign In was cancelled or failed."
+        case .failure(let error):
+            if let authError = error as? ASAuthorizationError, authError.code == .canceled {
+                errorMessage = nil
+            } else {
+                errorMessage = "Apple Sign In was cancelled or failed."
+            }
         }
     }
 
@@ -143,5 +164,16 @@ final class AuthViewModel {
         errorMessage = nil
         password = ""
         confirmPassword = ""
+    }
+
+    private static func randomNonceString(length: Int = 32) -> String {
+        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        var result = ""
+        result.reserveCapacity(length)
+
+        for _ in 0..<length {
+            result.append(charset[Int.random(in: 0..<charset.count)])
+        }
+        return result
     }
 }

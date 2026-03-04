@@ -1,6 +1,7 @@
 import pytest
 import tempfile
 import os
+from typing import Optional
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -283,6 +284,29 @@ class TestAppleSignIn:
             json={"identity_token": "invalid-apple-token"},
         )
         assert response.status_code == 401
+
+    def test_apple_signin_success_with_nonce(self, client, monkeypatch):
+        async def _fake_verify(identity_token: str, expected_nonce: Optional[str] = None):
+            assert identity_token == "valid-apple-token"
+            assert expected_nonce == "nonce-123"
+            return {
+                "sub": "apple-sub-123",
+                "email": "apple.user@example.com",
+                "name": "Apple User",
+                "nonce": "nonce-123",
+            }
+
+        monkeypatch.setattr("app.routers.auth.verify_apple_token", _fake_verify)
+
+        response = client.post(
+            "/api/auth/apple",
+            json={"identity_token": "valid-apple-token", "nonce": "nonce-123"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert "access_token" in body
+        assert "refresh_token" in body
+        assert body["user"]["email"] == "apple.user@example.com"
 
 
 class TestFullAuthFlow:

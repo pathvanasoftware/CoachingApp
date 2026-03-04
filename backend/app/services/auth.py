@@ -1,6 +1,7 @@
 import os
 import json
 import secrets
+import hashlib
 from urllib.parse import urlencode
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
@@ -302,7 +303,16 @@ async def exchange_google_code(code: str, redirect_uri: str) -> Optional[dict]:
         return user_response.json()
 
 
-async def verify_apple_token(identity_token: str) -> Optional[dict]:
+def _nonce_matches(claim_nonce: str, expected_nonce: str) -> bool:
+    if not claim_nonce or not expected_nonce:
+        return False
+    if secrets.compare_digest(claim_nonce, expected_nonce):
+        return True
+    expected_hash = hashlib.sha256(expected_nonce.encode("utf-8")).hexdigest()
+    return secrets.compare_digest(claim_nonce, expected_hash)
+
+
+async def verify_apple_token(identity_token: str, expected_nonce: Optional[str] = None) -> Optional[dict]:
     import httpx
     async with httpx.AsyncClient() as client:
         response = await client.get("https://appleid.apple.com/auth/keys")
@@ -315,6 +325,10 @@ async def verify_apple_token(identity_token: str) -> Optional[dict]:
             from jwt.algorithms import RSAAlgorithm
             public_key = RSAAlgorithm.from_jwk(json.dumps(key))
             payload = jwt.decode(identity_token, public_key, algorithms=["RS256"], audience="com.pathvana.ascendra")
+            if expected_nonce:
+                claim_nonce = payload.get("nonce")
+                if not isinstance(claim_nonce, str) or not _nonce_matches(claim_nonce, expected_nonce):
+                    return None
             return payload
         except jwt.InvalidTokenError:
             continue

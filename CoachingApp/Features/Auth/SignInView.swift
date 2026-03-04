@@ -69,7 +69,7 @@ struct SignInView: View {
 
                     // Apple Sign In
                     SignInWithAppleButton(.signIn) { request in
-                        request.requestedScopes = [.fullName, .email]
+                        viewModel.prepareAppleSignInRequest(request)
                     } onCompletion: { result in
                         appState.useMockServices = false
                         services.configure(useMockServices: false, apiEnvironment: appState.apiEnvironment)

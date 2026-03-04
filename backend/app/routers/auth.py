@@ -77,7 +77,7 @@ async def register(request: RegisterRequest):
 
 @router.post("/apple")
 async def apple_signin(request: AppleSignInRequest):
-    apple_user = await verify_apple_token(request.identity_token)
+    apple_user = await verify_apple_token(request.identity_token, expected_nonce=request.nonce)
     if not apple_user:
         raise HTTPException(status_code=401, detail="Invalid Apple identity token")
     
