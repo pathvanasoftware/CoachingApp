@@ -100,7 +100,11 @@ final class ChatViewModel {
         currentSession = session
 
         do {
-            messages = try await chatService.getMessages(sessionId: session.id)
+            if let (_, savedMessages) = try await historyStorage.loadSession(id: session.id), !savedMessages.isEmpty {
+                messages = savedMessages
+            } else {
+                messages = try await chatService.getMessages(sessionId: session.id)
+            }
 
             if session.isActive {
                 // Calculate elapsed time from session start

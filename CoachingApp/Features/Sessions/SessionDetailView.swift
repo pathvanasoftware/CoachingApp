@@ -8,6 +8,7 @@ struct SessionDetailView: View {
     @State private var showFullTranscript = false
 
     private let chatService: ChatServiceProtocol
+    private let historyStorage = ChatHistoryStorage.shared
 
     init(
         session: CoachingSession,
@@ -311,7 +312,11 @@ struct SessionDetailView: View {
     private func loadMessages() async {
         isLoading = true
         do {
-            messages = try await chatService.getMessages(sessionId: session.id)
+            if let (_, savedMessages) = try await historyStorage.loadSession(id: session.id), !savedMessages.isEmpty {
+                messages = savedMessages
+            } else {
+                messages = try await chatService.getMessages(sessionId: session.id)
+            }
         } catch {
             messages = []
         }

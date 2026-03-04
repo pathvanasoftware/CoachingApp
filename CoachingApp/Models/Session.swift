@@ -60,7 +60,7 @@ enum SessionType: String, Codable, CaseIterable {
         case .checkIn: return "Check-in"
         case .deepDive: return "Deep Dive"
         case .goalReview: return "Goal Review"
-        case .freeform: return "Freeform"
+        case .freeform: return "Open Session"
         }
     }
 
