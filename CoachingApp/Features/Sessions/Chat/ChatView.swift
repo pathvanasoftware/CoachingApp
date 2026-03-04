@@ -5,6 +5,8 @@ struct ChatView: View {
     @Environment(ServiceContainer.self) private var services
     @State private var viewModel: ChatViewModel
     @State private var hasInitialized = false
+    @State private var showShareSheet = false
+    @State private var exportURL: URL?
 
     // Configuration for starting a new session
     private let sessionType: SessionType?
@@ -129,11 +131,24 @@ struct ChatView: View {
                             Label("End Session", systemImage: "stop.circle.fill")
                         }
                     }
+
+                    Divider()
+
+                    Button {
+                        exportConversation()
+                    } label: {
+                        Label("Export Conversation", systemImage: "square.and.arrow.up")
+                    }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .font(.system(size: 18))
                         .foregroundStyle(AppTheme.primary)
                 }
+            }
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if let url = exportURL {
+                ShareSheet(activityItems: [url])
             }
         }
         .task {
@@ -160,8 +175,8 @@ struct ChatView: View {
     private var showTypingIndicator: Bool {
         guard viewModel.isStreaming else { return false }
         if let last = viewModel.messages.last,
-           last.isFromCoach,
-           last.isStreaming {
+            last.isFromCoach,
+            last.isStreaming {
             return false
         }
         return true
@@ -171,6 +186,17 @@ struct ChatView: View {
         if appState.useMockServices { return .orange }
         if appState.apiEnvironment == .localhost { return .red }
         return .green
+    }
+
+    private func exportConversation() {
+        guard let session = viewModel.currentSession, !viewModel.messages.isEmpty else { return }
+        let url = SessionExportService.shareSession(
+            session: session,
+            messages: viewModel.messages,
+            as: .markdown
+        )
+        exportURL = url
+        showShareSheet = true
     }
 
     // MARK: - Subviews
