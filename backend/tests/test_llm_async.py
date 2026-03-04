@@ -81,3 +81,70 @@ def test_get_coaching_response_exception_fallback(tmp_path, monkeypatch):
 
     assert "I'm here to help" in resp.response
     assert len(resp.quick_replies) == 4
+
+
+# ---------------------------------------------------------------------------
+# Inquiry-First Behavior Tests
+# ---------------------------------------------------------------------------
+
+def test_inquiry_first_broad_input_asks_question(tmp_path, monkeypatch):
+    """Broad inputs should result in a clarifying question."""
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"I hear you. What specifically about performance feels off — is it output, quality, or engagement?", "quick_replies":["Output is down","Quality is slipping","Engagement is low","All of the above"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    req = llm.CoachingRequest(message="My team's performance is slipping", user_id="u5")
+    resp = asyncio.run(llm.get_coaching_response(req))
+
+    assert "?" in resp.response, "Broad input should result in a clarifying question"
+
+
+def test_inquiry_first_no_long_framework_early_turn(tmp_path, monkeypatch):
+    """Early turns with sparse context should avoid long numbered frameworks."""
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"That sounds frustrating. Before I suggest anything, what would \"back on track\" look like for you in concrete terms?", "quick_replies":["Clear priorities","Better execution","More alignment","All of these"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    req = llm.CoachingRequest(message="I feel stuck and need to get back on track", user_id="u6")
+    resp = asyncio.run(llm.get_coaching_response(req))
+
+    assert "1." not in resp.response or "?" in resp.response, \
+        "Early turn should ask a question, not present a numbered framework"
+
+
+def test_inquiry_first_concise_response(tmp_path, monkeypatch):
+    """Responses should remain within word limit."""
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"Got it. Let me ask: what is the one outcome that would make this conversation worthwhile for you today?", "quick_replies":["Clear next step","Better understanding","Confidence in plan","Validation of approach"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    req = llm.CoachingRequest(message="Help me think through a career decision", user_id="u7")
+    resp = asyncio.run(llm.get_coaching_response(req))
+
+    word_count = len(resp.response.split())
+    assert word_count <= 120, f"Response should be <= 120 words, got {word_count}"
+
+
+def test_inquiry_first_single_question_only(tmp_path, monkeypatch):
+    """Response should contain at most one question mark."""
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"I understand. What is the most pressing aspect of this for you right now?", "quick_replies":["Time pressure","Stakeholder expectations","Personal uncertainty","All of them"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    req = llm.CoachingRequest(message="Things feel off and I am not sure what to do", user_id="u8")
+    resp = asyncio.run(llm.get_coaching_response(req))
+
+    question_count = resp.response.count("?")
+    assert question_count <= 1, f"Response should have at most 1 question, got {question_count}"
