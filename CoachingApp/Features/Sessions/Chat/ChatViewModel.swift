@@ -84,8 +84,8 @@ final class ChatViewModel {
             messages = []
             startTimer()
 
-            // Stream the initial greeting from the coach
-            await streamInitialGreeting(for: session)
+            // Render initial greeting instantly from local templates.
+            appendLocalOpening(for: session)
         } catch {
             errorMessage = "Failed to start session: \(error.localizedDescription)"
         }
@@ -238,16 +238,14 @@ final class ChatViewModel {
     // MARK: - Private Helpers
 
     @MainActor
-    private func streamInitialGreeting(for session: CoachingSession) async {
-        isStreaming = true
-        var receivedCoachText = false
+    private func appendLocalOpening(for session: CoachingSession) {
+        let candidates = openingCandidates(for: session)
+        let opening = candidates[stableIndex(seed: session.id, count: candidates.count)]
 
-        // Create a placeholder assistant message
         let assistantMessage = ChatMessage(
             sessionId: session.id,
             role: .assistant,
-            content: "",
-            isStreaming: true,
+            content: opening,
             diagnostics: CoachingDiagnostics(
                 styleUsed: selectedCoachingStyle.displayName,
                 emotionDetected: "neutral",
@@ -260,61 +258,101 @@ final class ChatViewModel {
                 recommendedStyleShift: nil
             )
         )
+
         messages.append(assistantMessage)
+        currentQuickReplies = openingQuickReplies(for: session.sessionType)
+        saveCurrentSession()
+    }
 
-        let stream = streamingService.streamResponse(
-            sessionId: session.id,
-            message: "Start this coaching session with one short, practical opening question.",
-            persona: session.persona,
-            coachingStyle: selectedCoachingStyle
-        )
-
-        do {
-            for try await token in stream {
-                guard let lastIndex = messages.indices.last else { break }
-                if applyDiagnosticsIfMetaToken(token, messageIndex: lastIndex) { continue }
-                if applySuggestionsIfSuggestionsToken(token) { continue }
-                if !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    receivedCoachText = true
-                }
-                messages[lastIndex].content += token
-            }
-        } catch {
-            errorMessage = error.localizedDescription
+    private func stableIndex(seed: String, count: Int) -> Int {
+        guard count > 0 else { return 0 }
+        let checksum = seed.utf8.reduce(0) { partial, byte in
+            (partial * 31 + Int(byte)) % 1_000_000
         }
+        return checksum % count
+    }
 
-        // Finalize the message
-        if let lastIndex = messages.indices.last {
-            messages[lastIndex].isStreaming = false
-            if !receivedCoachText || messages[lastIndex].content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                messages[lastIndex].content = initialPrompt(for: session)
-                if currentQuickReplies.isEmpty {
-                    currentQuickReplies = [
-                        QuickReply(id: UUID().uuidString, text: "I feel stuck on priorities", type: .clarification),
-                        QuickReply(id: UUID().uuidString, text: "I need help with a tough conversation", type: .guidance),
-                        QuickReply(id: UUID().uuidString, text: "I want a clear action plan", type: .action)
-                    ]
-                }
+    private func openingCandidates(for session: CoachingSession) -> [String] {
+        switch selectedCoachingStyle {
+        case .directive:
+            switch session.sessionType {
+            case .checkIn:
+                return ["Let's get straight to it: what is the single highest-stakes issue today?", "What is the one conversation you're avoiding that is costing you the most right now?"]
+            case .deepDive:
+                return ["Name the toughest challenge right now and the outcome you need.", "What problem do you want to dissect first so we can leave with a concrete move?"]
+            case .freeform:
+                return ["What's the one thing you want to leave this session with?", "If we solve one issue in this session, which one matters most?"]
+            case .goalReview:
+                return ["Which goal is currently off track, and by how much?", "What changed since your last goal check-in that we need to address now?"]
             }
-        }
-
-        isStreaming = false
-        if pendingHumanCoachRequest {
-            pendingHumanCoachRequest = false
-            evaluateHumanCoachRequest()
+        case .facilitative:
+            switch session.sessionType {
+            case .checkIn:
+                return ["What's most alive for you today, and why does it matter now?", "What would make this check-in genuinely useful for you?"]
+            case .deepDive:
+                return ["What challenge feels worth unpacking deeply right now?", "Where would you like to spend time exploring before deciding on action?"]
+            case .freeform:
+                return ["Where would you like to begin today?", "What feels most important to explore first?"]
+            case .goalReview:
+                return ["Which goal would you like to review first, and what has shifted?", "As you look at your goals, where do you feel momentum and where do you feel friction?"]
+            }
+        case .supportive:
+            switch session.sessionType {
+            case .checkIn:
+                return ["Before we dive in, how are you arriving today?", "What feels heavy right now, and what would help by the end of this check-in?"]
+            case .deepDive:
+                return ["What situation has been taking the most energy lately?", "Which challenge feels most important to unpack with care right now?"]
+            case .freeform:
+                return ["What would feel most supportive to focus on first?", "Where would you like to start today so this feels helpful and practical?"]
+            case .goalReview:
+                return ["Which goal would feel best to revisit today?", "What progress are you proud of, and where do you need support next?"]
+            }
+        case .strategic:
+            switch session.sessionType {
+            case .checkIn:
+                return ["What decision or outcome has the biggest strategic impact this week?", "If we optimize one priority today, which one changes the most downstream?"]
+            case .deepDive:
+                return ["What complex challenge do you want to map clearly before acting?", "Which situation needs a sharper strategy right now?"]
+            case .freeform:
+                return ["What objective should we design a plan around first?", "What result do you want to drive from this session?"]
+            case .goalReview:
+                return ["Which goal needs a strategy adjustment right now?", "What changed in your context that affects your current plan?"]
+            }
+        case .auto:
+            switch session.sessionType {
+            case .checkIn:
+                return ["Before we dive in, what is the one thing that would make today feel like progress for you?", "What is the most important thing to get clarity on in this check-in?"]
+            case .deepDive:
+                return ["What challenge feels most important to unpack deeply right now, and why this one?", "What topic should we go deep on first so this session is worth your time?"]
+            case .freeform:
+                return ["What would you like to focus on first in this session?", "What feels most important to tackle right now?"]
+            case .goalReview:
+                return ["Which goal would you like to review, and what changed since your last check-in?", "Which goal needs attention first today, and what has shifted around it?"]
+            }
         }
     }
 
-    private func initialPrompt(for session: CoachingSession) -> String {
-        switch session.sessionType {
+    private func openingQuickReplies(for sessionType: SessionType) -> [QuickReply] {
+        let texts: [String]
+        switch sessionType {
         case .checkIn:
-            return "Before we dive in, what is the one thing that would make today feel like progress for you?"
+            texts = ["I feel stuck on priorities", "I need help with a tough conversation", "I want one clear next step"]
         case .deepDive:
-            return "What challenge feels most important to unpack deeply right now, and why this one?"
+            texts = ["Let's unpack a stakeholder issue", "I need to think through trade-offs", "I want to understand what's blocking me"]
         case .freeform:
-            return "What would you like to focus on first in this session?"
+            texts = ["I need clarity on a decision", "Help me plan this week", "I want feedback on my approach"]
         case .goalReview:
-            return "Which goal would you like to review, and what changed since your last check-in?"
+            texts = ["Review progress and gaps", "Adjust my plan for this goal", "Set next milestones"]
+        }
+
+        return texts.enumerated().map { index, text in
+            let type: QuickReplyType
+            switch index {
+            case 0: type = .clarification
+            case 1: type = .guidance
+            default: type = .action
+            }
+            return QuickReply(id: UUID().uuidString, text: text, type: type)
         }
     }
 
