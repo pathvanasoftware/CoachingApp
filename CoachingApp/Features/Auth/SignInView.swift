@@ -44,9 +44,15 @@ struct SignInView: View {
                         }
                     } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: "globe")
-                                .font(.system(size: 18, weight: .medium))
-                            Text("Continue with Google")
+                            if viewModel.isLoading {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                    .tint(.black)
+                            } else {
+                                Image(systemName: "globe")
+                                    .font(.system(size: 18, weight: .medium))
+                            }
+                            Text(viewModel.isLoading ? "Connecting..." : "Continue with Google")
                                 .font(.headline)
                         }
                         .frame(maxWidth: .infinity)
@@ -59,6 +65,7 @@ struct SignInView: View {
                         )
                     }
                     .foregroundStyle(.black)
+                    .disabled(viewModel.isLoading)
 
                     // Apple Sign In
                     SignInWithAppleButton(.signIn) { request in
@@ -71,6 +78,7 @@ struct SignInView: View {
                     .signInWithAppleButtonStyle(.black)
                     .frame(height: 50)
                     .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+                    .disabled(viewModel.isLoading)
 
 #if DEBUG
                     Button {
@@ -90,6 +98,7 @@ struct SignInView: View {
                             .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
                     }
                     .foregroundStyle(AppTheme.textPrimary)
+                    .disabled(viewModel.isLoading)
 #endif
 
                 }

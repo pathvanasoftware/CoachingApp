@@ -125,7 +125,14 @@ final class AuthViewModel {
                 errorMessage = error.errorDescription
             }
         } catch {
-            errorMessage = "Google Sign In failed: \(error.localizedDescription)"
+            let nsError = error as NSError
+            let isCancelled = nsError.domain == ASWebAuthenticationSessionError.errorDomain
+                && nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue
+            if isCancelled {
+                // User cancelled - don't show error
+            } else {
+                errorMessage = "Google Sign In failed: \(error.localizedDescription)"
+            }
         }
 
         isLoading = false

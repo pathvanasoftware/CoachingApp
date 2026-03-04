@@ -210,8 +210,17 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
             ) { [weak self] callbackURL, error in
                 self?.webAuthSession = nil
                 if let error {
-                    print("[GoogleAuth] ASWebAuthenticationSession error: \(error.localizedDescription)")
-                    continuation.resume(throwing: error)
+                    let nsError = error as NSError
+                    let isCancelled = (error as? ASWebAuthenticationSessionError)?.code == .canceledLogin
+                        || (nsError.domain == ASWebAuthenticationSessionError.errorDomain
+                            && nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue)
+                    if isCancelled {
+                        print("[GoogleAuth] ASWebAuthenticationSession cancelled by user")
+                        continuation.resume(throwing: AuthError.oauthCancelled)
+                    } else {
+                        print("[GoogleAuth] ASWebAuthenticationSession error: \(error.localizedDescription)")
+                        continuation.resume(throwing: error)
+                    }
                 } else if let callbackURL {
                     print("[GoogleAuth] Got callback URL: \(callbackURL.absoluteString)")
                     continuation.resume(returning: callbackURL)
