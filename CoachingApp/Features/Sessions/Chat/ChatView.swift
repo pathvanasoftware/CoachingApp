@@ -297,7 +297,7 @@ struct ChatView: View {
             await viewModel.startSession(
                 type: sessionType,
                 persona: persona,
-                userId: appState.currentUserId ?? "mock-user-id"
+                userId: appState.currentUserId ?? "test-user-001"
             )
         }
     }
