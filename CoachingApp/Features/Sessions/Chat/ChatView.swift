@@ -7,6 +7,7 @@ struct ChatView: View {
     @State private var hasInitialized = false
     @State private var showShareSheet = false
     @State private var exportURL: URL?
+    @State private var showCoachModeSheet = false
 
     // Configuration for starting a new session
     private let sessionType: SessionType?
@@ -98,13 +99,18 @@ struct ChatView: View {
                         SessionTimerView(elapsedSeconds: viewModel.elapsedSeconds)
                     }
                     HStack(spacing: 6) {
-                        Text("Mode: \(coachModeLabel)")
-                            .font(AppFonts.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(AppTheme.primary.opacity(0.14))
-                            .foregroundStyle(AppTheme.primary)
-                            .clipShape(Capsule())
+                        Button {
+                            showCoachModeSheet = true
+                        } label: {
+                            Text("Mode: \(coachModeLabel)")
+                                .font(AppFonts.caption2)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(AppTheme.primary.opacity(0.14))
+                                .foregroundStyle(AppTheme.primary)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
 
                         Text(connectionModeLabel)
                             .font(AppFonts.caption2)
@@ -159,6 +165,14 @@ struct ChatView: View {
         .sheet(isPresented: $showShareSheet) {
             if let url = exportURL {
                 ShareSheet(activityItems: [url])
+            }
+        }
+        .sheet(isPresented: $showCoachModeSheet) {
+            NavigationStack {
+                CoachModeQuickSettingsView(selectedStyle: Binding(
+                    get: { appState.selectedCoachingStyle },
+                    set: { appState.selectedCoachingStyle = $0 }
+                ))
             }
         }
         .task {
@@ -318,6 +332,44 @@ struct ChatView: View {
                 persona: persona,
                 userId: appState.currentUserId ?? "test-user-001"
             )
+        }
+    }
+}
+
+private struct CoachModeQuickSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedStyle: CoachingStyle
+
+    var body: some View {
+        List {
+            ForEach(CoachingStyle.allCases) { style in
+                Button {
+                    selectedStyle = style
+                } label: {
+                    HStack {
+                        Text(style.displayName)
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Spacer()
+                        if selectedStyle == style {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(AppTheme.primary)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .padding(.vertical, 6)
+                }
+                .buttonStyle(.borderless)
+                .listRowBackground(selectedStyle == style ? AppTheme.primary.opacity(0.08) : Color.clear)
+            }
+        }
+        .navigationTitle("Coach Mode")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") {
+                    dismiss()
+                }
+            }
         }
     }
 }
