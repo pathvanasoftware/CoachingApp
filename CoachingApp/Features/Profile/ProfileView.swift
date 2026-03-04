@@ -36,30 +36,18 @@ struct ProfileView: View {
                 // MARK: - Stats
                 Section {
                     LabeledContent("Engagement Streak", value: "\(appState.engagementStreak) days")
-                    LabeledContent("Preferred Style", value: appState.selectedCoachingStyle.displayName)
-                } header: {
-                    Text("Your Progress")
-                }
-
-                // MARK: - API Configuration
-                Section {
-                    Picker("API Environment", selection: Binding(
-                        get: { appState.apiEnvironment },
-                        set: { appState.switchAPIEnvironment($0) }
-                    )) {
-                        ForEach(APIEnvironment.allCases, id: \.self) { env in
-                            Text(env.description).tag(env)
+                    NavigationLink {
+                        CoachingStyleSettingsView(appState: appState)
+                    } label: {
+                        HStack {
+                            Text("Preferred Style")
+                            Spacer()
+                            Text(appState.selectedCoachingStyle.displayName)
+                                .foregroundStyle(.secondary)
                         }
                     }
-                    .pickerStyle(.navigationLink)
-
-                    LabeledContent("Current URL", value: appState.apiEnvironment.baseURL)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 } header: {
-                    Text("API Configuration")
-                } footer: {
-                    Text("Switch between local development and production servers.")
+                    Text("Your Progress")
                 }
 
                 // MARK: - Debug Options
@@ -93,6 +81,40 @@ struct ProfileView: View {
             }
             .navigationTitle("Profile")
         }
+    }
+}
+
+private struct CoachingStyleSettingsView: View {
+    @Bindable var appState: AppState
+
+    var body: some View {
+        List {
+            ForEach(CoachingStyle.allCases) { style in
+                Button {
+                    appState.selectedCoachingStyle = style
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(style.displayName)
+                                .foregroundStyle(AppTheme.textPrimary)
+                            if style == .auto {
+                                Text("Lets the coach choose the best mode per turn")
+                                    .font(AppFonts.caption)
+                                    .foregroundStyle(AppTheme.textSecondary)
+                            }
+                        }
+                        Spacer()
+                        if appState.selectedCoachingStyle == style {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(AppTheme.primary)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .navigationTitle("Coach Mode")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
