@@ -133,32 +133,15 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
             throw StreamingError.httpError(statusCode: httpResponse.statusCode)
         }
 
-        // Parse SSE (Server-Sent Events) stream using UTF-8 line decoding.
-        // This avoids per-byte character assembly issues with multi-byte Unicode.
-        var eventLines: [String] = []
-
+        // Parse SSE stream line-by-line in UTF-8.
+        // Backend emits one `data:` JSON payload per line, so we can process directly.
         for try await rawLine in bytes.lines {
             let line = rawLine.trimmingCharacters(in: .newlines)
-            if line.trimmingCharacters(in: .whitespaces).isEmpty {
-                let eventString = eventLines.joined(separator: "\n")
-                eventLines.removeAll(keepingCapacity: true)
-
-                if let token = parseSSEEvent(eventString) {
-                    if token == "[DONE]" {
-                        continuation.finish()
-                        return
-                    }
-                    continuation.yield(token)
+            if let token = parseSSELine(line) {
+                if token == "[DONE]" {
+                    continuation.finish()
+                    return
                 }
-            } else {
-                eventLines.append(line)
-            }
-        }
-
-        // Process any remaining buffered event lines.
-        if !eventLines.isEmpty {
-            let eventString = eventLines.joined(separator: "\n")
-            if let token = parseSSEEvent(eventString), token != "[DONE]" {
                 continuation.yield(token)
             }
         }
@@ -168,53 +151,34 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
 
     // MARK: - Private: SSE Parsing
 
-    /// Parse a Server-Sent Event block and extract the data payload.
-    ///
-    /// SSE format:
-    /// ```
-    /// event: message
-    /// data: {"token": "Hello"}
-    /// ```
-    private func parseSSEEvent(_ event: String) -> String? {
-        let lines = event.components(separatedBy: "\n")
+    /// Parse a single SSE line and extract the data payload.
+    private func parseSSELine(_ line: String) -> String? {
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
 
-        for line in lines {
-            // Skip comments (lines starting with ":")
-            if line.hasPrefix(":") {
-                continue
+        if trimmed.hasPrefix(":") { return nil }
+        guard trimmed.hasPrefix("data:") else { return nil }
+
+        let data = String(trimmed.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+        guard !data.isEmpty else { return nil }
+
+        if data == "[DONE]" {
+            return data
+        }
+
+        if let jsonData = data.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+            if let token = json["token"] as? String {
+                return token
             }
-
-            // Extract data field
-            if line.hasPrefix("data: ") {
-                let data = String(line.dropFirst(6))
-
-                // Try to parse as JSON with a "token" field
-                if let jsonData = data.data(using: .utf8),
-                   let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
-                    if let token = json["token"] as? String {
-                        return token
-                    }
-                    if let meta = json["meta"] {
-                        if let metaData = try? JSONSerialization.data(withJSONObject: meta),
-                           let metaString = String(data: metaData, encoding: .utf8) {
-                            return "__META__:\(metaString)"
-                        }
-                    }
-                }
-
-                // If not JSON, return raw data (could be "[DONE]" or plain text)
-                return data
-            }
-
-            if line.hasPrefix("data:") {
-                let data = String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)
-                if !data.isEmpty {
-                    return data
-                }
+            if let meta = json["meta"],
+               let metaData = try? JSONSerialization.data(withJSONObject: meta),
+               let metaString = String(data: metaData, encoding: .utf8) {
+                return "__META__:\(metaString)"
             }
         }
 
-        return nil
+        return data
     }
 }
 
