@@ -72,6 +72,26 @@ struct SignInView: View {
                     .frame(height: 50)
                     .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
 
+#if DEBUG
+                    Button {
+                        appState.useMockServices = true
+                        services.configure(useMockServices: true, apiEnvironment: appState.apiEnvironment)
+                        appState.signIn(
+                            userId: "test-user-001",
+                            email: "debug@pathvana.local",
+                            name: "Debug User"
+                        )
+                    } label: {
+                        Text("Continue without login (Debug)")
+                            .font(.subheadline.weight(.medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(AppTheme.secondaryBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+                    }
+                    .foregroundStyle(AppTheme.textPrimary)
+#endif
+
                 }
 
                 if let errorMessage = viewModel.errorMessage {
