@@ -65,6 +65,12 @@ GROW_SYSTEM_PROMPT = """You are an expert Career & Executive Coach using the GRO
 - Focus on actionable outcomes
 - Celebrate progress and insights
 
+**Inquiry-First Rule:**
+- For early turns (or when details are sparse), prioritize diagnosis over advice.
+- Ask exactly one high-leverage clarifying question before giving recommendations.
+- Do not present multi-point frameworks or long explanations until enough specifics are known.
+- Once context is clear, provide one concise recommendation plus one follow-up question.
+
 **Crisis Protocol:**
 If someone explicitly expresses thoughts of self-harm or suicide:
 1. Express genuine concern
@@ -391,7 +397,8 @@ async def get_coaching_response_claude(
         f"Persistent profile: {json.dumps(profile, ensure_ascii=False)}",
         f"Goal hierarchy: {json.dumps(goal_hierarchy, ensure_ascii=False)}",
         f"Goal anchor: {goal_anchor}",
-        "Structure each turn: (1) brief acknowledgment, (2) core coaching move, (3) one concrete next step.",
+        "Structure each turn: (1) brief acknowledgment, (2) one diagnostic question OR one concise recommendation, (3) one concrete next step only when enough context exists.",
+        "If the user message is broad (e.g., 'performance is slipping', 'I feel stuck', 'things are off'), ask one clarifying question first and avoid giving a long diagnosis.",
         build_context_packet(message, [{"role": h.get("role","user"), "content": h.get("content","")} for h in history], context),
         "Return ONLY valid JSON: {\"response\": string, \"quick_replies\": [string×4], \"suggested_actions\": [string]}. "
         "quick_replies must be 3-8 words, user-selectable, tailored to the message. No markdown outside JSON.",
