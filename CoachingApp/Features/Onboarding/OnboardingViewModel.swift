@@ -24,6 +24,15 @@ final class OnboardingViewModel {
         if let name = appState.currentUserName {
             onboardingData.userName = name
         }
+
+        // Launch argument for onboarding step
+        let args = ProcessInfo.processInfo.arguments
+        if let stepArg = args.first(where: { $0.hasPrefix("--onboarding-step=") }) {
+            let stepValue = stepArg.replacingOccurrences(of: "--onboarding-step=", with: "")
+            if let step = Int(stepValue), let onboardingStep = OnboardingStep(rawValue: step) {
+                currentStep = onboardingStep
+            }
+        }
     }
 
     // MARK: - Computed Properties

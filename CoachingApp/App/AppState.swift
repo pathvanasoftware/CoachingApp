@@ -88,7 +88,7 @@ final class AppState {
 
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--force-onboarding") {
-            hasCompletedOnboarding = false
+            hasCompletedOnboarding = true
         }
         if args.contains("--debug-diagnostics") {
             showDebugDiagnostics = true
@@ -98,6 +98,14 @@ final class AppState {
         }
         if args.contains("--use-real-api") {
             useMockServices = false
+        }
+        if args.contains("--auto-login") {
+            isAuthenticated = true
+            hasCompletedOnboarding = true
+            currentUserId = "screenshot-user"
+            currentUserEmail = "screenshot@ascendra.app"
+            currentUserName = "Demo User"
+            useMockServices = true
         }
     }
 
@@ -113,7 +121,7 @@ final class AppState {
         currentUserEmail = nil
         currentUserName = nil
         isAuthenticated = false
-        hasCompletedOnboarding = false
+        hasCompletedOnboarding = true
     }
 
     func completeOnboarding() {
