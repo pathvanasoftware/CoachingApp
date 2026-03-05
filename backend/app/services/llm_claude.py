@@ -724,6 +724,10 @@ async def get_coaching_response_claude(
         if isinstance(raw_session_entry, dict):
             session_entry = raw_session_entry
 
+    raw_state_rev = session_entry.get("state_rev", 0)
+    pre_state_rev = int(raw_state_rev) if isinstance(raw_state_rev, int) else 0
+    post_state_rev = pre_state_rev
+
     previous_stage = session_entry.get("stage") if isinstance(session_entry.get("stage"), str) else None
     raw_previous_topics = session_entry.get("topic_signature")
     previous_topics = [str(t) for t in raw_previous_topics if isinstance(t, str)] if isinstance(raw_previous_topics, list) else []
@@ -759,17 +763,6 @@ async def get_coaching_response_claude(
             style_used=style_used,
             stage=stage,
         )
-    if session_id:
-        session_entry["persona"] = persona_used
-        session_entry["stage"] = stage
-        session_entry["stage_reason"] = stage_reason
-        session_entry["turn_count"] = user_turn_count
-        session_entry["topic_signature"] = signals.topic_signature
-        session_entry["signals"] = asdict(signals)
-        session_state[session_id] = session_entry
-        profile["session_state"] = session_state
-        save_profile(user_id, profile)
-
     # ── Model selection ───────────────────────────────────────────────────
     user_context = {"escalation_risk": profile.get("escalation_risk", "none")}
     model, upgrade_reasons = select_model(history, message, user_context)
@@ -803,6 +796,7 @@ async def get_coaching_response_claude(
     messages.append({"role": "user", "content": message})
 
     # ── LLM call ─────────────────────────────────────────────────────────
+    llm_succeeded = False
     try:
         if _anthropic_available():
             raw = await _claude_complete(model=model, system=system, messages=messages, max_tokens=800)
@@ -835,6 +829,8 @@ async def get_coaching_response_claude(
         elif len(quick_replies) < 2:
             quick_replies = _generate_quick_replies(message, ai_response, context)
 
+        llm_succeeded = True
+
     except Exception as exc:
         logger.error("LLM call failed: %s", exc)
         ai_response = "I'm here to help you work through this. Could you tell me more about what's on your mind?"
@@ -844,6 +840,17 @@ async def get_coaching_response_claude(
         upgrade_reasons = []
 
     # ── Update profile ────────────────────────────────────────────────────
+    if session_id and llm_succeeded:
+        session_entry["persona"] = persona_used
+        session_entry["stage"] = stage
+        session_entry["stage_reason"] = stage_reason
+        session_entry["turn_count"] = user_turn_count
+        session_entry["topic_signature"] = signals.topic_signature
+        session_entry["signals"] = asdict(signals)
+        session_entry["state_rev"] = pre_state_rev + 1
+        post_state_rev = pre_state_rev + 1
+        session_state[session_id] = session_entry
+
     profile = update_profile_from_turn(
         user_id, message, goal_link,
         style_used=style_used,
@@ -881,6 +888,8 @@ async def get_coaching_response_claude(
             "stage_used":                stage,
             "stage_reason":              stage_reason,
             "topic_shift":               topic_shift,
+            "pre_state_rev":            pre_state_rev,
+            "post_state_rev":           post_state_rev,
         },
         "context_triggers":          ctx_triggers,
         "recommended_style_shift":   style_shift,

@@ -5,6 +5,7 @@ import Foundation
 protocol StreamingServiceProtocol: Sendable {
     func streamResponse(
         sessionId: String,
+        requestId: String,
         message: String,
         persona: CoachingPersonaType,
         coachingStyle: CoachingStyle?
@@ -15,6 +16,7 @@ protocol StreamingServiceProtocol: Sendable {
 
 private struct StreamingRequest: Codable {
     let sessionId: String
+    let requestId: String
     let message: String
     let persona: String
     let coachingStyle: String?
@@ -57,6 +59,7 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
 
     func streamResponse(
         sessionId: String,
+        requestId: String,
         message: String,
         persona: CoachingPersonaType,
         coachingStyle: CoachingStyle? = nil
@@ -66,6 +69,7 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
                 do {
                     try await performStreamingRequest(
                         sessionId: sessionId,
+                        requestId: requestId,
                         message: message,
                         persona: persona,
                         coachingStyle: coachingStyle,
@@ -86,6 +90,7 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
 
     private func performStreamingRequest(
         sessionId: String,
+        requestId: String,
         message: String,
         persona: CoachingPersonaType,
         coachingStyle: CoachingStyle?,
@@ -106,6 +111,7 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
 
         let body = StreamingRequest(
             sessionId: sessionId,
+            requestId: requestId,
             message: message,
             persona: persona.rawValue,
             coachingStyle: coachingStyle?.apiValue

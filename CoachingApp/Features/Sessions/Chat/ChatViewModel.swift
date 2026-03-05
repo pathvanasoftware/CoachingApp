@@ -165,7 +165,7 @@ final class ChatViewModel {
         pendingDiagnostics = buildDiagnostics(for: content)
 
         // Stream the assistant response
-        await streamAssistantResponse(content: content, for: session)
+        await streamAssistantResponse(content: content, requestId: userMessage.id, for: session)
 
         // Haptic feedback on send
         await MainActor.run {
@@ -187,7 +187,7 @@ final class ChatViewModel {
         errorMessage = nil
 
         // Retry the assistant response
-        await streamAssistantResponse(content: content, for: session)
+        await streamAssistantResponse(content: content, requestId: messageId, for: session)
 
         // Haptic feedback
         await MainActor.run {
@@ -357,7 +357,7 @@ final class ChatViewModel {
     }
 
     @MainActor
-    private func streamAssistantResponse(content: String, for session: CoachingSession) async {
+    private func streamAssistantResponse(content: String, requestId: String, for session: CoachingSession) async {
         isStreaming = true
 
         // Create a placeholder assistant message
@@ -373,6 +373,7 @@ final class ChatViewModel {
 
         let stream = streamingService.streamResponse(
             sessionId: session.id,
+            requestId: requestId,
             message: content,
             persona: session.persona,
             coachingStyle: selectedCoachingStyle

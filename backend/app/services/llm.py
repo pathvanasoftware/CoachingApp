@@ -41,6 +41,7 @@ class CoachingRequest(BaseModel):
     context: Optional[str] = None
     coaching_style: Optional[str] = None
     user_id: Optional[str] = "anonymous"
+    request_id: Optional[str] = None
 
 
 class CoachingResponse(BaseModel):
@@ -109,9 +110,9 @@ async def generate_session_summary(messages: List[dict], user_id: str = "anonymo
     return await generate_session_summary_claude(messages, user_id)
 
 
-def generate_quick_replies(user_message: str, ai_response: str, context: str = None) -> List[str]:
+def generate_quick_replies(user_message: str, ai_response: str, context: Optional[str] = None) -> List[str]:
     """Rule-based quick reply generation (no LLM call)."""
-    return _generate_quick_replies(user_message, ai_response, context)
+    return _generate_quick_replies(user_message, ai_response, context or "")
 
 
 def _safe_parse_structured_output(raw_text: str):

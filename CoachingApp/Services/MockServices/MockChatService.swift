@@ -348,6 +348,7 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
 
     func streamResponse(
         sessionId: String,
+        requestId: String,
         message: String,
         persona: CoachingPersonaType,
         coachingStyle: CoachingStyle? = nil
