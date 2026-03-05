@@ -1,36 +1,58 @@
 import pytest
-import tempfile
 import os
 from typing import Optional
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import psycopg
 
 from app.routers.auth import router as auth_router
-from app.services.auth import user_service, UserService
+from app.services.auth import UserService
 
 
 @pytest.fixture
-def app():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        db_path = os.path.join(tmpdir, "test_users.db")
-        original_db_path = user_service.db_path
-        user_service.db_path = db_path
-        user_service._ensure_db()
-        
-        app = FastAPI(title="Test App", version="1.0.0")
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
-        app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
-        
-        yield app
-        
-        user_service.db_path = original_db_path
+def test_db_url():
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        pytest.skip("DATABASE_URL not set - skipping PostgreSQL tests")
+    return url
+
+
+@pytest.fixture
+def clean_db(test_db_url):
+    with psycopg.connect(test_db_url) as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM users")
+        conn.commit()
+    yield test_db_url
+    with psycopg.connect(test_db_url) as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM users")
+        conn.commit()
+
+
+@pytest.fixture
+def app(clean_db):
+    test_service = UserService(database_url=clean_db)
+    
+    app = FastAPI(title="Test App", version="1.0.0")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
+    from app.routers import auth as auth_router_module
+    original_user_service = auth_router_module.user_service
+    auth_router_module.user_service = test_service
+    
+    app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
+    
+    yield app
+    
+    auth_router_module.user_service = original_user_service
 
 
 @pytest.fixture

@@ -1,8 +1,9 @@
 import pytest
-import tempfile
 import os
 import asyncio
 from datetime import datetime, timezone, timedelta
+import psycopg
+from psycopg.rows import dict_row
 
 from app.services.auth import (
     UserService,
@@ -15,6 +16,27 @@ from app.services.auth import (
     create_auth_response,
     get_google_auth_url,
 )
+
+
+@pytest.fixture
+def test_db_url():
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        pytest.skip("DATABASE_URL not set - skipping PostgreSQL tests")
+    return url
+
+
+@pytest.fixture
+def clean_db(test_db_url):
+    with psycopg.connect(test_db_url) as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM users")
+        conn.commit()
+    yield test_db_url
+    with psycopg.connect(test_db_url) as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM users")
+        conn.commit()
 
 
 class TestPasswordHashing:
@@ -52,7 +74,6 @@ class TestJWT:
         user_id = "test-user-789"
         access_token = create_access_token(user_id)
         
-        # Access token should not verify as refresh token
         verified_id = verify_token(access_token, expected_type="refresh")
         assert verified_id is None
 
@@ -94,14 +115,8 @@ class TestUser:
 
 
 class TestUserService:
-    @pytest.fixture
-    def temp_db(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            db_path = os.path.join(tmpdir, "test_users.db")
-            yield db_path
-
-    def test_create_user(self, temp_db):
-        service = UserService(db_path=temp_db)
+    def test_create_user(self, clean_db):
+        service = UserService(database_url=clean_db)
         user = service.create_user(
             id="user-1",
             email="user1@example.com",
@@ -112,8 +127,8 @@ class TestUserService:
         assert user.email == "user1@example.com"
         assert user.full_name == "User One"
 
-    def test_get_user_by_id(self, temp_db):
-        service = UserService(db_path=temp_db)
+    def test_get_user_by_id(self, clean_db):
+        service = UserService(database_url=clean_db)
         service.create_user(
             id="user-2",
             email="user2@example.com",
@@ -123,8 +138,8 @@ class TestUserService:
         assert user is not None
         assert user.email == "user2@example.com"
 
-    def test_get_user_by_email(self, temp_db):
-        service = UserService(db_path=temp_db)
+    def test_get_user_by_email(self, clean_db):
+        service = UserService(database_url=clean_db)
         service.create_user(
             id="user-3",
             email="user3@example.com",
@@ -134,13 +149,13 @@ class TestUserService:
         assert user is not None
         assert user.id == "user-3"
 
-    def test_get_nonexistent_user(self, temp_db):
-        service = UserService(db_path=temp_db)
+    def test_get_nonexistent_user(self, clean_db):
+        service = UserService(database_url=clean_db)
         user = service.get_user_by_id("nonexistent")
         assert user is None
 
-    def test_verify_password_correct(self, temp_db):
-        service = UserService(db_path=temp_db)
+    def test_verify_password_correct(self, clean_db):
+        service = UserService(database_url=clean_db)
         service.create_user(
             id="user-4",
             email="user4@example.com",
@@ -150,8 +165,8 @@ class TestUserService:
         assert user is not None
         assert user.id == "user-4"
 
-    def test_verify_password_wrong(self, temp_db):
-        service = UserService(db_path=temp_db)
+    def test_verify_password_wrong(self, clean_db):
+        service = UserService(database_url=clean_db)
         service.create_user(
             id="user-5",
             email="user5@example.com",
@@ -160,8 +175,8 @@ class TestUserService:
         user = service.verify_user_password("user5@example.com", "wrongpassword")
         assert user is None
 
-    def test_update_user(self, temp_db):
-        service = UserService(db_path=temp_db)
+    def test_update_user(self, clean_db):
+        service = UserService(database_url=clean_db)
         service.create_user(
             id="user-6",
             email="user6@example.com",
@@ -172,8 +187,8 @@ class TestUserService:
         assert updated.full_name == "Updated Name"
         assert updated.seat_tier == "executive"
 
-    def test_duplicate_email_fails(self, temp_db):
-        service = UserService(db_path=temp_db)
+    def test_duplicate_email_fails(self, clean_db):
+        service = UserService(database_url=clean_db)
         service.create_user(
             id="user-7",
             email="duplicate@example.com",
@@ -186,8 +201,8 @@ class TestUserService:
                 password="password456",
             )
 
-    def test_google_id_operations(self, temp_db):
-        service = UserService(db_path=temp_db)
+    def test_google_id_operations(self, clean_db):
+        service = UserService(database_url=clean_db)
         service.create_user(
             id="user-9",
             email="google@example.com",
@@ -198,8 +213,8 @@ class TestUserService:
         assert user is not None
         assert user.id == "user-9"
 
-    def test_apple_id_operations(self, temp_db):
-        service = UserService(db_path=temp_db)
+    def test_apple_id_operations(self, clean_db):
+        service = UserService(database_url=clean_db)
         service.create_user(
             id="user-10",
             email="apple@example.com",

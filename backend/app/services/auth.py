@@ -8,6 +8,8 @@ from typing import Optional, Dict, Any
 import jwt
 import bcrypt
 import httpx
+import psycopg
+from psycopg.rows import dict_row
 
 
 def hash_password(password: str) -> str:
@@ -79,38 +81,36 @@ class User:
 
 
 class UserService:
-    def __init__(self, db_path: str = "data/users.db"):
-        self.db_path = db_path
+    def __init__(self, database_url: Optional[str] = None):
+        self.database_url = database_url or os.getenv("DATABASE_URL")
+        if not self.database_url:
+            raise RuntimeError("DATABASE_URL environment variable is required for auth persistence")
         self._ensure_db()
 
     def _ensure_db(self):
-        import sqlite3
-        import os
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-        conn = sqlite3.connect(self.db_path)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id TEXT PRIMARY KEY,
-                email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                full_name TEXT,
-                organization_id TEXT,
-                seat_tier TEXT DEFAULT 'starter',
-                preferred_persona TEXT DEFAULT 'direct_challenger',
-                preferred_input_mode TEXT DEFAULT 'text',
-                has_completed_onboarding INTEGER DEFAULT 0,
-                created_at TEXT,
-                updated_at TEXT,
-                google_id TEXT,
-                apple_id TEXT
-            )
-        """)
-        conn.commit()
-        conn.close()
+        with psycopg.connect(self.database_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS users (
+                        id TEXT PRIMARY KEY,
+                        email TEXT UNIQUE NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        full_name TEXT,
+                        organization_id TEXT,
+                        seat_tier TEXT DEFAULT 'starter',
+                        preferred_persona TEXT DEFAULT 'direct_challenger',
+                        preferred_input_mode TEXT DEFAULT 'text',
+                        has_completed_onboarding BOOLEAN DEFAULT FALSE,
+                        created_at TIMESTAMPTZ,
+                        updated_at TIMESTAMPTZ,
+                        google_id TEXT UNIQUE,
+                        apple_id TEXT UNIQUE
+                    )
+                """)
+            conn.commit()
 
     def _get_conn(self):
-        import sqlite3
-        return sqlite3.connect(self.db_path)
+        return psycopg.connect(self.database_url)
 
     def create_user(
         self,
@@ -121,106 +121,101 @@ class UserService:
         google_id: Optional[str] = None,
         apple_id: Optional[str] = None,
     ) -> User:
-        conn = self._get_conn()
         password_hash = hash_password(password)
-        now = datetime.now(timezone.utc).isoformat()
-        conn.execute(
-            """INSERT INTO users 
-               (id, email, password_hash, full_name, google_id, apple_id, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (id, email, password_hash, full_name, google_id, apple_id, now, now),
-        )
-        conn.commit()
-        conn.close()
+        now = datetime.now(timezone.utc)
+        with self._get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO users 
+                       (id, email, password_hash, full_name, google_id, apple_id, created_at, updated_at)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (id, email, password_hash, full_name, google_id, apple_id, now, now),
+                )
+            conn.commit()
         return self.get_user_by_id(id)
 
     def get_user_by_id(self, id: str) -> Optional[User]:
-        conn = self._get_conn()
-        row = conn.execute(
-            "SELECT * FROM users WHERE id = ?", (id,)
-        ).fetchone()
-        conn.close()
+        with self._get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute("SELECT * FROM users WHERE id = %s", (id,))
+                row = cur.fetchone()
         if not row:
             return None
         return self._row_to_user(row)
 
     def get_user_by_email(self, email: str) -> Optional[User]:
-        conn = self._get_conn()
-        row = conn.execute(
-            "SELECT * FROM users WHERE email = ?", (email,)
-        ).fetchone()
-        conn.close()
+        with self._get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+                row = cur.fetchone()
         if not row:
             return None
         return self._row_to_user(row)
 
     def get_user_by_google_id(self, google_id: str) -> Optional[User]:
-        conn = self._get_conn()
-        row = conn.execute(
-            "SELECT * FROM users WHERE google_id = ?", (google_id,)
-        ).fetchone()
-        conn.close()
+        with self._get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute("SELECT * FROM users WHERE google_id = %s", (google_id,))
+                row = cur.fetchone()
         if not row:
             return None
         return self._row_to_user(row)
 
     def get_user_by_apple_id(self, apple_id: str) -> Optional[User]:
-        conn = self._get_conn()
-        row = conn.execute(
-            "SELECT * FROM users WHERE apple_id = ?", (apple_id,)
-        ).fetchone()
-        conn.close()
+        with self._get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute("SELECT * FROM users WHERE apple_id = %s", (apple_id,))
+                row = cur.fetchone()
         if not row:
             return None
         return self._row_to_user(row)
 
     def verify_user_password(self, email: str, password: str) -> Optional[User]:
-        conn = self._get_conn()
-        row = conn.execute(
-            "SELECT * FROM users WHERE email = ?", (email,)
-        ).fetchone()
-        conn.close()
+        with self._get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+                row = cur.fetchone()
         if not row:
             return None
-        password_hash = row[2]
+        password_hash = row["password_hash"]
         if verify_password(password, password_hash):
             return self._row_to_user(row)
         return None
 
     def update_user(self, id: str, **kwargs) -> Optional[User]:
-        conn = self._get_conn()
         updates = []
         values = []
         for key, value in kwargs.items():
             if key in ["full_name", "organization_id", "seat_tier", "preferred_persona", 
                        "preferred_input_mode", "has_completed_onboarding", "google_id", "apple_id"]:
-                updates.append(f"{key} = ?")
+                updates.append(f"{key} = %s")
                 values.append(value)
         if not updates:
             return self.get_user_by_id(id)
-        updates.append("updated_at = ?")
-        values.append(datetime.now(timezone.utc).isoformat())
+        updates.append("updated_at = %s")
+        values.append(datetime.now(timezone.utc))
         values.append(id)
-        conn.execute(
-            f"UPDATE users SET {', '.join(updates)} WHERE id = ?",
-            values,
-        )
-        conn.commit()
-        conn.close()
+        with self._get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"UPDATE users SET {', '.join(updates)} WHERE id = %s",
+                    values,
+                )
+            conn.commit()
         return self.get_user_by_id(id)
 
-    def _row_to_user(self, row) -> User:
+    def _row_to_user(self, row: dict) -> User:
         return User(
-            id=row[0],
-            email=row[1],
-            full_name=row[3],
-            organization_id=row[4],
-            seat_tier=row[5] or "starter",
-            preferred_persona=row[6] or "direct_challenger",
-            preferred_input_mode=row[7] or "text",
-            has_completed_onboarding=bool(row[8]),
-            created_at=datetime.fromisoformat(row[9]) if row[9] else None,
-            updated_at=datetime.fromisoformat(row[10]) if row[10] else None,
+            id=row["id"],
+            email=row["email"],
+            full_name=row.get("full_name"),
+            organization_id=row.get("organization_id"),
+            seat_tier=row.get("seat_tier") or "starter",
+            preferred_persona=row.get("preferred_persona") or "direct_challenger",
+            preferred_input_mode=row.get("preferred_input_mode") or "text",
+            has_completed_onboarding=bool(row.get("has_completed_onboarding")),
+            created_at=row.get("created_at"),
+            updated_at=row.get("updated_at"),
         )
 
 
