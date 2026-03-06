@@ -66,3 +66,4 @@ def get_profile_store() -> ProfileStore:
     if _profile_store is None:
         _profile_store = ProfileStore()
     return _profile_store
+
