@@ -53,9 +53,20 @@ def _resolve_deployed_at(build_info: dict) -> str:
 async def health_check():
     build_info = _read_build_info()
     git_sha = _resolve_git_sha(build_info)
+    
+    profile_store = os.getenv("PROFILE_STORE", "").strip().lower()
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    if profile_store == "file":
+        profile_backend = "file"
+    elif profile_store == "postgres" or (not profile_store and database_url):
+        profile_backend = "postgres"
+    else:
+        profile_backend = "file"
+    
     return {
         "status": "ok",
         "git_sha": git_sha,
         "git_sha_short": git_sha[:12] if git_sha != "unknown" else "unknown",
         "deployed_at": _resolve_deployed_at(build_info),
+        "profile_backend": profile_backend,
     }

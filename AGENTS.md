@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build and maintain **Ascendra** — an iOS executive coaching app by **Pathvana** with a FastAPI backend on Railway. Recent focus: migrate auth persistence from SQLite to PostgreSQL for Railway durability, fix coaching engine behavior (opinion-too-early problem), implement deterministic stage routing, add request-id idempotency caching, and configure Redis on Railway for production caching.
+Build and maintain **Ascendra** — an iOS executive coaching app by **Pathvana** with a FastAPI backend on Railway. All persistence layers now use PostgreSQL for durability. Redis provides idempotency caching for LLM responses.
 
 ---
 
@@ -17,18 +17,21 @@ Build and maintain **Ascendra** — an iOS executive coaching app by **Pathvana*
 - Backend working directory: `/Users/jianping/projects/CoachingApp/backend`
 - Use real services in production; mock only in DEBUG with explicit toggle
 - Redis is configured on Railway for idempotency caching
-- PostgreSQL is configured on Railway for auth persistence
+- PostgreSQL is configured on Railway for auth and profile persistence
 
 ---
 
 ## Discoveries
 
 ### Database Architecture (Current)
-- **Auth persistence**: PostgreSQL on Railway (migrated from SQLite)
+- **Auth persistence**: PostgreSQL on Railway
   - `users` table: id, email, password_hash, full_name, organization_id, seat_tier, preferred_persona, preferred_input_mode, has_completed_onboarding, google_id, apple_id, created_at, updated_at
   - Connection via `DATABASE_URL` environment variable
   - Uses `psycopg[binary]` driver
-- **Session state**: Filesystem JSON in `backend/data/profiles/` (still ephemeral on Railway - needs migration to PostgreSQL)
+- **Session state**: PostgreSQL on Railway (migrated from filesystem)
+  - `coaching_profiles` table: user_id (PK), profile_json (JSONB), updated_at
+  - Stores goals, patterns, emotion_timeline, session_state, last_topics
+  - Toggle via `PROFILE_STORE=postgres` (default when DATABASE_URL is set)
 - **Idempotency cache**: Redis on Railway (keyed by requestId)
 
 ### Cache System Design (Implemented)
@@ -66,6 +69,7 @@ Build and maintain **Ascendra** — an iOS executive coaching app by **Pathvana*
 
 ### Completed ✅
 - **PostgreSQL migration for auth** - SQLite replaced with PostgreSQL on Railway
+- **PostgreSQL migration for profiles** - Filesystem JSON replaced with PostgreSQL for session state
 - **Deterministic stage router** with signal extraction + session-aware state machine
 - **Diagnose contract guardrail** (zero advice, exactly one question, rewrite on violation)
 - **Request-id idempotency cache** with single-flight lock, 202 follower behavior, poll endpoint
@@ -74,14 +78,13 @@ Build and maintain **Ascendra** — an iOS executive coaching app by **Pathvana*
 - **Apple Sign-In** with nonce verification (client + server)
 - **Google auth cancellation** handling
 - **Instant local session openings** (no LLM for greeting)
-- **Health endpoint version stamp** (`git_sha`, `deployed_at`)
-- **Backend tests**: 184 passed
+- **Health endpoint version stamp** (`git_sha`, `deployed_at`, `profile_backend`)
+- **Backend tests**: 187 passed
 - **iOS build**: passing
 - **Railway service cleanup**: Removed duplicate Postgres and orphaned Redis services
 
 ### Minor Cleanup Remaining
 - `/health` `git_sha` shows "unknown" in Railway env (CI-generated `build_info.json` would fix)
-- **Session state still on filesystem** - needs migration to PostgreSQL for Railway reliability
 
 ---
 
@@ -118,18 +121,19 @@ backend/
 ├── main.py
 ├── requirements.txt                                 # psycopg[binary]>=3.2.0, pyjwt[crypto]>=2.8.0
 ├── railway.toml
-├── .env.example                                     # DATABASE_URL, REDIS_URL, etc.
+├── .env.example                                     # DATABASE_URL, REDIS_URL, PROFILE_STORE
 ├── app/
 │   ├── routers/
 │   │   ├── auth.py                                  # PostgreSQL-backed UserService
 │   │   ├── chat.py                                  # Idempotency cache, single-flight lock, /result endpoint
-│   │   └── health.py                                # git_sha, deployed_at
+│   │   └── health.py                                # git_sha, deployed_at, profile_backend
 │   └── services/
 │       ├── auth.py                                  # UserService with PostgreSQL (psycopg)
 │       ├── cache.py                                 # CacheBackend, InMemoryCache, RedisCache
 │       ├── llm.py                                   # CoachingRequest.request_id added
 │       ├── llm_claude.py                            # ConversationSignals, stage router, state_rev
-│       ├── memory_store.py                          # profile/session_state persistence (filesystem)
+│       ├── memory_store.py                          # profile/session_state persistence (PostgreSQL)
+│       ├── profile_store.py                         # NEW — ProfileStore for PostgreSQL
 │       └── auth.py                                  # verify_apple_token with nonce
 └── tests/
     ├── test_llm_async.py                            # Stage progression, diagnose contract tests
@@ -144,6 +148,5 @@ backend/
 
 ## Next Actions
 
-1. **Migrate session state to PostgreSQL** - Move `profile/session_state` off filesystem to durable store for Railway reliability
-2. Consider adding CI-generated `build_info.json` so `/health` reports exact `git_sha`
-3. Add app-level encryption for cached entries if compliance requires it
+1. Consider adding CI-generated `build_info.json` so `/health` reports exact `git_sha`
+2. Add app-level encryption for cached entries if compliance requires it
