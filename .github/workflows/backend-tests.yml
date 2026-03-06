@@ -47,6 +47,26 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov pytest-asyncio
 
+      - name: Setup PostgreSQL schema
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/coachingapp_test
+        run: |
+          python -c "
+          import psycopg
+          import os
+          conn = psycopg.connect(os.environ['DATABASE_URL'])
+          cur = conn.cursor()
+          cur.execute('''
+              CREATE TABLE IF NOT EXISTS coaching_profiles (
+                  user_id TEXT PRIMARY KEY,
+                  profile_json JSONB NOT NULL,
+                  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+              )
+          ''')
+          conn.commit()
+          print('Schema created successfully')
+          "
+
       - name: Run tests with coverage gate
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/coachingapp_test
