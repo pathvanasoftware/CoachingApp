@@ -93,6 +93,60 @@ def in_memory_cache():
     return InMemoryCache()
 
 
+class TestCacheIntegration:
+    """Tests for cache layer integration."""
+
+    @pytest.mark.asyncio
+    async def test_in_memory_cache_basic_operations(self, in_memory_cache):
+        """Test basic cache operations."""
+        await in_memory_cache.set_json("test-key", {"data": "value"}, 60)
+        result = await in_memory_cache.get_json("test-key")
+        assert result == {"data": "value"}
+
+    @pytest.mark.asyncio
+    async def test_cache_lock_mechanism(self, in_memory_cache):
+        """Test distributed lock mechanism in cache."""
+        lock_key = "test-lock"
+        owner1 = "owner-1"
+        owner2 = "owner-2"
+
+        # First owner should acquire lock
+        acquired1 = await in_memory_cache.acquire_lock(lock_key, owner1, 10)
+        assert acquired1 is True
+
+        # Second owner should fail to acquire
+        acquired2 = await in_memory_cache.acquire_lock(lock_key, owner2, 10)
+        assert acquired2 is False
+
+        # Release lock (returns None on success)
+        await in_memory_cache.release_lock(lock_key, owner1)
+
+        # Verify the lock is actually released by acquiring again
+        verify_acquired = await in_memory_cache.acquire_lock(lock_key, owner2, 10)
+        assert verify_acquired is True
+
+        # Cleanup
+        await in_memory_cache.release_lock(lock_key, owner2)
+
+        # Now second owner should acquire
+        acquired2_retry = await in_memory_cache.acquire_lock(lock_key, owner2, 10)
+        assert acquired2_retry is True
+
+        # Cleanup
+        await in_memory_cache.release_lock(lock_key, owner2)
+
+    @pytest.mark.asyncio
+    async def test_cache_expiration(self, in_memory_cache):
+        """Test that cache entries expire correctly."""
+        await in_memory_cache.set_json("expire-key", {"temp": "data"}, 1)
+        result = await in_memory_cache.get_json("expire-key")
+        assert result == {"temp": "data"}
+
+        await asyncio.sleep(1.5)
+        expired_result = await in_memory_cache.get_json("expire-key")
+        assert expired_result is None
+
+
 # =============================================================================
 # Health Check Tests (Critical for CI/CD)
 # =============================================================================
