@@ -85,7 +85,30 @@ class UserService:
         self.database_url = database_url or os.getenv("DATABASE_URL")
         if not self.database_url:
             raise RuntimeError("DATABASE_URL environment variable is required for auth persistence")
+
         self._ensure_db()
+
+    def _ensure_db(self):
+        with psycopg.connect(self.database_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS users (
+                        id TEXT PRIMARY KEY,
+                        email TEXT UNIQUE NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        full_name TEXT,
+                        organization_id TEXT,
+                        seat_tier TEXT DEFAULT 'starter',
+                        preferred_persona TEXT DEFAULT 'direct_challenger',
+                        preferred_input_mode TEXT DEFAULT 'text',
+                        has_completed_onboarding BOOLEAN DEFAULT FALSE,
+                        created_at TIMESTAMPTZ,
+                        updated_at TIMESTAMPTZ,
+                        google_id TEXT UNIQUE,
+                        apple_id TEXT UNIQUE
+                    )
+                """)
+            conn.commit()
 
     def _ensure_db(self):
         with psycopg.connect(self.database_url) as conn:
