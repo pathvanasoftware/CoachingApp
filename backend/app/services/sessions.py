@@ -147,14 +147,20 @@ class SessionService:
                 rows = cur.fetchall()
         return [self._row_to_session(row) for row in rows]
 
-    def end_session(self, session_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    def end_session(
+        self,
+        session_id: str,
+        user_id: str,
+        *,
+        summary: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
         existing = self.get_session(session_id, user_id)
         if not existing:
             return None
 
         ended_at = datetime.now(timezone.utc)
         duration_seconds = int((ended_at - self._ensure_aware(existing["started_at"])).total_seconds())
-        summary = existing.get("summary") or f"Session completed with {existing.get('message_count', 0)} messages exchanged."
+        final_summary = summary or existing.get("summary") or f"Session completed with {existing.get('message_count', 0)} messages exchanged."
 
         with self._get_conn() as conn:
             with conn.cursor() as cur:
@@ -164,7 +170,7 @@ class SessionService:
                     SET ended_at = %s, duration_seconds = %s, summary = %s
                     WHERE id = %s AND user_id = %s
                     """,
-                    (ended_at, duration_seconds, summary, session_id, user_id),
+                    (ended_at, duration_seconds, final_summary, session_id, user_id),
                 )
             conn.commit()
 
@@ -294,6 +300,40 @@ class SessionService:
             diagnostics=assistant_diagnostics,
             status="sent",
         )
+
+    def sync_goal_links(self, *, user_id: str, goal_id: str, related_session_ids: List[str]) -> None:
+        desired_session_ids = set(related_session_ids)
+
+        with self._get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT id, goal_ids
+                    FROM sessions
+                    WHERE user_id = %s
+                    """,
+                    (user_id,),
+                )
+                rows = cur.fetchall()
+
+                for row in rows:
+                    current_goal_ids = row.get("goal_ids") or []
+                    if isinstance(current_goal_ids, str):
+                        current_goal_ids = json.loads(current_goal_ids)
+
+                    current_goal_ids = [value for value in current_goal_ids if value != goal_id]
+                    if row["id"] in desired_session_ids:
+                        current_goal_ids.append(goal_id)
+
+                    cur.execute(
+                        """
+                        UPDATE sessions
+                        SET goal_ids = %s::jsonb
+                        WHERE id = %s AND user_id = %s
+                        """,
+                        (json.dumps(current_goal_ids), row["id"], user_id),
+                    )
+            conn.commit()
 
     def _row_to_session(self, row: Dict[str, Any]) -> Dict[str, Any]:
         goal_ids = row.get("goal_ids") or []

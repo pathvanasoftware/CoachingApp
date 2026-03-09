@@ -4,7 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 
 from app.routers.auth import get_current_user
-from app.services.llm import CoachingRequest, _anthropic_available, _openai_available, get_coaching_response
+from app.services.llm import (
+    CoachingRequest,
+    _anthropic_available,
+    _openai_available,
+    generate_session_summary,
+    get_coaching_response,
+)
 from app.services.sessions import session_service
 
 
@@ -85,7 +91,24 @@ async def end_session(session_id: str, request: EndSessionRequest, user_id: str 
     if request.session_id != session_id:
         raise HTTPException(status_code=400, detail="Session ID mismatch")
 
-    ended = session_service.end_session(session_id, user_id)
+    messages = session_service.list_messages(session_id, user_id)
+    summary_text: Optional[str] = None
+    summary_messages = [
+        {"role": message["role"], "content": message["content"]}
+        for message in messages
+        if message.get("role") in {"user", "assistant"} and message.get("content")
+    ]
+
+    if summary_messages and (_anthropic_available() or _openai_available()):
+        try:
+            summary_payload = await generate_session_summary(summary_messages, user_id)
+            generated_summary = (summary_payload or {}).get("summary", "").strip()
+            if generated_summary:
+                summary_text = generated_summary
+        except Exception:
+            summary_text = None
+
+    ended = session_service.end_session(session_id, user_id, summary=summary_text)
     if not ended:
         raise HTTPException(status_code=404, detail="Session not found")
     return ended

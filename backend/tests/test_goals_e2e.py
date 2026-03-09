@@ -10,6 +10,7 @@ from app.routers.auth import router as auth_router
 from app.routers.goals import router as goals_router
 from app.services.auth import UserService
 from app.services.goals import GoalService
+from app.services.sessions import SessionService
 
 
 @pytest.fixture
@@ -24,12 +25,16 @@ def test_db_url():
 def clean_db(test_db_url):
     with psycopg.connect(test_db_url) as conn:
         with conn.cursor() as cur:
+            cur.execute("DELETE FROM messages")
+            cur.execute("DELETE FROM sessions")
             cur.execute("DELETE FROM goals")
             cur.execute("DELETE FROM users")
         conn.commit()
     yield test_db_url
     with psycopg.connect(test_db_url) as conn:
         with conn.cursor() as cur:
+            cur.execute("DELETE FROM messages")
+            cur.execute("DELETE FROM sessions")
             cur.execute("DELETE FROM goals")
             cur.execute("DELETE FROM users")
         conn.commit()
@@ -39,6 +44,7 @@ def clean_db(test_db_url):
 def app(clean_db):
     test_user_service = UserService(database_url=clean_db)
     test_goal_service = GoalService(database_url=clean_db)
+    test_session_service = SessionService(database_url=clean_db)
 
     app = FastAPI(title="Test App", version="1.0.0")
     app.add_middleware(
@@ -54,8 +60,10 @@ def app(clean_db):
 
     original_user_service = auth_router_module.user_service
     original_goal_service = goals_router_module.goal_service
+    original_session_service = goals_router_module.session_service
     auth_router_module.user_service = test_user_service
     goals_router_module.goal_service = test_goal_service
+    goals_router_module.session_service = test_session_service
 
     app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
     app.include_router(goals_router, prefix="/api", tags=["Goals"])
@@ -64,6 +72,7 @@ def app(clean_db):
 
     auth_router_module.user_service = original_user_service
     goals_router_module.goal_service = original_goal_service
+    goals_router_module.session_service = original_session_service
 
 
 @pytest.fixture
@@ -83,6 +92,11 @@ def auth_header(client):
     )
     token = register_response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def session_service(clean_db):
+    return SessionService(database_url=clean_db)
 
 
 def test_create_and_list_goals(client, auth_header):
@@ -197,3 +211,49 @@ def test_delete_goal(client, auth_header):
 
     fetch_response = client.get(f"/api/goals/{goal_id}", headers=auth_header)
     assert fetch_response.status_code == 404
+
+
+def test_related_sessions_sync_back_to_session_goal_ids(client, auth_header, session_service):
+    user_me = client.get("/api/auth/me", headers=auth_header)
+    user_id = user_me.json()["id"]
+    session = session_service.create_session(
+        user_id=user_id,
+        persona="direct_challenger",
+        session_type="goal_review",
+        input_mode="text",
+    )
+
+    create_response = client.post(
+        "/api/goals",
+        headers=auth_header,
+        json={
+            "title": "Improve stakeholder updates",
+            "description": "",
+            "status": "active",
+            "progress": 0.0,
+            "milestones": [],
+            "related_session_ids": [session["id"]],
+        },
+    )
+    assert create_response.status_code == 200
+    goal_id = create_response.json()["id"]
+
+    linked_session = session_service.get_session(session["id"], user_id)
+    assert linked_session["goal_ids"] == [goal_id]
+
+    update_response = client.put(
+        f"/api/goals/{goal_id}",
+        headers=auth_header,
+        json={
+            "title": "Improve stakeholder updates",
+            "description": "Focus on concise weekly progress updates",
+            "status": "active",
+            "progress": 0.0,
+            "milestones": [],
+            "related_session_ids": [],
+        },
+    )
+    assert update_response.status_code == 200
+
+    unlinked_session = session_service.get_session(session["id"], user_id)
+    assert unlinked_session["goal_ids"] == []

@@ -178,3 +178,50 @@ def test_messages_round_trip(client, auth_context, monkeypatch):
     assert len(messages) == 2
     assert messages[0]["role"] == "user"
     assert messages[1]["role"] == "assistant"
+
+
+def test_end_session_generates_llm_summary(client, auth_context, monkeypatch):
+    start_response = client.post(
+        "/api/sessions",
+        headers=auth_context["headers"],
+        json={
+            "user_id": auth_context["user_id"],
+            "persona": "supportive_strategist",
+            "session_type": "check_in",
+            "input_mode": "text",
+        },
+    )
+    session_id = start_response.json()["id"]
+
+    from app.routers import sessions as sessions_router_module
+
+    test_session_service = sessions_router_module.session_service
+    test_session_service.record_turn(
+        session_id=session_id,
+        user_content="I need to tighten my team updates.",
+        assistant_content="Let's make your updates shorter and outcome-focused.",
+        assistant_diagnostics={},
+    )
+
+    async def _fake_summary(messages, user_id):
+        assert user_id == auth_context["user_id"]
+        assert len(messages) == 2
+        return {
+            "summary": "Clarified how to make leadership updates shorter and more outcome-focused.",
+            "key_insights": [],
+            "action_items": [],
+            "progress_made": "",
+            "recommended_next_steps": [],
+        }
+
+    monkeypatch.setattr(sessions_router_module, "generate_session_summary", _fake_summary)
+    monkeypatch.setattr(sessions_router_module, "_anthropic_available", lambda: True)
+
+    end_response = client.post(
+        f"/api/sessions/{session_id}/end",
+        headers=auth_context["headers"],
+        json={"session_id": session_id},
+    )
+    assert end_response.status_code == 200
+    ended = end_response.json()
+    assert ended["summary"] == "Clarified how to make leadership updates shorter and more outcome-focused."
