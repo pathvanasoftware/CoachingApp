@@ -14,13 +14,13 @@ protocol GoalServiceProtocol: Sendable {
 // MARK: - Request DTOs
 
 private struct CreateGoalRequest: Codable {
-    let userId: String
     let title: String
     let description: String
     let status: String
     let progress: Double
     let targetDate: Date?
     let milestones: [MilestoneDTO]
+    let relatedSessionIds: [String]
 }
 
 private struct UpdateGoalRequest: Codable {
@@ -30,7 +30,7 @@ private struct UpdateGoalRequest: Codable {
     let progress: Double
     let targetDate: Date?
     let milestones: [MilestoneDTO]
-    let updatedAt: Date
+    let relatedSessionIds: [String]
 }
 
 private struct MilestoneDTO: Codable {
@@ -59,20 +59,15 @@ final class GoalService: GoalServiceProtocol, @unchecked Sendable {
 
     init(apiClient: APIClient = APIClient()) {
         self.apiClient = apiClient
+        self.apiClient.authTokenProvider = {
+            KeychainService.loadAccessToken()
+        }
     }
 
     // MARK: - Fetch Goals
 
-    func fetchGoals(userId: String) async throws -> [Goal] {
-        let queryItems = [
-            URLQueryItem(name: "user_id", value: "eq.\(userId)"),
-            URLQueryItem(name: "order", value: "created_at.desc")
-        ]
-
-        let goals: [Goal] = try await apiClient.get(
-            path: "/goals",
-            queryItems: queryItems
-        )
+    func fetchGoals(userId _: String) async throws -> [Goal] {
+        let goals: [Goal] = try await apiClient.get(path: "/goals", queryItems: nil)
 
         return goals
     }
@@ -81,13 +76,13 @@ final class GoalService: GoalServiceProtocol, @unchecked Sendable {
 
     func createGoal(goal: Goal) async throws -> Goal {
         let request = CreateGoalRequest(
-            userId: goal.userId,
             title: goal.title,
             description: goal.description,
             status: goal.status.rawValue,
             progress: goal.progress,
             targetDate: goal.targetDate,
-            milestones: goal.milestones.map { MilestoneDTO(from: $0) }
+            milestones: goal.milestones.map { MilestoneDTO(from: $0) },
+            relatedSessionIds: goal.relatedSessionIds
         )
 
         let created: Goal = try await apiClient.post(
@@ -108,11 +103,11 @@ final class GoalService: GoalServiceProtocol, @unchecked Sendable {
             progress: goal.progress,
             targetDate: goal.targetDate,
             milestones: goal.milestones.map { MilestoneDTO(from: $0) },
-            updatedAt: Date()
+            relatedSessionIds: goal.relatedSessionIds
         )
 
         let updated: Goal = try await apiClient.put(
-            path: "/goals?id=eq.\(goal.id)",
+            path: "/goals/\(goal.id)",
             body: request
         )
 
@@ -122,19 +117,13 @@ final class GoalService: GoalServiceProtocol, @unchecked Sendable {
     // MARK: - Delete Goal
 
     func deleteGoal(goalId: String) async throws {
-        try await apiClient.delete(path: "/goals?id=eq.\(goalId)")
+        try await apiClient.delete(path: "/goals/\(goalId)")
     }
 
     // MARK: - Add Milestone
 
     func addMilestone(goalId: String, milestone: Milestone) async throws -> Goal {
-        // Fetch the current goal first
-        let queryItems = [URLQueryItem(name: "id", value: "eq.\(goalId)")]
-        let goals: [Goal] = try await apiClient.get(path: "/goals", queryItems: queryItems)
-
-        guard var goal = goals.first else {
-            throw GoalServiceError.goalNotFound
-        }
+        var goal: Goal = try await apiClient.get(path: "/goals/\(goalId)", queryItems: nil)
 
         // Append the new milestone
         goal.milestones.append(milestone)
@@ -146,13 +135,7 @@ final class GoalService: GoalServiceProtocol, @unchecked Sendable {
     // MARK: - Toggle Milestone
 
     func toggleMilestone(goalId: String, milestoneId: String) async throws -> Goal {
-        // Fetch the current goal
-        let queryItems = [URLQueryItem(name: "id", value: "eq.\(goalId)")]
-        let goals: [Goal] = try await apiClient.get(path: "/goals", queryItems: queryItems)
-
-        guard var goal = goals.first else {
-            throw GoalServiceError.goalNotFound
-        }
+        var goal: Goal = try await apiClient.get(path: "/goals/\(goalId)", queryItems: nil)
 
         // Find and toggle the milestone
         guard let index = goal.milestones.firstIndex(where: { $0.id == milestoneId }) else {

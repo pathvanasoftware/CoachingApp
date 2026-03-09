@@ -9,6 +9,10 @@ struct GoalDetailView: View {
     @State private var newMilestoneTitle = ""
     @Environment(\.dismiss) private var dismiss
 
+    private var currentGoal: Goal {
+        viewModel.goal(withId: goal.id) ?? goal
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
@@ -16,12 +20,12 @@ struct GoalDetailView: View {
                 progressSection
 
                 // Description
-                if !goal.description.isEmpty {
+                if !currentGoal.description.isEmpty {
                     descriptionSection
                 }
 
                 // Target Date
-                if let targetDate = goal.targetDate {
+                if let targetDate = currentGoal.targetDate {
                     targetDateSection(targetDate)
                 }
 
@@ -34,15 +38,15 @@ struct GoalDetailView: View {
             .padding(AppTheme.Spacing.md)
         }
         .background(AppTheme.background)
-        .navigationTitle(goal.title)
+        .navigationTitle(currentGoal.title)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Menu {
-                    if goal.status == .active {
+                    if currentGoal.status == .active {
                         Button {
                             Task {
-                                var updated = goal
+                                var updated = currentGoal
                                 updated.status = .paused
                                 await viewModel.updateGoal(updated)
                             }
@@ -52,7 +56,7 @@ struct GoalDetailView: View {
 
                         Button {
                             Task {
-                                var updated = goal
+                                var updated = currentGoal
                                 updated.status = .completed
                                 updated.progress = 1.0
                                 await viewModel.updateGoal(updated)
@@ -62,10 +66,10 @@ struct GoalDetailView: View {
                         }
                     }
 
-                    if goal.status == .paused {
+                    if currentGoal.status == .paused {
                         Button {
                             Task {
-                                var updated = goal
+                                var updated = currentGoal
                                 updated.status = .active
                                 await viewModel.updateGoal(updated)
                             }
@@ -93,13 +97,13 @@ struct GoalDetailView: View {
         ) {
             Button("Delete", role: .destructive) {
                 Task {
-                    await viewModel.deleteGoal(goal)
+                    await viewModel.deleteGoal(currentGoal)
                     dismiss()
                 }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Are you sure you want to delete \"\(goal.title)\"? This action cannot be undone.")
+            Text("Are you sure you want to delete \"\(currentGoal.title)\"? This action cannot be undone.")
         }
         .alert("Add Milestone", isPresented: $showingAddMilestone) {
             TextField("Milestone title", text: $newMilestoneTitle)
@@ -107,7 +111,7 @@ struct GoalDetailView: View {
                 guard !newMilestoneTitle.trimmingCharacters(in: .whitespaces).isEmpty else { return }
                 Task {
                     let milestone = Milestone(title: newMilestoneTitle)
-                    var updated = goal
+                    var updated = currentGoal
                     updated.milestones.append(milestone)
                     await viewModel.updateGoal(updated)
                     newMilestoneTitle = ""
@@ -124,7 +128,7 @@ struct GoalDetailView: View {
     private var progressSection: some View {
         HStack {
             Spacer()
-            GoalProgressBar(progress: goal.progress, style: .circular)
+            GoalProgressBar(progress: currentGoal.progress, style: .circular)
                 .frame(width: 140, height: 140)
             Spacer()
         }
@@ -139,7 +143,7 @@ struct GoalDetailView: View {
                 .font(AppFonts.headline)
                 .foregroundStyle(AppTheme.textPrimary)
 
-            Text(goal.description)
+            Text(currentGoal.description)
                 .font(AppFonts.body)
                 .foregroundStyle(AppTheme.textSecondary)
         }
@@ -178,8 +182,8 @@ struct GoalDetailView: View {
 
                 Spacer()
 
-                if !goal.milestones.isEmpty {
-                    Text("\(goal.completedMilestones)/\(goal.milestones.count)")
+                if !currentGoal.milestones.isEmpty {
+                    Text("\(currentGoal.completedMilestones)/\(currentGoal.milestones.count)")
                         .font(AppFonts.subheadline)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
@@ -193,14 +197,14 @@ struct GoalDetailView: View {
                 }
             }
 
-            if goal.milestones.isEmpty {
+            if currentGoal.milestones.isEmpty {
                 Text("No milestones yet. Add one to track your progress.")
                     .font(AppFonts.subheadline)
                     .foregroundStyle(AppTheme.textTertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, AppTheme.Spacing.md)
             } else {
-                ForEach(goal.milestones) { milestone in
+                ForEach(currentGoal.milestones) { milestone in
                     milestoneRow(milestone)
                 }
             }
@@ -212,7 +216,7 @@ struct GoalDetailView: View {
         HStack(spacing: AppTheme.Spacing.md) {
             Button {
                 Task {
-                    await viewModel.toggleMilestone(goalId: goal.id, milestoneId: milestone.id)
+                    await viewModel.toggleMilestone(goalId: currentGoal.id, milestoneId: milestone.id)
                 }
             } label: {
                 Image(systemName: milestone.isCompleted ? "checkmark.circle.fill" : "circle")
@@ -247,14 +251,14 @@ struct GoalDetailView: View {
                 .font(AppFonts.headline)
                 .foregroundStyle(AppTheme.textPrimary)
 
-            if goal.relatedSessionIds.isEmpty {
+            if currentGoal.relatedSessionIds.isEmpty {
                 Text("No coaching sessions linked to this goal yet.")
                     .font(AppFonts.subheadline)
                     .foregroundStyle(AppTheme.textTertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, AppTheme.Spacing.md)
             } else {
-                ForEach(goal.relatedSessionIds, id: \.self) { sessionId in
+                ForEach(currentGoal.relatedSessionIds, id: \.self) { sessionId in
                     HStack {
                         Image(systemName: "bubble.left.fill")
                             .foregroundStyle(AppTheme.primary)

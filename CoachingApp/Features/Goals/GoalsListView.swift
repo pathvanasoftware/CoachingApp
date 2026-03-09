@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct GoalsListView: View {
+    @Environment(AppState.self) private var appState
     @State private var viewModel = GoalsViewModel()
 
     var body: some View {
@@ -45,6 +46,7 @@ struct GoalsListView: View {
                 AddGoalView { title, description, targetDate, milestones in
                     Task {
                         await viewModel.addGoal(
+                            userId: appState.currentUserId ?? "test-user-001",
                             title: title,
                             description: description,
                             targetDate: targetDate,
@@ -54,10 +56,10 @@ struct GoalsListView: View {
                 }
             }
             .task {
-                await viewModel.loadGoals()
+                await viewModel.loadGoals(userId: appState.currentUserId ?? "test-user-001")
             }
             .refreshable {
-                await viewModel.loadGoals()
+                await viewModel.loadGoals(userId: appState.currentUserId ?? "test-user-001")
             }
         }
     }
@@ -88,7 +90,7 @@ struct GoalsListView: View {
             .padding(AppTheme.Spacing.md)
         }
         .navigationDestination(for: String.self) { goalId in
-            if let goal = viewModel.goals.first(where: { $0.id == goalId }) {
+            if let goal = viewModel.goal(withId: goalId) {
                 GoalDetailView(goal: goal, viewModel: viewModel)
             }
         }
@@ -191,10 +193,12 @@ struct GoalsListView: View {
 
 #Preview {
     GoalsListView()
+        .environment(AppState())
 }
 import SwiftUI
 
 struct GoalsDashboardView: View {
+    @Environment(AppState.self) private var appState
     @State private var viewModel = GoalsViewModel()
     @State private var selectedInsight: GoalInsight?
 
@@ -219,7 +223,7 @@ struct GoalsDashboardView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Goals Dashboard")
             .task {
-                await viewModel.loadGoals()
+                await viewModel.loadGoals(userId: appState.currentUserId ?? "test-user-001")
             }
         }
     }

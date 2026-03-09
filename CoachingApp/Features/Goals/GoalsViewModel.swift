@@ -10,7 +10,7 @@ final class GoalsViewModel {
 
     private let goalService: GoalServiceProtocol
 
-    init(goalService: GoalServiceProtocol = MockGoalService()) {
+    init(goalService: GoalServiceProtocol = GoalService()) {
         self.goalService = goalService
     }
 
@@ -33,22 +33,22 @@ final class GoalsViewModel {
 
     // MARK: - Actions
 
-    func loadGoals() async {
+    func loadGoals(userId: String) async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
 
         do {
-            goals = try await goalService.fetchGoals(userId: "mock-user-001")
+            goals = try await goalService.fetchGoals(userId: userId)
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    func addGoal(title: String, description: String, targetDate: Date?, milestones: [String]) async {
+    func addGoal(userId: String, title: String, description: String, targetDate: Date?, milestones: [String]) async {
         let newMilestones = milestones.map { Milestone(title: $0) }
         let goal = Goal(
-            userId: "mock-user-001",
+            userId: userId,
             title: title,
             description: description,
             targetDate: targetDate,
@@ -92,5 +92,9 @@ final class GoalsViewModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    func goal(withId id: String) -> Goal? {
+        goals.first(where: { $0.id == id })
     }
 }
