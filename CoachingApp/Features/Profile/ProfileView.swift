@@ -10,12 +10,14 @@ struct ProfileView: View {
     @State private var isExporting = false
     @State private var showShareSheet = false
     @State private var exportURL: URL?
+    @State private var showSubscriptionSheet = false
 
     var body: some View {
         NavigationStack {
             List {
                 userInfoSection
                 progressSection
+                subscriptionSection
                 conversationStatsSection
                 dataPrivacySection
 
@@ -30,6 +32,10 @@ struct ProfileView: View {
                 if let url = exportURL {
                     ShareSheet(activityItems: [url])
                 }
+            }
+            .sheet(isPresented: $showSubscriptionSheet) {
+                SubscriptionView(highlightedFeature: nil)
+                    .environment(appState)
             }
             .task {
                 await loadConversationStats()
@@ -69,6 +75,18 @@ struct ProfileView: View {
     private var progressSection: some View {
         Section {
             LabeledContent("Engagement Streak", value: "\(appState.engagementStreak) days")
+
+            NavigationLink {
+                PersonaSettingsView()
+            } label: {
+                HStack {
+                    Text("Coach Persona")
+                    Spacer()
+                    Text(appState.selectedPersona.displayName)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             NavigationLink {
                 CoachingStyleSettingsView(appState: appState)
             } label: {
@@ -81,6 +99,51 @@ struct ProfileView: View {
             }
         } header: {
             Text("Your Progress")
+        }
+    }
+
+    private var subscriptionSection: some View {
+        Section {
+            HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Text(appState.subscriptionPlan.displayName)
+                            .font(AppFonts.headline)
+                            .foregroundStyle(AppTheme.textPrimary)
+
+                        Text(appState.subscriptionPlan.badgeTitle)
+                            .font(AppFonts.caption)
+                            .foregroundStyle(appState.hasProAccess ? AppTheme.success : AppTheme.textSecondary)
+                            .padding(.horizontal, AppTheme.Spacing.sm)
+                            .padding(.vertical, AppTheme.Spacing.xs)
+                            .background((appState.hasProAccess ? AppTheme.success : AppTheme.textTertiary).opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+
+                    Text(appState.subscriptionPlan.summary)
+                        .font(AppFonts.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+
+                Spacer()
+            }
+            .padding(.vertical, AppTheme.Spacing.xs)
+
+            Button {
+                showSubscriptionSheet = true
+            } label: {
+                HStack {
+                    Text(appState.hasProAccess ? "Manage Plan" : "Unlock Ascendra Pro")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
+            }
+        } header: {
+            Text("Subscription")
+        } footer: {
+            Text("Phase 1 premium access focuses on voice coaching, session summaries, and the second coaching persona.")
         }
     }
 

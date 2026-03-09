@@ -47,6 +47,7 @@ final class AppState {
     private enum DefaultsKey {
         static let apiEnvironment = "com.coachingapp.apiEnvironment"
         static let coachingStyle = "com.pathvana.ascendra.coachingStyle"
+        static let subscriptionPlan = "com.pathvana.ascendra.subscriptionPlan"
     }
 
     var isAuthenticated: Bool = false
@@ -59,6 +60,14 @@ final class AppState {
     var selectedCoachingStyle: CoachingStyle = .auto {
         didSet {
             UserDefaults.standard.set(selectedCoachingStyle.rawValue, forKey: DefaultsKey.coachingStyle)
+        }
+    }
+    var subscriptionPlan: SubscriptionPlan = .free {
+        didSet {
+            UserDefaults.standard.set(subscriptionPlan.rawValue, forKey: DefaultsKey.subscriptionPlan)
+            if !subscriptionPlan.supports(persona: selectedPersona) {
+                selectedPersona = .directChallenger
+            }
         }
     }
     var showDebugDiagnostics: Bool = false
@@ -84,6 +93,10 @@ final class AppState {
         if let savedStyle = UserDefaults.standard.string(forKey: DefaultsKey.coachingStyle),
            let style = CoachingStyle(rawValue: savedStyle) {
             selectedCoachingStyle = style
+        }
+        if let savedPlan = UserDefaults.standard.string(forKey: DefaultsKey.subscriptionPlan),
+           let plan = SubscriptionPlan(rawValue: savedPlan) {
+            subscriptionPlan = plan
         }
 
         let args = ProcessInfo.processInfo.arguments
@@ -131,5 +144,17 @@ final class AppState {
     func switchAPIEnvironment(_ environment: APIEnvironment) {
         apiEnvironment = environment
         UserDefaults.standard.set(environment.rawValue, forKey: DefaultsKey.apiEnvironment)
+    }
+
+    func upgradeToProPreview() {
+        subscriptionPlan = .pro
+    }
+
+    func resetSubscriptionPreview() {
+        subscriptionPlan = .free
+    }
+
+    var hasProAccess: Bool {
+        subscriptionPlan == .pro
     }
 }

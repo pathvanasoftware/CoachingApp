@@ -8,6 +8,9 @@ struct ChatView: View {
     @State private var showShareSheet = false
     @State private var exportURL: URL?
     @State private var showCoachModeSheet = false
+    @State private var showSubscriptionSheet = false
+    @State private var showSummarySheet = false
+    @State private var highlightedPremiumFeature: String?
 
     // Configuration for starting a new session
     private let sessionType: SessionType?
@@ -58,36 +61,69 @@ struct ChatView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Messages area
-            messagesScrollView
+        ZStack {
+            VStack(spacing: 0) {
+                // Messages area
+                messagesScrollView
 
-            // Typing indicator (only when there is no streaming coach bubble yet)
-            if showTypingIndicator {
-                TypingIndicatorView(
-                    persona: currentPersona
+                // Typing indicator (only when there is no streaming coach bubble yet)
+                if showTypingIndicator {
+                    TypingIndicatorView(
+                        persona: currentPersona
+                    )
+                    .padding(.horizontal, AppTheme.Spacing.md)
+                    .padding(.vertical, AppTheme.Spacing.xs)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+
+                // Error banner
+                if let errorMessage = viewModel.errorMessage {
+                    errorBanner(errorMessage)
+                }
+
+                // Input bar
+                MessageInputBar(
+                    text: $viewModel.currentInput,
+                    isEnabled: !viewModel.isStreaming && viewModel.currentSession != nil,
+                    onSend: {
+                        Task { await viewModel.sendMessage() }
+                    },
+                    onVoiceTap: {
+                        if appState.subscriptionPlan.includesVoice {
+                            viewModel.isVoiceMode.toggle()
+                        } else {
+                            presentSubscription(feature: "voice coaching")
+                        }
+                    }
+                )
+            }
+
+            if viewModel.showHandoffOptions {
+                Color.black.opacity(0.28)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.dismissHandoffOptions()
+                        }
+                    }
+
+                HandoffOptionsView(
+                    hasSubscription: viewModel.hasSubscription,
+                    isPresented: $viewModel.showHandoffOptions,
+                    onSubscribe: {
+                        viewModel.dismissHandoffOptions()
+                        presentSubscription(feature: "human coaching access")
+                    },
+                    onOpenCoachChat: {
+                        viewModel.openCoachChat()
+                    },
+                    onScheduleCall: {
+                        viewModel.openCalendly()
+                    }
                 )
                 .padding(.horizontal, AppTheme.Spacing.md)
-                .padding(.vertical, AppTheme.Spacing.xs)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-
-            // Error banner
-            if let errorMessage = viewModel.errorMessage {
-                errorBanner(errorMessage)
-            }
-
-            // Input bar
-            MessageInputBar(
-                text: $viewModel.currentInput,
-                isEnabled: !viewModel.isStreaming && viewModel.currentSession != nil,
-                onSend: {
-                    Task { await viewModel.sendMessage() }
-                },
-                onVoiceTap: {
-                    viewModel.isVoiceMode.toggle()
-                }
-            )
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -151,6 +187,20 @@ struct ChatView: View {
                     Divider()
 
                     Button {
+                        if appState.subscriptionPlan.includesSessionSummary {
+                            Task {
+                                await viewModel.generateSessionSummary()
+                                showSummarySheet = true
+                            }
+                        } else {
+                            presentSubscription(feature: "session summaries")
+                        }
+                    } label: {
+                        Label("Session Summary", systemImage: "doc.text.magnifyingglass")
+                    }
+                    .disabled(viewModel.messages.isEmpty)
+
+                    Button {
                         exportConversation()
                     } label: {
                         Label("Export Conversation", systemImage: "square.and.arrow.up")
@@ -167,6 +217,11 @@ struct ChatView: View {
                 ShareSheet(activityItems: [url])
             }
         }
+        .sheet(isPresented: $showSummarySheet) {
+            SessionSummaryView(summary: viewModel.sessionSummary, isPresented: $showSummarySheet)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $showCoachModeSheet) {
             NavigationStack {
                 CoachModeQuickSettingsView(selectedStyle: Binding(
@@ -175,11 +230,16 @@ struct ChatView: View {
                 ))
             }
         }
+        .sheet(isPresented: $showSubscriptionSheet) {
+            SubscriptionView(highlightedFeature: highlightedPremiumFeature)
+                .environment(appState)
+        }
         .task {
             // Wire real services from the environment before starting the session
             viewModel.chatService = services.chatService
             viewModel.streamingService = services.streamingService
             viewModel.selectedCoachingStyle = appState.selectedCoachingStyle
+            viewModel.hasSubscription = appState.hasProAccess
             guard !hasInitialized else { return }
             hasInitialized = true
             await initializeSession()
@@ -188,10 +248,17 @@ struct ChatView: View {
             guard viewModel.selectedCoachingStyle != newStyle else { return }
             viewModel.selectedCoachingStyle = newStyle
         }
+        .onChange(of: appState.subscriptionPlan) { _, newPlan in
+            viewModel.hasSubscription = newPlan == .pro
+            if !newPlan.supports(persona: appState.selectedPersona) {
+                appState.selectedPersona = .directChallenger
+            }
+        }
         .onDisappear {
             appState.activeSession = viewModel.currentSession
             appState.activeSessionMessages = viewModel.messages
         }
+        .animation(.spring(response: 0.35, dampingFraction: 0.86), value: viewModel.showHandoffOptions)
         .animation(.easeInOut(duration: 0.2), value: viewModel.isStreaming)
     }
 
@@ -230,6 +297,11 @@ struct ChatView: View {
         )
         exportURL = url
         showShareSheet = true
+    }
+
+    private func presentSubscription(feature: String) {
+        highlightedPremiumFeature = feature
+        showSubscriptionSheet = true
     }
 
     // MARK: - Subviews

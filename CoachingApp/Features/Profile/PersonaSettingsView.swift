@@ -1,7 +1,8 @@
 import SwiftUI
 
 struct PersonaSettingsView: View {
-    @Bindable var viewModel: ProfileViewModel
+    @Environment(AppState.self) private var appState
+    @State private var showSubscriptionSheet = false
 
     var body: some View {
         List {
@@ -20,14 +21,22 @@ struct PersonaSettingsView: View {
         }
         .navigationTitle("Coaching Persona")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showSubscriptionSheet) {
+            SubscriptionView(highlightedFeature: "the supportive strategist persona")
+                .environment(appState)
+        }
     }
 
     // MARK: - Persona Row
 
     private func personaRow(_ persona: CoachingPersonaType) -> some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                viewModel.updatePersona(persona)
+            if appState.subscriptionPlan.supports(persona: persona) {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    appState.selectedPersona = persona
+                }
+            } else {
+                showSubscriptionSheet = true
             }
         } label: {
             HStack(spacing: AppTheme.Spacing.md) {
@@ -46,17 +55,21 @@ struct PersonaSettingsView: View {
 
                 Spacer()
 
-                if viewModel.selectedPersona == persona {
+                if appState.selectedPersona == persona {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.title3)
                         .foregroundStyle(AppTheme.primary)
+                } else if !appState.subscriptionPlan.supports(persona: persona) {
+                    Label("Pro", systemImage: "lock.fill")
+                        .font(AppFonts.caption)
+                        .foregroundStyle(AppTheme.warning)
                 }
             }
             .padding(.vertical, AppTheme.Spacing.xs)
         }
         .buttonStyle(.plain)
         .listRowBackground(
-            viewModel.selectedPersona == persona
+            appState.selectedPersona == persona
                 ? persona.accentColor.opacity(0.08)
                 : Color.clear
         )
@@ -65,14 +78,13 @@ struct PersonaSettingsView: View {
     // MARK: - Helpers
 
     private var selectedPersonaDescription: String? {
-        viewModel.selectedPersona.description
+        appState.selectedPersona.description
     }
 }
 
 #Preview {
     NavigationStack {
-        PersonaSettingsView(
-            viewModel: ProfileViewModel(appState: AppState())
-        )
+        PersonaSettingsView()
     }
+    .environment(AppState())
 }

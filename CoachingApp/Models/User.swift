@@ -1,5 +1,76 @@
 import Foundation
 
+enum SubscriptionPlan: String, Codable, CaseIterable, Identifiable {
+    case free
+    case pro
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .free: return "Free"
+        case .pro: return "Ascendra Pro"
+        }
+    }
+
+    var badgeTitle: String {
+        switch self {
+        case .free: return "Free"
+        case .pro: return "Pro"
+        }
+    }
+
+    var priceLine: String {
+        switch self {
+        case .free: return "$0"
+        case .pro: return "$29/mo or $249/yr"
+        }
+    }
+
+    var summary: String {
+        switch self {
+        case .free:
+            return "A focused entry point for trying executive coaching with a lighter toolkit."
+        case .pro:
+            return "Full premium executive coaching with richer interaction and deeper continuity."
+        }
+    }
+
+    var featureHighlights: [String] {
+        switch self {
+        case .free:
+            return [
+                "Core AI executive coaching",
+                "One coaching persona",
+                "Text-based guidance"
+            ]
+        case .pro:
+            return [
+                "Voice coaching access",
+                "Session summaries",
+                "All coaching personas"
+            ]
+        }
+    }
+
+    var includesVoice: Bool {
+        self == .pro
+    }
+
+    var includesSessionSummary: Bool {
+        self == .pro
+    }
+
+    func supports(persona: CoachingPersonaType) -> Bool {
+        switch self {
+        case .free:
+            return persona == .directChallenger
+        case .pro:
+            return true
+        }
+    }
+}
+
 struct User: Identifiable, Codable {
     let id: String
     var email: String
@@ -55,6 +126,15 @@ enum SeatTier: String, Codable, CaseIterable {
         case .starter: return 5
         case .professional: return 15
         case .executive: return 50
+        }
+    }
+
+    var subscriptionPlan: SubscriptionPlan {
+        switch self {
+        case .starter:
+            return .free
+        case .professional, .executive:
+            return .pro
         }
     }
 }

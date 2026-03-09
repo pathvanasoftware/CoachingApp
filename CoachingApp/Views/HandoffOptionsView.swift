@@ -226,6 +226,241 @@ struct HandoffOptionsView: View {
     }
 }
 
+struct SubscriptionView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(AppState.self) private var appState
+
+    let highlightedFeature: String?
+
+    private let premiumTint = Color(red: 0.83, green: 0.47, blue: 0.14)
+    private let premiumAccent = Color(red: 0.09, green: 0.24, blue: 0.47)
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    heroSection
+                    comparisonSection
+                    premiumFocusSection
+                    actionSection
+                }
+                .padding(AppTheme.Spacing.md)
+            }
+            .background(
+                LinearGradient(
+                    colors: [
+                        premiumTint.opacity(0.12),
+                        premiumAccent.opacity(0.08),
+                        Color(.systemBackground)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+            )
+            .navigationTitle("Plans")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var heroSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            Text("Ascendra Pro")
+                .font(AppFonts.caption)
+                .foregroundStyle(premiumTint)
+                .padding(.horizontal, AppTheme.Spacing.sm)
+                .padding(.vertical, AppTheme.Spacing.xs)
+                .background(premiumTint.opacity(0.14))
+                .clipShape(Capsule())
+
+            Text("Structured executive coaching,\nwith the full premium toolkit.")
+                .font(AppFonts.largeTitle)
+                .foregroundStyle(AppTheme.textPrimary)
+
+            Text(highlightedFeatureLine)
+                .font(AppFonts.subheadline)
+                .foregroundStyle(AppTheme.textSecondary)
+
+            HStack(alignment: .lastTextBaseline, spacing: AppTheme.Spacing.sm) {
+                Text(SubscriptionPlan.pro.priceLine)
+                    .font(AppFonts.title3)
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text("Premium access to voice, summaries, and both coaching personas.")
+                    .font(AppFonts.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+        }
+        .padding(AppTheme.Spacing.lg)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.92),
+                            premiumTint.opacity(0.16),
+                            premiumAccent.opacity(0.10)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .modifier(CardShadow())
+    }
+
+    private var comparisonSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            Text("What changes when you upgrade")
+                .font(AppFonts.headline)
+                .foregroundStyle(AppTheme.textPrimary)
+
+            VStack(spacing: AppTheme.Spacing.sm) {
+                planCard(for: .free)
+                planCard(for: .pro)
+            }
+        }
+    }
+
+    private var premiumFocusSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            Text("Why people upgrade")
+                .font(AppFonts.headline)
+                .foregroundStyle(AppTheme.textPrimary)
+
+            VStack(spacing: AppTheme.Spacing.sm) {
+                premiumBullet(
+                    icon: "mic.fill",
+                    title: "Talk through high-stakes situations",
+                    copy: "Voice access makes the app feel like a live executive thinking partner."
+                )
+                premiumBullet(
+                    icon: "doc.text.magnifyingglass",
+                    title: "Leave with a sharper takeaway",
+                    copy: "Session summaries turn a coaching conversation into something you can revisit and act on."
+                )
+                premiumBullet(
+                    icon: "person.2.fill",
+                    title: "Choose the coaching voice you need",
+                    copy: "Switch between a direct challenger and a supportive strategist as the situation changes."
+                )
+            }
+        }
+    }
+
+    private var actionSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            Button {
+                appState.upgradeToProPreview()
+                dismiss()
+            } label: {
+                Text(appState.subscriptionPlan == .pro ? "You're on Ascendra Pro" : "Unlock Pro Preview")
+                    .font(AppFonts.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, AppTheme.Spacing.md)
+                    .foregroundStyle(.white)
+                    .background(appState.subscriptionPlan == .pro ? AppTheme.success : premiumAccent)
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
+            }
+            .disabled(appState.subscriptionPlan == .pro)
+
+            if appState.subscriptionPlan == .pro {
+                Button {
+                    appState.resetSubscriptionPreview()
+                } label: {
+                    Text("Reset to Free Preview")
+                        .font(AppFonts.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+
+            Text("This screen is the Phase 1 subscription shell. Billing and remote entitlements will plug into the same flow later.")
+                .font(AppFonts.caption)
+                .foregroundStyle(AppTheme.textSecondary)
+        }
+    }
+
+    private func planCard(for plan: SubscriptionPlan) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            HStack {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                    Text(plan.displayName)
+                        .font(AppFonts.headline)
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text(plan.priceLine)
+                        .font(AppFonts.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+
+                Spacer()
+
+                Text(plan.badgeTitle)
+                    .font(AppFonts.caption)
+                    .foregroundStyle(plan == .pro ? premiumTint : AppTheme.textSecondary)
+                    .padding(.horizontal, AppTheme.Spacing.sm)
+                    .padding(.vertical, AppTheme.Spacing.xs)
+                    .background((plan == .pro ? premiumTint : AppTheme.textTertiary).opacity(0.12))
+                    .clipShape(Capsule())
+            }
+
+            Text(plan.summary)
+                .font(AppFonts.subheadline)
+                .foregroundStyle(AppTheme.textSecondary)
+
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                ForEach(plan.featureHighlights, id: \.self) { feature in
+                    Label(feature, systemImage: "checkmark.circle.fill")
+                        .font(AppFonts.caption)
+                        .foregroundStyle(AppTheme.textPrimary)
+                }
+            }
+        }
+        .padding(AppTheme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg)
+                .fill(Color(.secondarySystemBackground))
+        )
+    }
+
+    private func premiumBullet(icon: String, title: String, copy: String) -> some View {
+        HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+            Image(systemName: icon)
+                .foregroundStyle(premiumAccent)
+                .frame(width: 24)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                Text(title)
+                    .font(AppFonts.headline)
+                    .foregroundStyle(AppTheme.textPrimary)
+                Text(copy)
+                    .font(AppFonts.subheadline)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg)
+                .fill(Color(.secondarySystemBackground).opacity(0.92))
+        )
+    }
+
+    private var highlightedFeatureLine: String {
+        if let highlightedFeature, !highlightedFeature.isEmpty {
+            return "Unlock \(highlightedFeature) and the rest of the premium executive coaching experience."
+        }
+        return "Upgrade when you want richer guidance, deeper reflection, and a more flexible coaching experience."
+    }
+}
+
 // MARK: - Preview
 #Preview("No Subscription") {
     HandoffOptionsView(
@@ -236,6 +471,11 @@ struct HandoffOptionsView: View {
         onScheduleCall: { print("Schedule call tapped") }
     )
     .padding()
+}
+
+#Preview("Subscription View") {
+    SubscriptionView(highlightedFeature: "voice coaching")
+        .environment(AppState())
 }
 
 #Preview("With Subscription") {
