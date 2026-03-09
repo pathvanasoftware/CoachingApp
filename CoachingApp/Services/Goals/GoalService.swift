@@ -21,6 +21,16 @@ private struct CreateGoalRequest: Codable {
     let targetDate: Date?
     let milestones: [MilestoneDTO]
     let relatedSessionIds: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case title
+        case description
+        case status
+        case progress
+        case targetDate = "target_date"
+        case milestones
+        case relatedSessionIds = "related_session_ids"
+    }
 }
 
 private struct UpdateGoalRequest: Codable {
@@ -31,6 +41,16 @@ private struct UpdateGoalRequest: Codable {
     let targetDate: Date?
     let milestones: [MilestoneDTO]
     let relatedSessionIds: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case title
+        case description
+        case status
+        case progress
+        case targetDate = "target_date"
+        case milestones
+        case relatedSessionIds = "related_session_ids"
+    }
 }
 
 private struct MilestoneDTO: Codable {
@@ -38,6 +58,13 @@ private struct MilestoneDTO: Codable {
     let title: String
     let isCompleted: Bool
     let completedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case isCompleted = "is_completed"
+        case completedAt = "completed_at"
+    }
 
     init(from milestone: Milestone) {
         self.id = milestone.id

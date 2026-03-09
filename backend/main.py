@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, chat, debug, goals, health
+from app.routers import auth, chat, debug, goals, health, sessions
 
 app = FastAPI(title="CoachingApp API", version="1.0.0")
 
@@ -18,6 +18,8 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["AuthV1"])
 app.include_router(goals.router, prefix="/api", tags=["Goals"])
 app.include_router(goals.router, prefix="/api/v1", tags=["GoalsV1"])
+app.include_router(sessions.router, prefix="/api", tags=["Sessions"])
+app.include_router(sessions.router, prefix="/api/v1", tags=["SessionsV1"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 # Compatibility prefix used by iOS client
 app.include_router(chat.router, prefix="/api/v1", tags=["ChatV1"])

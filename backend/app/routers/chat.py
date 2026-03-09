@@ -7,15 +7,19 @@ import time
 import uuid
 from typing import Dict, List, Optional, Union
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
+from app.routers.auth import verify_token
 from app.services.llm import CoachingRequest, CoachingResponse, get_coaching_response, generate_session_summary, _anthropic_available, _openai_available
 from app.services.cache import build_cache_backend
+from app.services.sessions import session_service
 
 router = APIRouter()
 response_cache = build_cache_backend()
+optional_security = HTTPBearer(auto_error=False)
 
 IDEMP_TTL_SECONDS = int(os.getenv("IDEMP_TTL_SECONDS", "1200"))
 LOCK_TTL_SECONDS = int(os.getenv("LOCK_TTL_SECONDS", "120"))
@@ -147,10 +151,48 @@ def _cache_record(result: CoachingResponse, signature: str, request_id: str) -> 
     }
 
 
+def _assistant_diagnostics(result: CoachingResponse) -> Dict:
+    goal_hierarchy = result.goal_hierarchy
+    if goal_hierarchy and not isinstance(goal_hierarchy, str):
+        goal_hierarchy = json.dumps(goal_hierarchy, ensure_ascii=False)
+
+    progressive = result.progressive_skill_building
+    if progressive and not isinstance(progressive, str):
+        progressive = json.dumps(progressive, ensure_ascii=False)
+
+    outcome = result.outcome_prediction
+    if outcome and not isinstance(outcome, str):
+        outcome = json.dumps(outcome, ensure_ascii=False)
+
+    return {
+        "style_used": result.style_used or "",
+        "emotion_detected": result.emotion_detected or "",
+        "goal_link": result.goal_link or "",
+        "goal_anchor": result.goal_anchor,
+        "goal_hierarchy_summary": goal_hierarchy,
+        "progressive_skill_summary": progressive,
+        "outcome_prediction_summary": outcome,
+        "risk_level": None,
+        "recommended_style_shift": result.recommended_style_shift,
+    }
+
+
 def _require_matching_signature(record: Dict, signature: str) -> None:
     cached_sig = record.get("signature")
     if cached_sig and cached_sig != signature:
         raise HTTPException(status_code=409, detail="request_id already used for a different payload")
+
+
+async def _maybe_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
+) -> Optional[str]:
+    if credentials is None:
+        return None
+
+    user_id = verify_token(credentials.credentials)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    return user_id
 
 
 async def _wait_for_record(cache_key: str, signature: str, wait_seconds: float) -> Optional[Dict]:
@@ -240,7 +282,10 @@ async def get_quick_replies(message: str, response: str = "") -> dict:
 
 
 @router.post("/chat-stream")
-async def chat_stream(request: ChatStreamRequest):
+async def chat_stream(
+    request: ChatStreamRequest,
+    authenticated_user_id: Optional[str] = Depends(_maybe_current_user),
+):
     """SSE stream for iOS client. First emits metadata, then token chunks."""
 
     _require_llm_or_503()
@@ -284,8 +329,23 @@ async def chat_stream(request: ChatStreamRequest):
         request_id=request_id or None,
     )
 
+    session = session_service.get_session_by_id(request.sessionId)
+    if session:
+        if authenticated_user_id is None:
+            raise HTTPException(status_code=401, detail="Authentication required for persisted sessions")
+        if authenticated_user_id != session["user_id"]:
+            raise HTTPException(status_code=403, detail="Session does not belong to the authenticated user")
+        coaching_req.user_id = authenticated_user_id
+
     if not request_id:
         result = await get_coaching_response(coaching_req)
+        if session:
+            session_service.record_turn(
+                session_id=request.sessionId,
+                user_content=request.message,
+                assistant_content=result.response,
+                assistant_diagnostics=_assistant_diagnostics(result),
+            )
         return StreamingResponse(_stream_result(result), media_type="text/event-stream")
 
     signature = _stream_signature(request)
@@ -308,6 +368,13 @@ async def chat_stream(request: ChatStreamRequest):
 
     try:
         result = await get_coaching_response(coaching_req)
+        if session:
+            session_service.record_turn(
+                session_id=request.sessionId,
+                user_content=request.message,
+                assistant_content=result.response,
+                assistant_diagnostics=_assistant_diagnostics(result),
+            )
         await response_cache.set_json(
             cache_key,
             _cache_record(result, signature, request_id),

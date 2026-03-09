@@ -80,11 +80,16 @@ final class SessionsViewModel {
     }
 
     @MainActor
-    func deleteSession(at offsets: IndexSet, from sectionSessions: [CoachingSession]) {
+    func deleteSessions(at offsets: IndexSet, from sectionSessions: [CoachingSession]) async {
         for offset in offsets {
             let session = sectionSessions[offset]
-            if let index = sessions.firstIndex(where: { $0.id == session.id }) {
-                sessions.remove(at: index)
+            do {
+                try await chatService.deleteSession(sessionId: session.id)
+                if let index = sessions.firstIndex(where: { $0.id == session.id }) {
+                    sessions.remove(at: index)
+                }
+            } catch {
+                errorMessage = "Failed to delete session: \(error.localizedDescription)"
             }
         }
     }

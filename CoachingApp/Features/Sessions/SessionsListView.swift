@@ -102,7 +102,9 @@ struct SessionsListView: View {
                     }
                     .onDelete { offsets in
                         let completedInGroup = group.sessions.filter { !$0.isActive }
-                        viewModel.deleteSession(at: offsets, from: completedInGroup)
+                        Task {
+                            await viewModel.deleteSessions(at: offsets, from: completedInGroup)
+                        }
                     }
                 } header: {
                     Text(group.key)

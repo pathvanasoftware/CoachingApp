@@ -344,6 +344,14 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
         return result
     }
 
+    func deleteSession(sessionId: String) async throws {
+        try await Task.sleep(nanoseconds: responseDelay)
+        Self._lock.lock()
+        Self._sessions.removeValue(forKey: sessionId)
+        Self._messages.removeValue(forKey: sessionId)
+        Self._lock.unlock()
+    }
+
     // MARK: - StreamingServiceProtocol
 
     func streamResponse(

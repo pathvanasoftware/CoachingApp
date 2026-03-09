@@ -2,20 +2,16 @@ import SwiftUI
 
 struct SessionDetailView: View {
     @Environment(AppState.self) private var appState
+    @Environment(ServiceContainer.self) private var services
     let session: CoachingSession
     @State private var messages: [ChatMessage] = []
     @State private var isLoading = true
     @State private var showFullTranscript = false
 
-    private let chatService: ChatServiceProtocol
     private let historyStorage = ChatHistoryStorage.shared
 
-    init(
-        session: CoachingSession,
-        chatService: ChatServiceProtocol = MockChatService.shared
-    ) {
+    init(session: CoachingSession) {
         self.session = session
-        self.chatService = chatService
     }
 
     var body: some View {
@@ -315,7 +311,7 @@ struct SessionDetailView: View {
             if let (_, savedMessages) = try await historyStorage.loadSession(id: session.id), !savedMessages.isEmpty {
                 messages = savedMessages
             } else {
-                messages = try await chatService.getMessages(sessionId: session.id)
+                messages = try await services.chatService.getMessages(sessionId: session.id)
             }
         } catch {
             messages = []
@@ -342,6 +338,7 @@ struct SessionDetailView: View {
         )
     }
     .environment(AppState())
+    .environment(ServiceContainer())
 }
 
 #Preview("Active Session") {
@@ -356,4 +353,5 @@ struct SessionDetailView: View {
         )
     }
     .environment(AppState())
+    .environment(ServiceContainer())
 }

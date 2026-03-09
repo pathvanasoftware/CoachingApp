@@ -26,6 +26,10 @@ protocol ChatServiceProtocol: Sendable {
     func getMessages(
         sessionId: String
     ) async throws -> [ChatMessage]
+
+    func deleteSession(
+        sessionId: String
+    ) async throws
 }
 
 // MARK: - Request / Response DTOs
@@ -35,16 +39,33 @@ private struct StartSessionRequest: Codable {
     let persona: String
     let sessionType: String
     let inputMode: String
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case persona
+        case sessionType = "session_type"
+        case inputMode = "input_mode"
+    }
 }
 
 private struct SendMessageRequest: Codable {
     let sessionId: String
     let content: String
     let role: String
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case content
+        case role
+    }
 }
 
 private struct EndSessionRequest: Codable {
     let sessionId: String
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+    }
 }
 
 // MARK: - Chat Service
@@ -59,6 +80,9 @@ final class ChatService: ChatServiceProtocol, @unchecked Sendable {
 
     init(apiClient: APIClient = APIClient()) {
         self.apiClient = apiClient
+        self.apiClient.authTokenProvider = {
+            KeychainService.loadAccessToken()
+        }
     }
 
     // MARK: - Start Session
@@ -97,7 +121,7 @@ final class ChatService: ChatServiceProtocol, @unchecked Sendable {
         )
 
         let response: ChatMessage = try await apiClient.post(
-            path: "/messages",
+            path: "/sessions/\(sessionId)/messages",
             body: request
         )
 
@@ -120,14 +144,9 @@ final class ChatService: ChatServiceProtocol, @unchecked Sendable {
     // MARK: - Get Session History
 
     func getSessionHistory(userId: String) async throws -> [CoachingSession] {
-        let queryItems = [
-            URLQueryItem(name: "user_id", value: "eq.\(userId)"),
-            URLQueryItem(name: "order", value: "started_at.desc")
-        ]
-
         let sessions: [CoachingSession] = try await apiClient.get(
             path: "/sessions",
-            queryItems: queryItems
+            queryItems: nil
         )
 
         return sessions
@@ -136,17 +155,18 @@ final class ChatService: ChatServiceProtocol, @unchecked Sendable {
     // MARK: - Get Messages
 
     func getMessages(sessionId: String) async throws -> [ChatMessage] {
-        let queryItems = [
-            URLQueryItem(name: "session_id", value: "eq.\(sessionId)"),
-            URLQueryItem(name: "order", value: "timestamp.asc")
-        ]
-
         let messages: [ChatMessage] = try await apiClient.get(
-            path: "/messages",
-            queryItems: queryItems
+            path: "/sessions/\(sessionId)/messages",
+            queryItems: nil
         )
 
         return messages
+    }
+
+    // MARK: - Delete Session
+
+    func deleteSession(sessionId: String) async throws {
+        try await apiClient.delete(path: "/sessions/\(sessionId)")
     }
 }
 
