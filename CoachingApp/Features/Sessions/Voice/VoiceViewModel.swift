@@ -55,6 +55,7 @@ final class VoiceViewModel {
     var chatService: ChatServiceProtocol
     var streamingService: StreamingServiceProtocol
     private let historyStorage = ChatHistoryStorage.shared
+    private let analytics = AnalyticsService.shared
     private var amplitudeTimer: Timer?
     private var processingTask: Task<Void, Never>?
 
@@ -133,6 +134,10 @@ final class VoiceViewModel {
             )
             currentSession = session
             isSessionActive = true
+            analytics.track("voice_session_started", properties: [
+                "session_id": session.id,
+                "persona": persona.rawValue,
+            ])
 
             let welcomeMessage = ChatMessage(
                 sessionId: session.id,
@@ -145,6 +150,10 @@ final class VoiceViewModel {
             startSpeaking(text: welcomeMessage.content)
         } catch {
             errorMessage = "Failed to start session: \(error.localizedDescription)"
+            analytics.track("voice_session_start_failed", properties: [
+                "persona": persona.rawValue,
+                "error": error.localizedDescription,
+            ])
         }
     }
 
@@ -160,9 +169,17 @@ final class VoiceViewModel {
                 let endedSession = try await chatService.endSession(sessionId: session.id)
                 currentSession = endedSession
                 isSessionActive = false
+                analytics.track("voice_session_ended", properties: [
+                    "session_id": session.id,
+                    "message_count": messages.count,
+                ])
                 await saveCurrentSession()
             } catch {
                 errorMessage = "Failed to end session: \(error.localizedDescription)"
+                analytics.track("voice_session_end_failed", properties: [
+                    "session_id": session.id,
+                    "error": error.localizedDescription,
+                ])
             }
         }
 
@@ -184,10 +201,17 @@ final class VoiceViewModel {
             try speechRecognition.startListening()
             voiceState = .listening
             startAmplitudeSimulation()
+            analytics.track("voice_listening_started", properties: [
+                "session_id": currentSession?.id,
+            ])
         } catch {
             errorMessage = error.localizedDescription
             voiceState = .idle
             stopAmplitudeSimulation()
+            analytics.track("voice_listening_failed", properties: [
+                "session_id": currentSession?.id,
+                "error": error.localizedDescription,
+            ])
         }
     }
 
@@ -209,6 +233,10 @@ final class VoiceViewModel {
         }
 
         voiceState = .processing
+        analytics.track("voice_transcription_captured", properties: [
+            "session_id": currentSession?.id,
+            "text_length": spokenText.count,
+        ])
         processTranscription(spokenText)
     }
 

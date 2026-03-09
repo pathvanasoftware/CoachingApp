@@ -67,6 +67,7 @@ final class AppState {
     }
 
     private let subscriptionClient = APIClient()
+    private let analytics = AnalyticsService.shared
     private var transactionUpdatesTask: Task<Void, Never>?
 
     var isAuthenticated: Bool = false
@@ -103,6 +104,7 @@ final class AppState {
     var isRestoringPurchases: Bool = false
     var subscriptionErrorMessage: String?
     var activeSubscriptionProductID: String?
+    var entitlementSnapshot: EntitlementSnapshot?
     var showDebugDiagnostics: Bool = false
     
     // Use mock services (no real API calls). Defaults to false — real Railway backend.
@@ -131,6 +133,14 @@ final class AppState {
 
     var hasProAccess: Bool {
         subscriptionPlan == .pro
+    }
+
+    var remainingSessionsToday: Int? {
+        entitlementSnapshot?.remainingSessionsToday
+    }
+
+    var dailySessionLimit: Int? {
+        entitlementSnapshot?.dailySessionLimit
     }
 
     init() {
@@ -183,6 +193,7 @@ final class AppState {
 
         Task {
             await syncStoreSubscriptionToBackendIfNeeded()
+            await refreshEntitlements()
         }
     }
 
@@ -200,6 +211,7 @@ final class AppState {
 
         Task {
             await syncStoreSubscriptionToBackendIfNeeded()
+            await refreshEntitlements()
         }
     }
 
@@ -208,6 +220,7 @@ final class AppState {
         currentUserEmail = nil
         currentUserName = nil
         serverSeatTier = .starter
+        entitlementSnapshot = nil
         isAuthenticated = false
         hasCompletedOnboarding = true
     }
@@ -233,6 +246,10 @@ final class AppState {
 
     @MainActor
     func prepareSubscriptionStorefront() async {
+        analytics.track("paywall_opened", properties: [
+            "current_plan": subscriptionPlan.rawValue,
+            "seat_tier": serverSeatTier.rawValue,
+        ])
         startTransactionListenerIfNeeded()
         await loadSubscriptionProducts()
         await refreshSubscriptionStatusFromStoreKit()
@@ -248,9 +265,17 @@ final class AppState {
             availableSubscriptionProducts = products.sorted(by: Self.compareProducts)
             if availableSubscriptionProducts.isEmpty {
                 subscriptionErrorMessage = "Subscription products are not available yet."
+                analytics.track("subscription_products_empty")
+            } else {
+                analytics.track("subscription_products_loaded", properties: [
+                    "count": products.count,
+                ])
             }
         } catch {
             subscriptionErrorMessage = "Could not load subscription products right now."
+            analytics.track("subscription_products_failed", properties: [
+                "error": error.localizedDescription,
+            ])
         }
     }
 
@@ -259,6 +284,10 @@ final class AppState {
         subscriptionErrorMessage = nil
         isPurchasingSubscription = true
         defer { isPurchasingSubscription = false }
+        analytics.track("subscription_purchase_started", properties: [
+            "product_id": product.id,
+            "display_price": product.displayPrice,
+        ])
 
         do {
             let result = try await product.purchase()
@@ -267,16 +296,32 @@ final class AppState {
                 let transaction = try Self.verifiedTransaction(from: verification)
                 activeSubscriptionProductID = transaction.productID
                 await transaction.finish()
+                analytics.track("subscription_purchase_succeeded", properties: [
+                    "product_id": transaction.productID,
+                ])
                 await refreshSubscriptionStatusFromStoreKit()
             case .userCancelled:
+                analytics.track("subscription_purchase_cancelled", properties: [
+                    "product_id": product.id,
+                ])
                 break
             case .pending:
                 subscriptionErrorMessage = "Purchase is pending approval."
+                analytics.track("subscription_purchase_pending", properties: [
+                    "product_id": product.id,
+                ])
             @unknown default:
                 subscriptionErrorMessage = "Purchase could not be completed."
+                analytics.track("subscription_purchase_unknown_result", properties: [
+                    "product_id": product.id,
+                ])
             }
         } catch {
             subscriptionErrorMessage = "Purchase failed: \(error.localizedDescription)"
+            analytics.track("subscription_purchase_failed", properties: [
+                "product_id": product.id,
+                "error": error.localizedDescription,
+            ])
         }
     }
 
@@ -285,12 +330,19 @@ final class AppState {
         subscriptionErrorMessage = nil
         isRestoringPurchases = true
         defer { isRestoringPurchases = false }
+        analytics.track("subscription_restore_started")
 
         do {
             try await AppStore.sync()
             await refreshSubscriptionStatusFromStoreKit()
+            analytics.track("subscription_restore_completed", properties: [
+                "has_pro_access": hasProAccess,
+            ])
         } catch {
             subscriptionErrorMessage = "Could not restore purchases right now."
+            analytics.track("subscription_restore_failed", properties: [
+                "error": error.localizedDescription,
+            ])
         }
     }
 
@@ -314,6 +366,7 @@ final class AppState {
         hasActiveStoreSubscription = hasProAccess
         activeSubscriptionProductID = latestProductID
         await syncStoreSubscriptionToBackendIfNeeded()
+        await refreshEntitlements()
     }
 
     private func startTransactionListenerIfNeeded() {
@@ -352,8 +405,42 @@ final class AppState {
                 body: SubscriptionSeatTierUpdate(seatTier: SeatTier.professional.rawValue)
             )
             serverSeatTier = updatedUser.seatTier
+            analytics.track("subscription_tier_synced_to_backend", properties: [
+                "seat_tier": updatedUser.seatTier.rawValue,
+            ])
         } catch {
             print("[AppState] Failed to sync subscription tier to backend: \(error.localizedDescription)")
+            analytics.track("subscription_tier_sync_failed", properties: [
+                "error": error.localizedDescription,
+            ])
+        }
+    }
+
+    @MainActor
+    func refreshEntitlements() async {
+        guard isAuthenticated else {
+            entitlementSnapshot = nil
+            return
+        }
+
+        do {
+            let snapshot: EntitlementSnapshot = try await subscriptionClient.get(
+                path: "/auth/entitlements",
+                queryItems: nil
+            )
+            entitlementSnapshot = snapshot
+            serverSeatTier = snapshot.resolvedSeatTier
+            analytics.track("entitlements_refreshed", properties: [
+                "seat_tier": snapshot.seatTier,
+                "remaining_sessions_today": snapshot.remainingSessionsToday,
+                "can_use_voice": snapshot.canUseVoice,
+                "can_use_session_summary": snapshot.canUseSessionSummary,
+            ])
+        } catch {
+            print("[AppState] Failed to refresh entitlements: \(error.localizedDescription)")
+            analytics.track("entitlements_refresh_failed", properties: [
+                "error": error.localizedDescription,
+            ])
         }
     }
 

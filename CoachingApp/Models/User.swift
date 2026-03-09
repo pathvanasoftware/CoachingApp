@@ -148,6 +148,30 @@ struct Organization: Identifiable, Codable {
     var createdAt: Date
 }
 
+struct EntitlementSnapshot: Codable {
+    let seatTier: String
+    let dailySessionLimit: Int
+    let canUseVoice: Bool
+    let canUseSessionSummary: Bool
+    let allowedPersonas: [String]?
+    let sessionsStartedToday: Int
+    let remainingSessionsToday: Int
+
+    enum CodingKeys: String, CodingKey {
+        case seatTier = "seat_tier"
+        case dailySessionLimit = "daily_session_limit"
+        case canUseVoice = "can_use_voice"
+        case canUseSessionSummary = "can_use_session_summary"
+        case allowedPersonas = "allowed_personas"
+        case sessionsStartedToday = "sessions_started_today"
+        case remainingSessionsToday = "remaining_sessions_today"
+    }
+
+    var resolvedSeatTier: SeatTier {
+        SeatTier(rawValue: seatTier) ?? .starter
+    }
+}
+
 enum InputMode: String, Codable, CaseIterable {
     case text = "text"
     case voice = "voice"

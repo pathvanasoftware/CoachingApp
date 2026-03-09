@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct AccountSettingsView: View {
+    @Environment(AppState.self) private var appState
     @Bindable var viewModel: ProfileViewModel
 
     @State private var showingDeleteConfirmation = false
@@ -141,7 +142,7 @@ struct AccountSettingsView: View {
 
                 Spacer()
 
-                Text(SeatTier.starter.displayName)
+                Text(appState.serverSeatTier.displayName)
                     .font(AppFonts.subheadline)
                     .foregroundStyle(AppTheme.primary)
                     .padding(.horizontal, AppTheme.Spacing.sm)
@@ -149,7 +150,52 @@ struct AccountSettingsView: View {
                     .background(AppTheme.primary.opacity(0.1))
                     .clipShape(Capsule())
             }
+
+            if let remainingSessions = appState.remainingSessionsToday,
+               let dailyLimit = appState.dailySessionLimit {
+                HStack {
+                    Label("Sessions Left Today", systemImage: "calendar.badge.clock")
+                        .font(AppFonts.body)
+                        .foregroundStyle(AppTheme.textPrimary)
+
+                    Spacer()
+
+                    Text("\(remainingSessions)/\(dailyLimit)")
+                        .font(AppFonts.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
+
+            HStack {
+                Label("Voice Coaching", systemImage: "mic.fill")
+                    .font(AppFonts.body)
+                    .foregroundStyle(AppTheme.textPrimary)
+
+                Spacer()
+
+                entitlementBadge(isEnabled: appState.entitlementSnapshot?.canUseVoice ?? appState.hasProAccess)
+            }
+
+            HStack {
+                Label("Session Summaries", systemImage: "doc.text.magnifyingglass")
+                    .font(AppFonts.body)
+                    .foregroundStyle(AppTheme.textPrimary)
+
+                Spacer()
+
+                entitlementBadge(isEnabled: appState.entitlementSnapshot?.canUseSessionSummary ?? appState.hasProAccess)
+            }
         }
+    }
+
+    private func entitlementBadge(isEnabled: Bool) -> some View {
+        Text(isEnabled ? "Included" : "Upgrade")
+            .font(AppFonts.caption)
+            .foregroundStyle(isEnabled ? AppTheme.success : AppTheme.textSecondary)
+            .padding(.horizontal, AppTheme.Spacing.sm)
+            .padding(.vertical, AppTheme.Spacing.xs)
+            .background((isEnabled ? AppTheme.success : AppTheme.textTertiary).opacity(0.12))
+            .clipShape(Capsule())
     }
 
     // MARK: - Data Management Section

@@ -42,6 +42,7 @@ final class ChatViewModel {
     var streamingService: StreamingServiceProtocol
     private let apiClient: APIClient
     private let historyStorage = ChatHistoryStorage.shared
+    private let analytics = AnalyticsService.shared
 
     // MARK: - Private State
 
@@ -97,11 +98,23 @@ final class ChatViewModel {
             currentSession = session
             messages = []
             startTimer()
+            analytics.track("session_started", properties: [
+                "session_id": session.id,
+                "session_type": type.rawValue,
+                "persona": persona.rawValue,
+                "input_mode": inputMode.rawValue,
+            ])
 
             // Render initial greeting instantly from local templates.
             appendLocalOpening(for: session)
         } catch {
             errorMessage = "Failed to start session: \(error.localizedDescription)"
+            analytics.track("session_start_failed", properties: [
+                "session_type": type.rawValue,
+                "persona": persona.rawValue,
+                "input_mode": inputMode.rawValue,
+                "error": error.localizedDescription,
+            ])
         }
 
         isLoading = false
@@ -142,10 +155,19 @@ final class ChatViewModel {
         do {
             let endedSession = try await chatService.endSession(sessionId: session.id)
             currentSession = endedSession
+            analytics.track("session_ended", properties: [
+                "session_id": session.id,
+                "message_count": messages.count,
+                "duration_seconds": endedSession.durationSeconds ?? 0,
+            ])
             // Save final session state
             saveCurrentSession()
         } catch {
             errorMessage = "Failed to end session: \(error.localizedDescription)"
+            analytics.track("session_end_failed", properties: [
+                "session_id": session.id,
+                "error": error.localizedDescription,
+            ])
         }
     }
 
@@ -169,6 +191,11 @@ final class ChatViewModel {
             status: .sending
         )
         messages.append(userMessage)
+        analytics.track("session_message_sent", properties: [
+            "session_id": session.id,
+            "message_id": userMessage.id,
+            "message_length": content.count,
+        ])
 
         // Crisis signal should trigger immediately and visibly.
         if containsCrisisSignal(in: content) {
@@ -697,6 +724,10 @@ final class ChatViewModel {
         
         isGeneratingSummary = true
         defer { isGeneratingSummary = false }
+        analytics.track("session_summary_requested", properties: [
+            "session_id": currentSession?.id,
+            "message_count": messages.count,
+        ])
         
         do {
             let requestBody = SessionSummaryRequestBody(
@@ -714,8 +745,17 @@ final class ChatViewModel {
             )
 
             self.sessionSummary = summary
+            analytics.track("session_summary_generated", properties: [
+                "session_id": currentSession?.id,
+                "action_items_count": summary.actionItems.count,
+                "key_insights_count": summary.keyInsights.count,
+            ])
         } catch {
             errorMessage = "Failed to generate summary: \(error.localizedDescription)"
+            analytics.track("session_summary_failed", properties: [
+                "session_id": currentSession?.id,
+                "error": error.localizedDescription,
+            ])
         }
     }
 

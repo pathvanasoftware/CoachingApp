@@ -319,6 +319,10 @@ struct ChatView: View {
 
     private func presentSubscription(feature: String) {
         highlightedPremiumFeature = feature
+        AnalyticsService.shared.track("paywall_feature_prompted", properties: [
+            "feature": feature,
+            "current_plan": appState.subscriptionPlan.rawValue,
+        ])
         showSubscriptionSheet = true
     }
 
