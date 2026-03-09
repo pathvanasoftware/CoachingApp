@@ -1,4 +1,5 @@
 import asyncio
+import pytest
 
 from app.services import llm
 
@@ -21,6 +22,17 @@ def _patch_no_anthropic(monkeypatch):
     from app.services import llm_claude
     monkeypatch.setattr(llm_claude, "_anthropic_available", lambda: False)
     monkeypatch.setattr(llm_claude, "_openai_available", lambda: True)
+
+
+@pytest.fixture(autouse=True)
+def _force_file_profile_store(monkeypatch):
+    from app.services import memory_store
+
+    monkeypatch.setenv("PROFILE_STORE", "file")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    memory_store._store_backend = None
+    yield
+    memory_store._store_backend = None
 
 
 # ---------------------------------------------------------------------------

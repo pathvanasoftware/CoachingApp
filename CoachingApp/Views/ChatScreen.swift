@@ -696,6 +696,7 @@ struct SessionExportService {
                 if let risk = diagnostics.riskLevel {
                     text += "Risk Level: \(risk)\n"
                 }
+                appendDebugDiagnosticsText(&text, diagnostics: diagnostics)
                 text += "---\n"
             }
 
@@ -742,6 +743,7 @@ struct SessionExportService {
                 if let shift = diagnostics.recommendedStyleShift {
                     markdown += "- **Style Shift:** \(shift)\n"
                 }
+                appendDebugDiagnosticsMarkdown(&markdown, diagnostics: diagnostics)
                 markdown += "\n</details>\n\n"
             }
         }
@@ -750,6 +752,50 @@ struct SessionExportService {
         markdown += "*Exported from CoachingApp on \(Date().formatted(date: .complete, time: .shortened))*\n"
 
         return markdown
+    }
+
+    private static func appendDebugDiagnosticsText(_ text: inout String, diagnostics: CoachingDiagnostics) {
+        let debugLines = debugLines(for: diagnostics)
+        guard !debugLines.isEmpty else { return }
+
+        text += "Debug Diagnostics:\n"
+        for line in debugLines {
+            text += "- \(line)\n"
+        }
+    }
+
+    private static func appendDebugDiagnosticsMarkdown(_ markdown: inout String, diagnostics: CoachingDiagnostics) {
+        let debugLines = debugLines(for: diagnostics)
+        guard !debugLines.isEmpty else { return }
+
+        markdown += "\n<details>\n"
+        markdown += "<summary>🛠️ Routing Debug</summary>\n\n"
+        for line in debugLines {
+            markdown += "- \(line)\n"
+        }
+        markdown += "\n</details>\n"
+    }
+
+    private static func debugLines(for diagnostics: CoachingDiagnostics) -> [String] {
+        var lines: [String] = []
+
+        if let stageUsed = diagnostics.stageUsed {
+            lines.append("**Stage Used:** \(stageUsed)")
+        }
+        if let stageReason = diagnostics.stageReason {
+            lines.append("**Stage Reason:** \(stageReason)")
+        }
+        if let topicShift = diagnostics.topicShift {
+            lines.append("**Topic Shift:** \(topicShift ? "true" : "false")")
+        }
+        if diagnostics.preStateRev != nil || diagnostics.postStateRev != nil {
+            lines.append("**State Rev:** \(diagnostics.preStateRev ?? 0) -> \(diagnostics.postStateRev ?? 0)")
+        }
+        if let routingSignals = diagnostics.routingSignals, !routingSignals.isEmpty {
+            lines.append("**Merged Signals:** `\(routingSignals)`")
+        }
+
+        return lines
     }
 
     // MARK: - Share Sheet

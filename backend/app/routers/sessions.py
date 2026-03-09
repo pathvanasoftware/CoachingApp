@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -46,6 +47,10 @@ def _assistant_diagnostics_from_result(result) -> Dict[str, Any]:
     goal_hierarchy = getattr(result, "goal_hierarchy", None)
     progressive = getattr(result, "progressive_skill_building", None)
     outcome = getattr(result, "outcome_prediction", None)
+    behavior = getattr(result, "behavior_signals", None) or {}
+    routing_signals = behavior.get("routing_signals")
+    if routing_signals and not isinstance(routing_signals, str):
+        routing_signals = json.dumps(routing_signals, ensure_ascii=False)
 
     return {
         "style_used": getattr(result, "style_used", "") or "",
@@ -57,6 +62,12 @@ def _assistant_diagnostics_from_result(result) -> Dict[str, Any]:
         "outcome_prediction_summary": outcome if isinstance(outcome, str) else None,
         "risk_level": None,
         "recommended_style_shift": getattr(result, "recommended_style_shift", None),
+        "stage_used": behavior.get("stage_used"),
+        "stage_reason": behavior.get("stage_reason"),
+        "topic_shift": behavior.get("topic_shift"),
+        "pre_state_rev": behavior.get("pre_state_rev"),
+        "post_state_rev": behavior.get("post_state_rev"),
+        "routing_signals": routing_signals,
     }
 
 

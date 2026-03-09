@@ -56,6 +56,12 @@ struct CoachingDiagnostics: Codable {
     var outcomePredictionSummary: String?
     var riskLevel: String?
     var recommendedStyleShift: String?
+    var stageUsed: String?
+    var stageReason: String?
+    var topicShift: Bool?
+    var preStateRev: Int?
+    var postStateRev: Int?
+    var routingSignals: String?
 }
 
 // MARK: - Coaching Session Summary

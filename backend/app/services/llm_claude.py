@@ -936,6 +936,7 @@ async def get_coaching_response_claude(
             "stage_used":                stage,
             "stage_reason":              stage_reason,
             "topic_shift":               topic_shift,
+            "routing_signals":           asdict(signals),
             "pre_state_rev":            pre_state_rev,
             "post_state_rev":           post_state_rev,
         },

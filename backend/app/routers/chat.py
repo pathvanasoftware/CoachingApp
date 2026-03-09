@@ -164,6 +164,11 @@ def _assistant_diagnostics(result: CoachingResponse) -> Dict:
     if outcome and not isinstance(outcome, str):
         outcome = json.dumps(outcome, ensure_ascii=False)
 
+    behavior = result.behavior_signals or {}
+    routing_signals = behavior.get("routing_signals")
+    if routing_signals and not isinstance(routing_signals, str):
+        routing_signals = json.dumps(routing_signals, ensure_ascii=False)
+
     return {
         "style_used": result.style_used or "",
         "emotion_detected": result.emotion_detected or "",
@@ -174,6 +179,12 @@ def _assistant_diagnostics(result: CoachingResponse) -> Dict:
         "outcome_prediction_summary": outcome,
         "risk_level": None,
         "recommended_style_shift": result.recommended_style_shift,
+        "stage_used": behavior.get("stage_used"),
+        "stage_reason": behavior.get("stage_reason"),
+        "topic_shift": behavior.get("topic_shift"),
+        "pre_state_rev": behavior.get("pre_state_rev"),
+        "post_state_rev": behavior.get("post_state_rev"),
+        "routing_signals": routing_signals,
     }
 
 
