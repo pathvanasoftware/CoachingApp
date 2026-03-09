@@ -238,6 +238,7 @@ def _extract_conversation_signals(message: str) -> ConversationSignals:
     outcome = None
     for label, pattern in [
         ("trust", r"\btrust\b"),
+        ("stakeholder_influence", r"\b(convince|persuade|buy[\s-]?in|support|approve|back|sponsor|influence)\b"),
         ("promotion", r"\b(promotion|raise|level up)\b"),
         ("alignment", r"\b(alignment|align)\b"),
         ("underperformance", r"\b(underperformance|performance|slipping|missed)\b"),
@@ -285,6 +286,48 @@ def _extract_conversation_signals(message: str) -> ConversationSignals:
         constraint=constraint,
         leaning=leaning,
         topic_signature=_extract_topic_signature(message),
+    )
+
+
+def _merge_signals(
+    previous: Optional[ConversationSignals],
+    current: ConversationSignals,
+) -> ConversationSignals:
+    if previous is None:
+        return current
+
+    merged_topics: List[str] = []
+    for topic in (previous.topic_signature or []) + (current.topic_signature or []):
+        if topic and topic not in merged_topics:
+            merged_topics.append(topic)
+
+    return ConversationSignals(
+        stakeholder=current.stakeholder or previous.stakeholder,
+        outcome=current.outcome or previous.outcome,
+        example=current.example or previous.example,
+        timeframe=current.timeframe or previous.timeframe,
+        constraint=current.constraint or previous.constraint,
+        leaning=current.leaning or previous.leaning,
+        topic_signature=merged_topics[:4],
+    )
+
+
+def _signals_from_session_entry(session_entry: Dict[str, Any]) -> Optional[ConversationSignals]:
+    raw = session_entry.get("signals")
+    if not isinstance(raw, dict):
+        return None
+
+    raw_topics = raw.get("topic_signature", [])
+    topic_signature = [str(t) for t in raw_topics if isinstance(t, str)] if isinstance(raw_topics, list) else []
+
+    return ConversationSignals(
+        stakeholder=raw.get("stakeholder"),
+        outcome=raw.get("outcome"),
+        example=raw.get("example"),
+        timeframe=raw.get("timeframe"),
+        constraint=raw.get("constraint"),
+        leaning=raw.get("leaning"),
+        topic_signature=topic_signature,
     )
 
 
@@ -715,7 +758,6 @@ async def get_coaching_response_claude(
 
     # Deterministic stage routing: signal extraction + per-session state.
     user_turn_count = _count_user_turns(history, message)
-    early_turn = user_turn_count <= 3
     session_id = _extract_session_id(context)
     session_state = profile.get("session_state", {}) if isinstance(profile.get("session_state", {}), dict) else {}
     session_entry: Dict[str, Any] = {}
@@ -732,11 +774,17 @@ async def get_coaching_response_claude(
     raw_previous_topics = session_entry.get("topic_signature")
     previous_topics = [str(t) for t in raw_previous_topics if isinstance(t, str)] if isinstance(raw_previous_topics, list) else []
 
-    signals = _extract_conversation_signals(message)
+    previous_signals = _signals_from_session_entry(session_entry)
+    current_signals = _extract_conversation_signals(message)
+    signals = _merge_signals(previous_signals, current_signals)
     is_specific_request = _is_specific_request(message)
-    context_rich = _is_context_rich(message) or bool(signals.outcome and (signals.example or signals.timeframe or signals.constraint))
-    topic_shift = _detect_topic_shift(message, previous_topics, signals.topic_signature)
+    context_rich = _is_context_rich(message) or bool(
+        signals.outcome and (signals.example or signals.timeframe or signals.constraint)
+    )
+    topic_shift = _detect_topic_shift(message, previous_topics, current_signals.topic_signature)
     user_confused = _is_user_confused(message)
+    previous_turn_count = session_entry.get("turn_count", 0) if isinstance(session_entry.get("turn_count", 0), int) else 0
+    user_turn_count = max(user_turn_count, previous_turn_count + (0 if topic_shift else 1))
 
     stage, stage_reason = _route_stage(
         previous_stage,
@@ -845,7 +893,7 @@ async def get_coaching_response_claude(
         session_entry["stage"] = stage
         session_entry["stage_reason"] = stage_reason
         session_entry["turn_count"] = user_turn_count
-        session_entry["topic_signature"] = signals.topic_signature
+        session_entry["topic_signature"] = current_signals.topic_signature
         session_entry["signals"] = asdict(signals)
         session_entry["state_rev"] = pre_state_rev + 1
         post_state_rev = pre_state_rev + 1

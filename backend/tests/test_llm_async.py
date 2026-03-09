@@ -244,6 +244,38 @@ def test_stage_progression_with_session_signals(tmp_path, monkeypatch):
     assert bs4.get("stage_used") == "commit"
 
 
+def test_stage_progresses_when_stakeholder_and_outcome_arrive_across_turns(tmp_path, monkeypatch):
+    """Later turns should advance once they complete the missing context."""
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"Thanks for sharing that. What feels most important right now?", "quick_replies":["Option 1","Option 2","Option 3","Option 4"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    req1 = llm.CoachingRequest(
+        message="How to approach a key stakeholder",
+        user_id="u-stage-split",
+        context="session_id=s-stage-split",
+    )
+    req2 = llm.CoachingRequest(
+        message="Convince him about one initiative",
+        user_id="u-stage-split",
+        context="session_id=s-stage-split",
+    )
+
+    resp1 = asyncio.run(llm.get_coaching_response(req1))
+    resp2 = asyncio.run(llm.get_coaching_response(req2))
+
+    bs1 = resp1.behavior_signals or {}
+    bs2 = resp2.behavior_signals or {}
+
+    assert bs1.get("stage_used") == "diagnose"
+    assert bs2.get("stage_used") == "reframe"
+    assert bs2.get("stage_reason") == "forward_outcome_stakeholder"
+    assert "single most important outcome" not in resp2.response.lower()
+
+
 def test_stage_rollback_on_topic_shift(tmp_path, monkeypatch):
     """Topic shift cues should reset session stage back to diagnose."""
     from app.services import memory_store, llm_claude
