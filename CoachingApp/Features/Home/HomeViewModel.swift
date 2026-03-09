@@ -113,8 +113,16 @@ final class HomeViewModel {
             startedAt: Calendar.current.date(byAdding: .hour, value: -3, to: Date()) ?? Date(),
             endedAt: Calendar.current.date(byAdding: .hour, value: -2, to: Date()),
             summary: "Explored strategies for the upcoming board presentation and identified key areas to strengthen your narrative.",
+            sessionSummary: CoachingSessionSummary(
+                summary: "Sharpened the board narrative into a tighter executive story.",
+                keyInsights: ["The update needed clearer business stakes."],
+                actionItems: ["Rewrite the first two minutes of the presentation."],
+                progressMade: "Moved from general prep into a focused narrative structure.",
+                recommendedNextSteps: ["Practice the opening with a timer."]
+            ),
             durationSeconds: 1800,
-            messageCount: 24
+            messageCount: 24,
+            goalIds: ["goal-1"]
         ),
         CoachingSession(
             id: "session-2",

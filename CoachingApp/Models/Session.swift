@@ -9,6 +9,7 @@ struct CoachingSession: Identifiable, Codable {
     var startedAt: Date
     var endedAt: Date?
     var summary: String?
+    var sessionSummary: CoachingSessionSummary?
     var durationSeconds: Int?
     var messageCount: Int
     var goalIds: [String]
@@ -22,6 +23,7 @@ struct CoachingSession: Identifiable, Codable {
         startedAt: Date = Date(),
         endedAt: Date? = nil,
         summary: String? = nil,
+        sessionSummary: CoachingSessionSummary? = nil,
         durationSeconds: Int? = nil,
         messageCount: Int = 0,
         goalIds: [String] = []
@@ -34,6 +36,7 @@ struct CoachingSession: Identifiable, Codable {
         self.startedAt = startedAt
         self.endedAt = endedAt
         self.summary = summary
+        self.sessionSummary = sessionSummary
         self.durationSeconds = durationSeconds
         self.messageCount = messageCount
         self.goalIds = goalIds

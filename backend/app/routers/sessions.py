@@ -93,6 +93,7 @@ async def end_session(session_id: str, request: EndSessionRequest, user_id: str 
 
     messages = session_service.list_messages(session_id, user_id)
     summary_text: Optional[str] = None
+    summary_payload: Optional[Dict[str, Any]] = None
     summary_messages = [
         {"role": message["role"], "content": message["content"]}
         for message in messages
@@ -107,8 +108,14 @@ async def end_session(session_id: str, request: EndSessionRequest, user_id: str 
                 summary_text = generated_summary
         except Exception:
             summary_text = None
+            summary_payload = None
 
-    ended = session_service.end_session(session_id, user_id, summary=summary_text)
+    ended = session_service.end_session(
+        session_id,
+        user_id,
+        summary=summary_text,
+        summary_payload=summary_payload,
+    )
     if not ended:
         raise HTTPException(status_code=404, detail="Session not found")
     return ended

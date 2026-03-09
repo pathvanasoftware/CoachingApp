@@ -8,10 +8,13 @@ final class ServiceContainer {
 
     var chatService: ChatServiceProtocol
     var streamingService: StreamingServiceProtocol
+    var goalService: GoalServiceProtocol
 
     private var realChatService: ChatService
     private var realStreamingService: StreamingService
+    private var realGoalService: GoalService
     private let mockService = MockChatService.shared
+    private let mockGoalService = MockGoalService()
 
     init() {
         let chat = ChatService()
@@ -19,10 +22,13 @@ final class ServiceContainer {
             baseURL: APIEnvironment.production.chatStreamURL,
             authTokenProvider: { KeychainService.loadAccessToken() }
         )
+        let goals = GoalService()
         self.realChatService = chat
         self.realStreamingService = streaming
+        self.realGoalService = goals
         self.chatService = chat
         self.streamingService = streaming
+        self.goalService = goals
     }
 
     func configure(useMockServices: Bool, apiEnvironment: APIEnvironment) {
@@ -31,13 +37,16 @@ final class ServiceContainer {
             baseURL: apiEnvironment.chatStreamURL,
             authTokenProvider: { KeychainService.loadAccessToken() }
         )
+        realGoalService = GoalService(apiClient: APIClient(baseURL: apiEnvironment.baseURL))
 
         if useMockServices {
             chatService = mockService
             streamingService = mockService
+            goalService = mockGoalService
         } else {
             chatService = realChatService
             streamingService = realStreamingService
+            goalService = realGoalService
         }
     }
 }

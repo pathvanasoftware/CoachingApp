@@ -175,6 +175,25 @@ private struct SessionRowView: View {
                     }
                 }
 
+                if session.summary != nil || !session.goalIds.isEmpty || !(session.sessionSummary?.actionItems.isEmpty ?? true) {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        if !session.goalIds.isEmpty {
+                            miniBadge(
+                                systemImage: "target",
+                                text: "\(session.goalIds.count) goal\(session.goalIds.count == 1 ? "" : "s")"
+                            )
+                        }
+
+                        if let actionCount = session.sessionSummary?.actionItems.count, actionCount > 0 {
+                            miniBadge(
+                                systemImage: "checklist",
+                                text: "\(actionCount) action\(actionCount == 1 ? "" : "s")"
+                            )
+                        }
+                    }
+                    .padding(.top, AppTheme.Spacing.xxs)
+                }
+
                 // Summary preview
                 if let summary = session.summary, !summary.isEmpty {
                     Text(summary)
@@ -196,6 +215,16 @@ private struct SessionRowView: View {
             .padding(.horizontal, AppTheme.Spacing.sm)
             .padding(.vertical, AppTheme.Spacing.xxs)
             .background(AppTheme.success)
+            .clipShape(Capsule())
+    }
+
+    private func miniBadge(systemImage: String, text: String) -> some View {
+        Label(text, systemImage: systemImage)
+            .font(AppFonts.caption2)
+            .foregroundStyle(AppTheme.primary)
+            .padding(.horizontal, AppTheme.Spacing.sm)
+            .padding(.vertical, AppTheme.Spacing.xxs)
+            .background(AppTheme.primary.opacity(0.1))
             .clipShape(Capsule())
     }
 }

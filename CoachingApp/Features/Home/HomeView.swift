@@ -193,6 +193,19 @@ struct HomeView: View {
                         .lineLimit(2)
                 }
 
+                if !session.goalIds.isEmpty || !(session.sessionSummary?.actionItems.isEmpty ?? true) {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        if !session.goalIds.isEmpty {
+                            Label("\(session.goalIds.count) goal\(session.goalIds.count == 1 ? "" : "s")", systemImage: "target")
+                        }
+                        if let actionCount = session.sessionSummary?.actionItems.count, actionCount > 0 {
+                            Label("\(actionCount) action\(actionCount == 1 ? "" : "s")", systemImage: "checklist")
+                        }
+                    }
+                    .font(AppFonts.caption)
+                    .foregroundStyle(AppTheme.primary)
+                }
+
                 HStack(spacing: AppTheme.Spacing.sm) {
                     Label(session.formattedDuration, systemImage: "clock")
                     Label("\(session.messageCount) messages", systemImage: "bubble.left")

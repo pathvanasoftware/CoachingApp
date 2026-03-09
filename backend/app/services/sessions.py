@@ -33,10 +33,17 @@ class SessionService:
                         started_at TIMESTAMPTZ NOT NULL,
                         ended_at TIMESTAMPTZ,
                         summary TEXT,
+                        session_summary JSONB,
                         duration_seconds INTEGER,
                         message_count INTEGER DEFAULT 0,
                         goal_ids JSONB DEFAULT '[]'::jsonb
                     )
+                    """
+                )
+                cur.execute(
+                    """
+                    ALTER TABLE sessions
+                    ADD COLUMN IF NOT EXISTS session_summary JSONB
                     """
                 )
                 cur.execute(
@@ -153,6 +160,7 @@ class SessionService:
         user_id: str,
         *,
         summary: Optional[str] = None,
+        summary_payload: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict[str, Any]]:
         existing = self.get_session(session_id, user_id)
         if not existing:
@@ -161,16 +169,24 @@ class SessionService:
         ended_at = datetime.now(timezone.utc)
         duration_seconds = int((ended_at - self._ensure_aware(existing["started_at"])).total_seconds())
         final_summary = summary or existing.get("summary") or f"Session completed with {existing.get('message_count', 0)} messages exchanged."
+        final_summary_payload = summary_payload or existing.get("session_summary")
 
         with self._get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
                     UPDATE sessions
-                    SET ended_at = %s, duration_seconds = %s, summary = %s
+                    SET ended_at = %s, duration_seconds = %s, summary = %s, session_summary = %s::jsonb
                     WHERE id = %s AND user_id = %s
                     """,
-                    (ended_at, duration_seconds, final_summary, session_id, user_id),
+                    (
+                        ended_at,
+                        duration_seconds,
+                        final_summary,
+                        json.dumps(final_summary_payload) if final_summary_payload is not None else None,
+                        session_id,
+                        user_id,
+                    ),
                 )
             conn.commit()
 
@@ -340,6 +356,10 @@ class SessionService:
         if isinstance(goal_ids, str):
             goal_ids = json.loads(goal_ids)
 
+        session_summary = row.get("session_summary")
+        if isinstance(session_summary, str):
+            session_summary = json.loads(session_summary)
+
         return {
             "id": row["id"],
             "user_id": row["user_id"],
@@ -349,6 +369,7 @@ class SessionService:
             "started_at": row["started_at"],
             "ended_at": row.get("ended_at"),
             "summary": row.get("summary"),
+            "session_summary": session_summary,
             "duration_seconds": row.get("duration_seconds"),
             "message_count": int(row.get("message_count") or 0),
             "goal_ids": goal_ids,

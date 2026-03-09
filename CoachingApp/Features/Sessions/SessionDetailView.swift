@@ -1,10 +1,10 @@
 import SwiftUI
 
 struct SessionDetailView: View {
-    @Environment(AppState.self) private var appState
     @Environment(ServiceContainer.self) private var services
     let session: CoachingSession
     @State private var messages: [ChatMessage] = []
+    @State private var linkedGoals: [Goal] = []
     @State private var isLoading = true
     @State private var showFullTranscript = false
 
@@ -25,9 +25,22 @@ struct SessionDetailView: View {
                     summarySection(summary)
                 }
 
-                // Action items (placeholder for future integration)
-                if !session.isActive {
-                    actionItemsSection
+                if let structuredSummary = session.sessionSummary {
+                    if !structuredSummary.keyInsights.isEmpty {
+                        insightSection(structuredSummary.keyInsights)
+                    }
+
+                    if !structuredSummary.actionItems.isEmpty {
+                        actionItemsSection(structuredSummary.actionItems)
+                    }
+
+                    if !structuredSummary.recommendedNextSteps.isEmpty {
+                        nextStepsSection(structuredSummary.recommendedNextSteps)
+                    }
+                }
+
+                if !session.goalIds.isEmpty {
+                    linkedGoalsSection
                 }
 
                 // Transcript
@@ -87,6 +100,16 @@ struct SessionDetailView: View {
             }
             .padding(.top, AppTheme.Spacing.xs)
 
+            if !session.goalIds.isEmpty {
+                HStack(spacing: AppTheme.Spacing.xs) {
+                    Image(systemName: "target")
+                        .foregroundStyle(AppTheme.primary)
+                    Text("\(session.goalIds.count) linked goal\(session.goalIds.count == 1 ? "" : "s")")
+                        .font(AppFonts.footnote)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
+
             if session.isActive {
                 HStack(spacing: AppTheme.Spacing.xs) {
                     Circle()
@@ -140,9 +163,32 @@ struct SessionDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
     }
 
-    // MARK: - Action Items Section
+    // MARK: - Structured Summary Sections
 
-    private var actionItemsSection: some View {
+    private func insightSection(_ insights: [String]) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            Label {
+                Text("Key Insights")
+                    .font(AppFonts.headline)
+                    .foregroundStyle(AppTheme.textPrimary)
+            } icon: {
+                Image(systemName: "lightbulb.fill")
+                    .foregroundStyle(AppTheme.primary)
+            }
+
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                ForEach(insights, id: \.self) { insight in
+                    bulletRow(icon: "circle.fill", text: insight)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.secondaryBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+    }
+
+    private func actionItemsSection(_ items: [String]) -> some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Label {
                 Text("Action Items")
@@ -153,20 +199,10 @@ struct SessionDetailView: View {
                     .foregroundStyle(AppTheme.primary)
             }
 
-            // Placeholder action items derived from the session
             VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                actionItemRow(
-                    title: "Review and refine your approach",
-                    isCompleted: false
-                )
-                actionItemRow(
-                    title: "Schedule follow-up discussion",
-                    isCompleted: false
-                )
-                actionItemRow(
-                    title: "Reflect on key takeaways",
-                    isCompleted: true
-                )
+                ForEach(items, id: \.self) { item in
+                    bulletRow(icon: "checkmark.circle.fill", text: item)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -175,17 +211,80 @@ struct SessionDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
     }
 
-    private func actionItemRow(title: String, isCompleted: Bool) -> some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
-            Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(isCompleted ? AppTheme.success : AppTheme.textTertiary)
-                .font(.system(size: 18))
+    private func nextStepsSection(_ steps: [String]) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            Label {
+                Text("Recommended Next Steps")
+                    .font(AppFonts.headline)
+                    .foregroundStyle(AppTheme.textPrimary)
+            } icon: {
+                Image(systemName: "arrow.forward.circle.fill")
+                    .foregroundStyle(AppTheme.primary)
+            }
 
-            Text(title)
-                .font(AppFonts.body)
-                .foregroundStyle(isCompleted ? AppTheme.textTertiary : AppTheme.textPrimary)
-                .strikethrough(isCompleted)
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                ForEach(steps, id: \.self) { step in
+                    bulletRow(icon: "arrow.right.circle.fill", text: step)
+                }
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.secondaryBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+    }
+
+    private func bulletRow(icon: String, text: String) -> some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Image(systemName: icon)
+                .foregroundStyle(AppTheme.primary)
+                .font(.system(size: 14))
+
+            Text(text)
+                .font(AppFonts.body)
+                .foregroundStyle(AppTheme.textPrimary)
+
+            Spacer()
+        }
+    }
+
+    // MARK: - Linked Goals
+
+    private var linkedGoalsSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            Label {
+                Text("Linked Goals")
+                    .font(AppFonts.headline)
+                    .foregroundStyle(AppTheme.textPrimary)
+            } icon: {
+                Image(systemName: "target")
+                    .foregroundStyle(AppTheme.primary)
+            }
+
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                ForEach(session.goalIds, id: \.self) { goalId in
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Image(systemName: "flag.fill")
+                            .foregroundStyle(AppTheme.primary)
+
+                        Text(linkedGoalTitle(for: goalId))
+                            .font(AppFonts.body)
+                            .foregroundStyle(AppTheme.textPrimary)
+                            .lineLimit(2)
+
+                        Spacer()
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.secondaryBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+    }
+
+    private func linkedGoalTitle(for goalId: String) -> String {
+        linkedGoals.first(where: { $0.id == goalId })?.title ?? "Goal \(goalId.prefix(8))"
     }
 
     // MARK: - Transcript Section
@@ -307,16 +406,22 @@ struct SessionDetailView: View {
     @MainActor
     private func loadMessages() async {
         isLoading = true
+        defer { isLoading = false }
+
         do {
+            async let goalFetch = services.goalService.fetchGoals(userId: session.userId)
             if let (_, savedMessages) = try await historyStorage.loadSession(id: session.id), !savedMessages.isEmpty {
                 messages = savedMessages
             } else {
                 messages = try await services.chatService.getMessages(sessionId: session.id)
             }
+
+            let goals = try await goalFetch
+            linkedGoals = goals.filter { session.goalIds.contains($0.id) }
         } catch {
             messages = []
+            linkedGoals = []
         }
-        isLoading = false
     }
 }
 
@@ -332,8 +437,16 @@ struct SessionDetailView: View {
                 startedAt: Date().addingTimeInterval(-3600),
                 endedAt: Date(),
                 summary: "Discussed upcoming board presentation. Identified key areas of preparation needed and practiced handling tough questions from the board chair.",
+                sessionSummary: CoachingSessionSummary(
+                    summary: "Clarified the board narrative and tightened the opening story.",
+                    keyInsights: ["The story needed a stronger business outcome frame."],
+                    actionItems: ["Rewrite the opening in three sentences."],
+                    progressMade: "You moved from broad themes to a sharper executive narrative.",
+                    recommendedNextSteps: ["Practice the opening out loud twice before the meeting."]
+                ),
                 durationSeconds: 1845,
-                messageCount: 12
+                messageCount: 12,
+                goalIds: ["goal-123"]
             )
         )
     }

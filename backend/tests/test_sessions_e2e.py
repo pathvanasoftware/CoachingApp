@@ -225,3 +225,5 @@ def test_end_session_generates_llm_summary(client, auth_context, monkeypatch):
     assert end_response.status_code == 200
     ended = end_response.json()
     assert ended["summary"] == "Clarified how to make leadership updates shorter and more outcome-focused."
+    assert ended["session_summary"]["summary"] == ended["summary"]
+    assert ended["session_summary"]["recommended_next_steps"] == []
