@@ -133,3 +133,39 @@ def test_chat_stream_uses_cached_response_without_llm(monkeypatch):
     assert '"meta"' in body
     assert "cached" in body
     assert "[DONE]" in body
+
+
+def test_session_summary_requires_auth_and_entitlement(monkeypatch):
+    monkeypatch.setattr(chat_router, "_anthropic_available", lambda: True)
+    monkeypatch.setattr(chat_router, "_openai_available", lambda: False)
+
+    class _Entitlements:
+        def assert_can_generate_session_summary(self, user_id: str):
+            assert user_id == "u-summary"
+
+    async def _fake_summary(messages, user_id):
+        assert user_id == "u-summary"
+        assert messages == [{"role": "user", "content": "hello"}]
+        return {
+            "summary": "A concise summary",
+            "key_insights": ["Insight"],
+            "action_items": ["Action"],
+            "progress_made": "Progress",
+            "recommended_next_steps": ["Next"],
+        }
+
+    monkeypatch.setattr("app.routers.auth.verify_token", lambda _token, expected_type="access": "u-summary")
+    monkeypatch.setattr(chat_router, "entitlement_service", _Entitlements())
+    monkeypatch.setattr(chat_router, "generate_session_summary", _fake_summary)
+    monkeypatch.setattr(chat_router, "response_cache", InMemoryCache())
+
+    client = TestClient(app)
+    r = client.post(
+        "/api/chat/session-summary",
+        json={"messages": [{"role": "user", "content": "hello"}]},
+        headers={"Authorization": "Bearer token"},
+    )
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["summary"] == "A concise summary"

@@ -154,6 +154,23 @@ class SessionService:
                 rows = cur.fetchall()
         return [self._row_to_session(row) for row in rows]
 
+    def count_sessions_started_since(self, user_id: str, started_after: datetime) -> int:
+        with self._get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT COUNT(*)::INTEGER
+                    FROM sessions
+                    WHERE user_id = %s
+                      AND started_at >= %s
+                    """,
+                    (user_id, self._ensure_aware(started_after)),
+                )
+                row = cur.fetchone()
+        if not row:
+            return 0
+        return int(row[0] or 0)
+
     def end_session(
         self,
         session_id: str,

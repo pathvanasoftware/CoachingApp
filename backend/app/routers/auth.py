@@ -16,6 +16,7 @@ from app.services.auth import (
     verify_apple_token,
     GOOGLE_REDIRECT_URI,
 )
+from app.services.entitlements import entitlement_service
 
 router = APIRouter()
 security = HTTPBearer()
@@ -223,6 +224,11 @@ async def get_me(user_id: str = Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user.to_dict()
+
+
+@router.get("/entitlements")
+async def get_entitlements(user_id: str = Depends(get_current_user)):
+    return entitlement_service.describe(user_id)
 
 
 @router.patch("/me")

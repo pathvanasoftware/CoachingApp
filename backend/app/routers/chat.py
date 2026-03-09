@@ -12,9 +12,10 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
-from app.routers.auth import verify_token
+from app.routers.auth import get_current_user, verify_token
 from app.services.llm import CoachingRequest, CoachingResponse, get_coaching_response, generate_session_summary, _anthropic_available, _openai_available
 from app.services.cache import build_cache_backend
+from app.services.entitlements import entitlement_service
 from app.services.sessions import session_service
 
 router = APIRouter()
@@ -420,11 +421,14 @@ class SessionSummaryRequest(BaseModel):
 
 
 @router.post("/session-summary")
-async def session_summary(request: SessionSummaryRequest):
+async def session_summary(
+    request: SessionSummaryRequest,
+    user_id: str = Depends(get_current_user),
+):
     """Generate a comprehensive summary of the coaching session"""
     _require_llm_or_503()
+    entitlement_service.assert_can_generate_session_summary(user_id)
 
-    user_id = request.userId or "anonymous"
     cache_key = _summary_cache_key(user_id, request.messages)
     cached = await response_cache.get_json(cache_key)
     if cached:

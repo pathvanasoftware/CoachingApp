@@ -228,6 +228,28 @@ class TestAuthMe:
         body = response.json()
         assert body["seat_tier"] == "professional"
 
+    def test_get_entitlements(self, client):
+        register_response = client.post(
+            "/api/auth/register",
+            json={
+                "email": "entitlements@example.com",
+                "password": "password123",
+            },
+        )
+        token = register_response.json()["access_token"]
+
+        response = client.get(
+            "/api/auth/entitlements",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["seat_tier"] == "starter"
+        assert body["can_use_voice"] is False
+        assert body["can_use_session_summary"] is False
+        assert body["daily_session_limit"] == 5
+        assert body["remaining_sessions_today"] == 5
+
 
 class TestAuthRefresh:
     def test_refresh_success(self, client):

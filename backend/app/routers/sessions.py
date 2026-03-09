@@ -12,6 +12,7 @@ from app.services.llm import (
     generate_session_summary,
     get_coaching_response,
 )
+from app.services.entitlements import entitlement_service
 from app.services.sessions import session_service
 
 
@@ -76,6 +77,12 @@ async def start_session(request: StartSessionRequest, user_id: str = Depends(get
     if request.user_id != user_id:
         raise HTTPException(status_code=403, detail="Cannot start a session for a different user")
 
+    entitlement_service.assert_can_start_session(
+        user_id,
+        persona=request.persona,
+        input_mode=request.input_mode,
+    )
+
     return session_service.create_session(
         user_id=user_id,
         persona=request.persona,
@@ -111,7 +118,11 @@ async def end_session(session_id: str, request: EndSessionRequest, user_id: str 
         if message.get("role") in {"user", "assistant"} and message.get("content")
     ]
 
-    if summary_messages and (_anthropic_available() or _openai_available()):
+    if (
+        summary_messages
+        and entitlement_service.can_generate_session_summary(user_id)
+        and (_anthropic_available() or _openai_available())
+    ):
         try:
             summary_payload = await generate_session_summary(summary_messages, user_id)
             generated_summary = (summary_payload or {}).get("summary", "").strip()

@@ -5,6 +5,14 @@ import UIKit
 
 @Observable
 final class ChatViewModel {
+    private struct SessionSummaryRequestBody: Encodable {
+        let messages: [SessionSummaryMessage]
+    }
+
+    private struct SessionSummaryMessage: Encodable {
+        let role: String
+        let content: String
+    }
 
     // MARK: - Published State
 
@@ -32,6 +40,7 @@ final class ChatViewModel {
 
     var chatService: ChatServiceProtocol
     var streamingService: StreamingServiceProtocol
+    private let apiClient: APIClient
     private let historyStorage = ChatHistoryStorage.shared
 
     // MARK: - Private State
@@ -49,10 +58,15 @@ final class ChatViewModel {
 
     init(
         chatService: ChatServiceProtocol = MockChatService.shared,
-        streamingService: StreamingServiceProtocol = MockChatService.shared
+        streamingService: StreamingServiceProtocol = MockChatService.shared,
+        apiClient: APIClient = APIClient()
     ) {
         self.chatService = chatService
         self.streamingService = streamingService
+        self.apiClient = apiClient
+        self.apiClient.authTokenProvider = {
+            KeychainService.loadAccessToken()
+        }
     }
 
     deinit {
@@ -685,33 +699,20 @@ final class ChatViewModel {
         defer { isGeneratingSummary = false }
         
         do {
-            let apiMessages = messages.map { message in
-                ["role": message.role.rawValue, "content": message.content]
-            }
-            
-            let requestBody: [String: Any] = [
-                "messages": apiMessages,
-                "userId": "mock-user-001"
-            ]
-            
-            let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
-            
-            let envRaw = UserDefaults.standard.string(forKey: "selectedAPIEnvironment") ?? "Local"
-            let env = APIEnvironment(rawValue: envRaw) ?? .localhost
-            
-            guard let url = URL(string: "\(env.baseURL)/chat/session-summary") else {
-                errorMessage = "Invalid API URL"
-                return
-            }
-            
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = jsonData
-            
-            let (data, _) = try await URLSession.shared.data(for: request)
-            let summary = try JSONDecoder().decode(CoachingSessionSummary.self, from: data)
-            
+            let requestBody = SessionSummaryRequestBody(
+                messages: messages.map { message in
+                    SessionSummaryMessage(
+                        role: message.role.rawValue,
+                        content: message.content
+                    )
+                }
+            )
+
+            let summary: CoachingSessionSummary = try await apiClient.post(
+                path: "/chat/session-summary",
+                body: requestBody
+            )
+
             self.sessionSummary = summary
         } catch {
             errorMessage = "Failed to generate summary: \(error.localizedDescription)"
