@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import StoreKit
 
 // MARK: - Subscription Prompt View
 struct SubscriptionPrompt: View {
@@ -258,6 +259,9 @@ struct SubscriptionView: View {
                 )
                 .ignoresSafeArea()
             )
+            .task {
+                await appState.prepareSubscriptionStorefront()
+            }
             .navigationTitle("Plans")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -356,6 +360,68 @@ struct SubscriptionView: View {
 
     private var actionSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            if appState.isLoadingSubscriptionProducts && appState.availableSubscriptionProducts.isEmpty {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    ProgressView()
+                    Text("Loading subscription options...")
+                        .font(AppFonts.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            } else if !appState.availableSubscriptionProducts.isEmpty {
+                VStack(spacing: AppTheme.Spacing.sm) {
+                    ForEach(appState.availableSubscriptionProducts, id: \.id) { product in
+                        purchaseButton(for: product)
+                    }
+                }
+            } else {
+                unavailableProductsState
+            }
+
+            Button {
+                Task {
+                    await appState.restorePurchases()
+                    if appState.hasProAccess {
+                        dismiss()
+                    }
+                }
+            } label: {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    if appState.isRestoringPurchases {
+                        ProgressView()
+                            .tint(AppTheme.textSecondary)
+                    }
+                    Text("Restore Purchases")
+                        .font(AppFonts.subheadline)
+                        .foregroundStyle(AppTheme.textPrimary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, AppTheme.Spacing.sm)
+            }
+            .disabled(appState.isPurchasingSubscription || appState.isRestoringPurchases)
+
+            if let subscriptionErrorMessage = appState.subscriptionErrorMessage {
+                Text(subscriptionErrorMessage)
+                    .font(AppFonts.caption)
+                    .foregroundStyle(AppTheme.warning)
+            }
+
+            Text("StoreKit is live in this screen. Products must exist in App Store Connect or a StoreKit config for purchases to complete.")
+                .font(AppFonts.caption)
+                .foregroundStyle(AppTheme.textSecondary)
+        }
+    }
+
+    private var unavailableProductsState: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            Text("Subscription products are not available.")
+                .font(AppFonts.headline)
+                .foregroundStyle(AppTheme.textPrimary)
+
+            Text("Configure the monthly and yearly Pro products in App Store Connect or attach a StoreKit configuration file for local purchase testing.")
+                .font(AppFonts.subheadline)
+                .foregroundStyle(AppTheme.textSecondary)
+
+#if DEBUG
             Button {
                 appState.upgradeToProPreview()
                 dismiss()
@@ -380,10 +446,7 @@ struct SubscriptionView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
-
-            Text("This screen is the Phase 1 subscription shell. Billing and remote entitlements will plug into the same flow later.")
-                .font(AppFonts.caption)
-                .foregroundStyle(AppTheme.textSecondary)
+#endif
         }
     }
 
@@ -451,6 +514,60 @@ struct SubscriptionView: View {
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg)
                 .fill(Color(.secondarySystemBackground).opacity(0.92))
         )
+    }
+
+    private func purchaseButton(for product: Product) -> some View {
+        Button {
+            Task {
+                await appState.purchaseSubscription(product)
+                if appState.hasProAccess {
+                    dismiss()
+                }
+            }
+        } label: {
+            HStack(spacing: AppTheme.Spacing.md) {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                    Text(productTitle(for: product))
+                        .font(AppFonts.headline)
+                        .foregroundStyle(.white)
+                    Text(product.displayPrice)
+                        .font(AppFonts.caption)
+                        .foregroundStyle(Color.white.opacity(0.84))
+                }
+
+                Spacer()
+
+                if appState.activeSubscriptionProductID == product.id && appState.hasProAccess {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.white)
+                } else if appState.isPurchasingSubscription {
+                    ProgressView()
+                        .tint(.white)
+                } else {
+                    Image(systemName: "arrow.up.right.circle.fill")
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, AppTheme.Spacing.md)
+            .padding(.horizontal, AppTheme.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg)
+                    .fill(appState.activeSubscriptionProductID == product.id && appState.hasProAccess ? AppTheme.success : premiumAccent)
+            )
+        }
+        .disabled(appState.isPurchasingSubscription || appState.isRestoringPurchases)
+    }
+
+    private func productTitle(for product: Product) -> String {
+        switch product.id {
+        case "com.pathvana.ascendra.pro.monthly":
+            return "Ascendra Pro Monthly"
+        case "com.pathvana.ascendra.pro.yearly":
+            return "Ascendra Pro Yearly"
+        default:
+            return product.displayName
+        }
     }
 
     private var highlightedFeatureLine: String {

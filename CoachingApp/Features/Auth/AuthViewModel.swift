@@ -32,7 +32,7 @@ final class AuthViewModel {
             let user = try await authService.signInWithEmail(email: email, password: password)
             appState.useMockServices = false
             appState.switchAPIEnvironment(APIEnvironment.production)
-            appState.signIn(userId: user.id, email: user.email, name: user.fullName ?? "")
+            appState.applyAuthenticatedUser(user)
         } catch {
             errorMessage = "Sign in failed. Please check your credentials and try again."
         }
@@ -68,7 +68,7 @@ final class AuthViewModel {
             )
             appState.useMockServices = false
             appState.switchAPIEnvironment(APIEnvironment.production)
-            appState.signIn(userId: user.id, email: user.email, name: user.fullName ?? "")
+            appState.applyAuthenticatedUser(user)
         } catch {
             errorMessage = "Sign up failed. Please try again."
         }
@@ -111,7 +111,7 @@ final class AuthViewModel {
                     )
                     appState.useMockServices = false
                     appState.switchAPIEnvironment(APIEnvironment.production)
-                    appState.signIn(userId: user.id, email: user.email, name: user.fullName ?? "")
+                    appState.applyAuthenticatedUser(user)
                 } catch let error as AuthError {
                     errorMessage = error.errorDescription
                 } catch {
@@ -138,7 +138,7 @@ final class AuthViewModel {
             let user = try await authService.signInWithGoogle()
             appState.useMockServices = false
             appState.switchAPIEnvironment(APIEnvironment.production)
-            appState.signIn(userId: user.id, email: user.email, name: user.fullName ?? "")
+            appState.applyAuthenticatedUser(user)
         } catch let error as AuthError {
             if case .oauthCancelled = error {
                 // User cancelled - don't show error

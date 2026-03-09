@@ -80,6 +80,11 @@ protocol APIClientProtocol: Sendable {
         body: U
     ) async throws -> T
 
+    func patch<T: Decodable, U: Encodable>(
+        path: String,
+        body: U
+    ) async throws -> T
+
     func delete(
         path: String
     ) async throws
@@ -169,6 +174,15 @@ final class APIClient: APIClientProtocol, @unchecked Sendable {
         body: U
     ) async throws -> T {
         var request = try buildRequest(method: .put, path: path)
+        request.httpBody = try encodeBody(body)
+        return try await execute(request)
+    }
+
+    func patch<T: Decodable, U: Encodable>(
+        path: String,
+        body: U
+    ) async throws -> T {
+        var request = try buildRequest(method: .patch, path: path)
         request.httpBody = try encodeBody(body)
         return try await execute(request)
     }

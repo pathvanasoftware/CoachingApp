@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 
 // MARK: - API Environment
 
@@ -50,26 +51,58 @@ final class AppState {
         static let subscriptionPlan = "com.pathvana.ascendra.subscriptionPlan"
     }
 
+    private enum StoreProductID {
+        static let monthly = "com.pathvana.ascendra.pro.monthly"
+        static let yearly = "com.pathvana.ascendra.pro.yearly"
+
+        static let all = [monthly, yearly]
+    }
+
+    private struct SubscriptionSeatTierUpdate: Encodable {
+        let seatTier: String
+
+        enum CodingKeys: String, CodingKey {
+            case seatTier = "seat_tier"
+        }
+    }
+
+    private let subscriptionClient = APIClient()
+    private var transactionUpdatesTask: Task<Void, Never>?
+
     var isAuthenticated: Bool = false
     var isLoading: Bool = true   // start loading so splash doesn't flash SignInView
     var hasCompletedOnboarding: Bool = true
     var currentUserId: String? = nil
     var currentUserEmail: String? = nil
     var currentUserName: String? = nil
+    var serverSeatTier: SeatTier = .starter {
+        didSet {
+            if !subscriptionPlan.supports(persona: selectedPersona) {
+                selectedPersona = .directChallenger
+            }
+        }
+    }
+    var hasActiveStoreSubscription: Bool = false {
+        didSet {
+            let cachedPlan: SubscriptionPlan = hasActiveStoreSubscription ? .pro : .free
+            UserDefaults.standard.set(cachedPlan.rawValue, forKey: DefaultsKey.subscriptionPlan)
+            if !subscriptionPlan.supports(persona: selectedPersona) {
+                selectedPersona = .directChallenger
+            }
+        }
+    }
     var selectedPersona: CoachingPersonaType = .directChallenger
     var selectedCoachingStyle: CoachingStyle = .auto {
         didSet {
             UserDefaults.standard.set(selectedCoachingStyle.rawValue, forKey: DefaultsKey.coachingStyle)
         }
     }
-    var subscriptionPlan: SubscriptionPlan = .free {
-        didSet {
-            UserDefaults.standard.set(subscriptionPlan.rawValue, forKey: DefaultsKey.subscriptionPlan)
-            if !subscriptionPlan.supports(persona: selectedPersona) {
-                selectedPersona = .directChallenger
-            }
-        }
-    }
+    var availableSubscriptionProducts: [Product] = []
+    var isLoadingSubscriptionProducts: Bool = false
+    var isPurchasingSubscription: Bool = false
+    var isRestoringPurchases: Bool = false
+    var subscriptionErrorMessage: String?
+    var activeSubscriptionProductID: String?
     var showDebugDiagnostics: Bool = false
     
     // Use mock services (no real API calls). Defaults to false — real Railway backend.
@@ -89,14 +122,29 @@ final class AppState {
     var activeSession: CoachingSession?
     var activeSessionMessages: [ChatMessage] = []
 
+    var subscriptionPlan: SubscriptionPlan {
+        if hasActiveStoreSubscription || serverSeatTier.subscriptionPlan == .pro {
+            return .pro
+        }
+        return .free
+    }
+
+    var hasProAccess: Bool {
+        subscriptionPlan == .pro
+    }
+
     init() {
+        subscriptionClient.authTokenProvider = {
+            KeychainService.loadAccessToken()
+        }
+
         if let savedStyle = UserDefaults.standard.string(forKey: DefaultsKey.coachingStyle),
            let style = CoachingStyle(rawValue: savedStyle) {
             selectedCoachingStyle = style
         }
         if let savedPlan = UserDefaults.standard.string(forKey: DefaultsKey.subscriptionPlan),
            let plan = SubscriptionPlan(rawValue: savedPlan) {
-            subscriptionPlan = plan
+            hasActiveStoreSubscription = plan == .pro
         }
 
         let args = ProcessInfo.processInfo.arguments
@@ -122,17 +170,44 @@ final class AppState {
         }
     }
 
-    func signIn(userId: String, email: String, name: String) {
+    deinit {
+        transactionUpdatesTask?.cancel()
+    }
+
+    func signIn(userId: String, email: String, name: String, seatTier: SeatTier = .starter) {
         currentUserId = userId
         currentUserEmail = email
         currentUserName = name
+        serverSeatTier = seatTier
         isAuthenticated = true
+
+        Task {
+            await syncStoreSubscriptionToBackendIfNeeded()
+        }
+    }
+
+    func applyAuthenticatedUser(_ user: User) {
+        currentUserId = user.id
+        currentUserEmail = user.email
+        currentUserName = user.fullName
+        serverSeatTier = user.seatTier
+        preferredInputMode = user.preferredInputMode
+        hasCompletedOnboarding = user.hasCompletedOnboarding
+        selectedPersona = subscriptionPlan.supports(persona: user.preferredPersona)
+            ? user.preferredPersona
+            : .directChallenger
+        isAuthenticated = true
+
+        Task {
+            await syncStoreSubscriptionToBackendIfNeeded()
+        }
     }
 
     func signOut() {
         currentUserId = nil
         currentUserEmail = nil
         currentUserName = nil
+        serverSeatTier = .starter
         isAuthenticated = false
         hasCompletedOnboarding = true
     }
@@ -147,14 +222,169 @@ final class AppState {
     }
 
     func upgradeToProPreview() {
-        subscriptionPlan = .pro
+        hasActiveStoreSubscription = true
+        activeSubscriptionProductID = StoreProductID.monthly
     }
 
     func resetSubscriptionPreview() {
-        subscriptionPlan = .free
+        hasActiveStoreSubscription = false
+        activeSubscriptionProductID = nil
     }
 
-    var hasProAccess: Bool {
-        subscriptionPlan == .pro
+    @MainActor
+    func prepareSubscriptionStorefront() async {
+        startTransactionListenerIfNeeded()
+        await loadSubscriptionProducts()
+        await refreshSubscriptionStatusFromStoreKit()
+    }
+
+    @MainActor
+    func loadSubscriptionProducts() async {
+        isLoadingSubscriptionProducts = true
+        defer { isLoadingSubscriptionProducts = false }
+
+        do {
+            let products = try await Product.products(for: StoreProductID.all)
+            availableSubscriptionProducts = products.sorted(by: Self.compareProducts)
+            if availableSubscriptionProducts.isEmpty {
+                subscriptionErrorMessage = "Subscription products are not available yet."
+            }
+        } catch {
+            subscriptionErrorMessage = "Could not load subscription products right now."
+        }
+    }
+
+    @MainActor
+    func purchaseSubscription(_ product: Product) async {
+        subscriptionErrorMessage = nil
+        isPurchasingSubscription = true
+        defer { isPurchasingSubscription = false }
+
+        do {
+            let result = try await product.purchase()
+            switch result {
+            case .success(let verification):
+                let transaction = try Self.verifiedTransaction(from: verification)
+                activeSubscriptionProductID = transaction.productID
+                await transaction.finish()
+                await refreshSubscriptionStatusFromStoreKit()
+            case .userCancelled:
+                break
+            case .pending:
+                subscriptionErrorMessage = "Purchase is pending approval."
+            @unknown default:
+                subscriptionErrorMessage = "Purchase could not be completed."
+            }
+        } catch {
+            subscriptionErrorMessage = "Purchase failed: \(error.localizedDescription)"
+        }
+    }
+
+    @MainActor
+    func restorePurchases() async {
+        subscriptionErrorMessage = nil
+        isRestoringPurchases = true
+        defer { isRestoringPurchases = false }
+
+        do {
+            try await AppStore.sync()
+            await refreshSubscriptionStatusFromStoreKit()
+        } catch {
+            subscriptionErrorMessage = "Could not restore purchases right now."
+        }
+    }
+
+    @MainActor
+    func refreshSubscriptionStatusFromStoreKit() async {
+        var hasProAccess = false
+        var latestProductID: String?
+
+        for await result in StoreKit.Transaction.currentEntitlements {
+            guard case .verified(let transaction) = result else {
+                continue
+            }
+            guard StoreProductID.all.contains(transaction.productID) else {
+                continue
+            }
+
+            hasProAccess = true
+            latestProductID = transaction.productID
+        }
+
+        hasActiveStoreSubscription = hasProAccess
+        activeSubscriptionProductID = latestProductID
+        await syncStoreSubscriptionToBackendIfNeeded()
+    }
+
+    private func startTransactionListenerIfNeeded() {
+        guard transactionUpdatesTask == nil else { return }
+
+        transactionUpdatesTask = Task { [weak self] in
+            guard let self else { return }
+            for await result in StoreKit.Transaction.updates {
+                do {
+                    let transaction = try Self.verifiedTransaction(from: result)
+                    if StoreProductID.all.contains(transaction.productID) {
+                        await transaction.finish()
+                        await MainActor.run {
+                            self.activeSubscriptionProductID = transaction.productID
+                        }
+                        await self.refreshSubscriptionStatusFromStoreKit()
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.subscriptionErrorMessage = "Subscription verification failed."
+                    }
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func syncStoreSubscriptionToBackendIfNeeded() async {
+        guard isAuthenticated, currentUserId != nil else { return }
+        guard hasActiveStoreSubscription else { return }
+        guard serverSeatTier == .starter else { return }
+
+        do {
+            let updatedUser: User = try await subscriptionClient.patch(
+                path: "/auth/me",
+                body: SubscriptionSeatTierUpdate(seatTier: SeatTier.professional.rawValue)
+            )
+            serverSeatTier = updatedUser.seatTier
+        } catch {
+            print("[AppState] Failed to sync subscription tier to backend: \(error.localizedDescription)")
+        }
+    }
+
+    private static func compareProducts(_ lhs: Product, _ rhs: Product) -> Bool {
+        let lhsRank = productSortRank(for: lhs.id)
+        let rhsRank = productSortRank(for: rhs.id)
+        if lhsRank != rhsRank {
+            return lhsRank < rhsRank
+        }
+        return lhs.displayName < rhs.displayName
+    }
+
+    private static func productSortRank(for productID: String) -> Int {
+        switch productID {
+        case StoreProductID.monthly:
+            return 0
+        case StoreProductID.yearly:
+            return 1
+        default:
+            return 99
+        }
+    }
+
+    private static func verifiedTransaction(
+        from result: VerificationResult<StoreKit.Transaction>
+    ) throws -> StoreKit.Transaction {
+        switch result {
+        case .verified(let transaction):
+            return transaction
+        case .unverified(_, let error):
+            throw error
+        }
     }
 }

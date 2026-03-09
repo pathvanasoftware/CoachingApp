@@ -209,6 +209,25 @@ class TestAuthMe:
         )
         assert response.status_code == 401
 
+    def test_update_me_seat_tier(self, client):
+        register_response = client.post(
+            "/api/auth/register",
+            json={
+                "email": "update-me@example.com",
+                "password": "password123",
+            },
+        )
+        token = register_response.json()["access_token"]
+
+        response = client.patch(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"seat_tier": "professional"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["seat_tier"] == "professional"
+
 
 class TestAuthRefresh:
     def test_refresh_success(self, client):

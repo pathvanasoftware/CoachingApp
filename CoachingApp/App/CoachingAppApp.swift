@@ -32,6 +32,7 @@ struct CoachingAppApp: App {
             .task {
                 services.configure(useMockServices: appState.useMockServices, apiEnvironment: appState.apiEnvironment)
                 await restoreSession()
+                await appState.prepareSubscriptionStorefront()
             }
         }
     }
@@ -45,11 +46,7 @@ struct CoachingAppApp: App {
         await authService.restoreSession()
 
         if authService.isAuthenticated, let user = authService.currentUser {
-            appState.signIn(
-                userId: user.id,
-                email: user.email,
-                name: user.fullName ?? ""
-            )
+            appState.applyAuthenticatedUser(user)
         }
     }
 }

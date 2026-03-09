@@ -45,6 +45,15 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class UpdateMeRequest(BaseModel):
+    full_name: Optional[str] = None
+    organization_id: Optional[str] = None
+    seat_tier: Optional[str] = None
+    preferred_persona: Optional[str] = None
+    preferred_input_mode: Optional[str] = None
+    has_completed_onboarding: Optional[bool] = None
+
+
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     user_id = verify_token(credentials.credentials)
     if not user_id:
@@ -214,6 +223,23 @@ async def get_me(user_id: str = Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user.to_dict()
+
+
+@router.patch("/me")
+async def update_me(request: UpdateMeRequest, user_id: str = Depends(get_current_user)):
+    updates = request.dict(exclude_none=True)
+
+    user = user_service.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not updates:
+        return user.to_dict()
+
+    updated = user_service.update_user(user_id, **updates)
+    if not updated:
+        raise HTTPException(status_code=500, detail="Failed to update user")
+    return updated.to_dict()
 
 
 @router.post("/refresh")
