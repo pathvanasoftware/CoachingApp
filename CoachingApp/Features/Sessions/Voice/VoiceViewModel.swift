@@ -45,14 +45,18 @@ final class VoiceViewModel {
     var isSessionActive: Bool = false
     var errorMessage: String?
     var amplitude: CGFloat = 0.0
+    var currentSession: CoachingSession?
+    var selectedCoachingStyle: CoachingStyle = .auto
 
     // MARK: - Private
 
     private let speechRecognition: SpeechRecognitionService
     private let textToSpeech: TextToSpeechService
-    private let chatService: ChatServiceProtocol
-    private var currentSession: CoachingSession?
+    var chatService: ChatServiceProtocol
+    var streamingService: StreamingServiceProtocol
+    private let historyStorage = ChatHistoryStorage.shared
     private var amplitudeTimer: Timer?
+    private var processingTask: Task<Void, Never>?
 
     let persona: CoachingPersonaType
 
@@ -62,20 +66,67 @@ final class VoiceViewModel {
         persona: CoachingPersonaType = .directChallenger,
         speechRecognition: SpeechRecognitionService = SpeechRecognitionService(),
         textToSpeech: TextToSpeechService = TextToSpeechService(),
-        chatService: ChatServiceProtocol = MockChatService.shared
+        chatService: ChatServiceProtocol = MockChatService.shared,
+        streamingService: StreamingServiceProtocol = MockChatService.shared
     ) {
         self.persona = persona
         self.speechRecognition = speechRecognition
         self.textToSpeech = textToSpeech
         self.chatService = chatService
+        self.streamingService = streamingService
+
+        self.speechRecognition.onPartialResult = { [weak self] text in
+            Task { @MainActor in
+                self?.transcribedText = text
+            }
+        }
+        self.speechRecognition.onSilenceDetected = { [weak self] text in
+            Task { @MainActor in
+                self?.handleSilenceDetected(text)
+            }
+        }
+        self.textToSpeech.onSpeechFinished = { [weak self] in
+            Task { @MainActor in
+                self?.handleSpeechFinished()
+            }
+        }
     }
 
     // MARK: - Session Lifecycle
 
-    func beginSession() async {
+    @MainActor
+    func beginSession(
+        userId: String,
+        existingSession: CoachingSession? = nil,
+        existingMessages: [ChatMessage] = []
+    ) async {
+        errorMessage = nil
+
+        let speechAuthorized = await speechRecognition.requestAuthorization()
+        guard speechAuthorized else {
+            errorMessage = SpeechRecognitionError.notAuthorized.errorDescription
+            return
+        }
+
+        let microphoneAuthorized = await speechRecognition.requestMicrophoneAccess()
+        guard microphoneAuthorized else {
+            errorMessage = SpeechRecognitionError.microphoneAccessDenied.errorDescription
+            return
+        }
+
+        if let existingSession {
+            currentSession = existingSession
+            messages = existingMessages
+            isSessionActive = existingSession.isActive
+            if let lastCoachMessage = messages.last(where: \.isFromCoach) {
+                currentResponse = lastCoachMessage.content
+            }
+            return
+        }
+
         do {
             let session = try await chatService.startSession(
-                userId: "current-user",
+                userId: userId,
                 persona: persona,
                 sessionType: .freeform,
                 inputMode: .voice
@@ -83,58 +134,64 @@ final class VoiceViewModel {
             currentSession = session
             isSessionActive = true
 
-            // Add a welcome message
             let welcomeMessage = ChatMessage(
                 sessionId: session.id,
                 role: .assistant,
                 content: "I'm ready to coach you. What's on your mind?"
             )
-            messages.append(welcomeMessage)
+            messages = [welcomeMessage]
             currentResponse = welcomeMessage.content
-
-            voiceState = .speaking
-            textToSpeech.speak(text:welcomeMessage.content)
-
-            // Simulate TTS finishing
-            try? await Task.sleep(for: .seconds(2))
-            if voiceState == .speaking {
-                textToSpeech.stop()
-                voiceState = .idle
-            }
+            await saveCurrentSession()
+            startSpeaking(text: welcomeMessage.content)
         } catch {
             errorMessage = "Failed to start session: \(error.localizedDescription)"
         }
     }
 
+    @MainActor
     func endSession() async {
         stopListening()
-        textToSpeech.stop()
+        stopSpeaking()
+        processingTask?.cancel()
         stopAmplitudeSimulation()
 
-        if let sessionId = currentSession?.id {
+        if let session = currentSession, session.isActive {
             do {
-                _ = try await chatService.endSession(sessionId: sessionId)
+                let endedSession = try await chatService.endSession(sessionId: session.id)
+                currentSession = endedSession
+                isSessionActive = false
+                await saveCurrentSession()
             } catch {
-                print("[VoiceViewModel] Failed to end session: \(error.localizedDescription)")
+                errorMessage = "Failed to end session: \(error.localizedDescription)"
             }
         }
 
         voiceState = .idle
-        isSessionActive = false
-        currentSession = nil
     }
 
     // MARK: - Listening
 
+    @MainActor
     func startListening() {
+        guard isSessionActive else { return }
         guard voiceState == .idle || voiceState == .paused else { return }
 
+        errorMessage = nil
         transcribedText = ""
-        try? speechRecognition.startListening()
-        voiceState = .listening
-        startAmplitudeSimulation()
+        speechRecognition.resetTranscription()
+
+        do {
+            try speechRecognition.startListening()
+            voiceState = .listening
+            startAmplitudeSimulation()
+        } catch {
+            errorMessage = error.localizedDescription
+            voiceState = .idle
+            stopAmplitudeSimulation()
+        }
     }
 
+    @MainActor
     func stopListening() {
         guard voiceState == .listening else { return }
 
@@ -145,20 +202,34 @@ final class VoiceViewModel {
             ? transcribedText
             : speechRecognition.transcribedText
 
-        if spokenText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        transcribedText = spokenText
+        guard !spokenText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             voiceState = .idle
             return
         }
 
-        transcribedText = spokenText
         voiceState = .processing
-        processTranscription()
+        processTranscription(spokenText)
+    }
+
+    @MainActor
+    private func handleSilenceDetected(_ text: String) {
+        guard voiceState == .listening else { return }
+        transcribedText = text
+        stopListening()
     }
 
     // MARK: - Processing
 
-    func processTranscription() {
+    @MainActor
+    func processTranscription(_ spokenText: String? = nil) {
         guard let sessionId = currentSession?.id else {
+            voiceState = .idle
+            return
+        }
+
+        let content = (spokenText ?? transcribedText).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !content.isEmpty else {
             voiceState = .idle
             return
         }
@@ -166,50 +237,122 @@ final class VoiceViewModel {
         let userMessage = ChatMessage(
             sessionId: sessionId,
             role: .user,
-            content: transcribedText
+            content: content,
+            status: .sending
         )
         messages.append(userMessage)
+        transcribedText = content
+        currentResponse = ""
 
-        Task { @MainActor [weak self] in
-            guard let self = self else { return }
-            guard let sessionId = self.currentSession?.id else { return }
+        let stream = streamingService.streamResponse(
+            sessionId: sessionId,
+            requestId: userMessage.id,
+            message: content,
+            persona: persona,
+            coachingStyle: selectedCoachingStyle
+        )
+
+        let assistantMessage = ChatMessage(
+            sessionId: sessionId,
+            role: .assistant,
+            content: "",
+            isStreaming: true
+        )
+        messages.append(assistantMessage)
+
+        processingTask?.cancel()
+        processingTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+
+            var streamFailed = false
+
             do {
-                let response = try await self.chatService.sendMessage(
-                    sessionId: sessionId,
-                    content: self.transcribedText
-                )
-
-                self.messages.append(response)
-                self.currentResponse = response.content
-                self.startSpeaking(text: response.content)
+                for try await token in stream {
+                    guard !Task.isCancelled else { break }
+                    guard let lastIndex = self.messages.indices.last else { break }
+                    guard !token.hasPrefix("__META__:") else { continue }
+                    if token.hasPrefix("__SUGGESTIONS__:") { continue }
+                    self.messages[lastIndex].content += token
+                }
             } catch {
+                streamFailed = true
                 self.errorMessage = "Failed to get response: \(error.localizedDescription)"
-                self.voiceState = .idle
             }
+
+            guard !Task.isCancelled else { return }
+
+            if streamFailed {
+                if let assistantIndex = self.messages.indices.last,
+                   self.messages[assistantIndex].role == .assistant,
+                   self.messages[assistantIndex].isStreaming {
+                    self.messages.removeLast()
+                }
+                if self.messages.indices.contains(self.messages.count - 1),
+                   self.messages.last?.role == .user {
+                    self.messages[self.messages.count - 1].status = .failed
+                }
+                self.voiceState = .idle
+                await self.saveCurrentSession()
+                return
+            }
+
+            if let assistantIndex = self.messages.indices.last,
+               self.messages[assistantIndex].role == .assistant {
+                self.messages[assistantIndex].isStreaming = false
+                if self.messages[assistantIndex].content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    self.messages[assistantIndex].content = "Let's make this concrete. What's the one decision or action you want to leave with?"
+                }
+                self.currentResponse = self.messages[assistantIndex].content
+            }
+
+            if self.messages.count >= 2 {
+                let userIndex = self.messages.count - 2
+                if self.messages.indices.contains(userIndex),
+                   self.messages[userIndex].role == .user {
+                    self.messages[userIndex].status = .sent
+                }
+            }
+
+            await self.saveCurrentSession()
+            self.startSpeaking(text: self.currentResponse)
         }
     }
 
     // MARK: - Speaking
 
+    @MainActor
     func startSpeaking(text: String) {
-        voiceState = .speaking
-        textToSpeech.speak(text:text)
-        startAmplitudeSimulation()
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            voiceState = .idle
+            return
+        }
 
-        // Simulate TTS completion based on text length
-        let estimatedDuration = max(2.0, Double(text.count) / 30.0)
-        Task {
-            try? await Task.sleep(for: .seconds(estimatedDuration))
-            if voiceState == .speaking {
-                textToSpeech.stop()
-                stopAmplitudeSimulation()
-                voiceState = .idle
-            }
+        stopAmplitudeSimulation()
+        voiceState = .speaking
+        startAmplitudeSimulation()
+        textToSpeech.speak(text: text)
+    }
+
+    @MainActor
+    func stopSpeaking() {
+        textToSpeech.stop()
+        stopAmplitudeSimulation()
+        if voiceState == .speaking {
+            voiceState = .idle
+        }
+    }
+
+    @MainActor
+    private func handleSpeechFinished() {
+        stopAmplitudeSimulation()
+        if voiceState == .speaking {
+            voiceState = .idle
         }
     }
 
     // MARK: - Pause / Resume
 
+    @MainActor
     func pauseSession() {
         let previousState = voiceState
         voiceState = .paused
@@ -219,13 +362,41 @@ final class VoiceViewModel {
             speechRecognition.stopListening()
         }
         if previousState == .speaking {
-            textToSpeech.stop()
+            textToSpeech.pause()
         }
     }
 
+    @MainActor
     func resumeSession() {
         guard voiceState == .paused else { return }
+
+        if textToSpeech.isPaused {
+            voiceState = .speaking
+            startAmplitudeSimulation()
+            textToSpeech.resume()
+            return
+        }
+
         voiceState = .idle
+    }
+
+    // MARK: - Persistence
+
+    @MainActor
+    private func saveCurrentSession() async {
+        guard let currentSession else { return }
+        var session = currentSession
+        session.messageCount = messages.count
+        if !session.isActive {
+            session.durationSeconds = Int(Date().timeIntervalSince(session.startedAt))
+        }
+        self.currentSession = session
+
+        do {
+            try await historyStorage.saveSession(session, messages: messages)
+        } catch {
+            print("[VoiceViewModel] Failed to save session: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Amplitude Simulation
@@ -246,7 +417,9 @@ final class VoiceViewModel {
     }
 
     deinit {
+        processingTask?.cancel()
         stopAmplitudeSimulation()
-        stopListening()
+        speechRecognition.stopListening()
+        textToSpeech.stop()
     }
 }

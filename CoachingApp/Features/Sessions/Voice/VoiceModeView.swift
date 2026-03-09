@@ -1,47 +1,72 @@
 import SwiftUI
 
 struct VoiceModeView: View {
-    @State private var viewModel: VoiceViewModel
+    @Environment(AppState.self) private var appState
+    @Environment(ServiceContainer.self) private var services
     @Environment(\.dismiss) private var dismiss
+    @State private var viewModel: VoiceViewModel
+    @State private var hasInitialized = false
+
+    private let existingSession: CoachingSession?
+    private let existingMessages: [ChatMessage]
 
     var onSwitchToText: (() -> Void)?
+    var onSessionUpdated: ((CoachingSession?, [ChatMessage]) -> Void)?
 
     init(
         persona: CoachingPersonaType = .directChallenger,
-        onSwitchToText: (() -> Void)? = nil
+        existingSession: CoachingSession? = nil,
+        existingMessages: [ChatMessage] = [],
+        onSwitchToText: (() -> Void)? = nil,
+        onSessionUpdated: ((CoachingSession?, [ChatMessage]) -> Void)? = nil
     ) {
-        self._viewModel = State(initialValue: VoiceViewModel(persona: persona))
+        self.existingSession = existingSession
+        self.existingMessages = existingMessages
         self.onSwitchToText = onSwitchToText
+        self.onSessionUpdated = onSessionUpdated
+        self._viewModel = State(initialValue: VoiceViewModel(persona: persona))
     }
 
     var body: some View {
         ZStack {
-            // Background
             backgroundGradient
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Top bar
                 topBar
 
                 Spacer()
 
-                // Center content
                 centerContent
 
                 Spacer()
 
-                // Transcription area
                 transcriptionArea
 
-                // Controls
                 controlBar
             }
             .padding(.horizontal, AppTheme.Spacing.lg)
             .padding(.bottom, AppTheme.Spacing.lg)
         }
         .task {
-            await viewModel.beginSession()
+            viewModel.chatService = services.chatService
+            viewModel.streamingService = services.streamingService
+            viewModel.selectedCoachingStyle = appState.selectedCoachingStyle
+
+            guard !hasInitialized else { return }
+            hasInitialized = true
+
+            await viewModel.beginSession(
+                userId: appState.currentUserId ?? "test-user-001",
+                existingSession: existingSession,
+                existingMessages: existingMessages
+            )
+        }
+        .onChange(of: appState.selectedCoachingStyle) { _, newStyle in
+            viewModel.selectedCoachingStyle = newStyle
+        }
+        .onDisappear {
+            onSessionUpdated?(viewModel.currentSession, viewModel.messages)
         }
         .alert(
             "Error",
@@ -79,10 +104,8 @@ struct VoiceModeView: View {
     private var topBar: some View {
         HStack {
             Button {
-                Task {
-                    await viewModel.endSession()
-                    dismiss()
-                }
+                onSessionUpdated?(viewModel.currentSession, viewModel.messages)
+                dismiss()
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 16, weight: .semibold))
@@ -106,7 +129,6 @@ struct VoiceModeView: View {
 
             Spacer()
 
-            // Pause / Resume
             Button {
                 if viewModel.voiceState == .paused {
                     viewModel.resumeSession()
@@ -129,9 +151,7 @@ struct VoiceModeView: View {
 
     private var centerContent: some View {
         VStack(spacing: AppTheme.Spacing.xl) {
-            // Persona avatar with pulsing ring
             ZStack {
-                // Pulsing ring when active
                 if viewModel.voiceState == .speaking || viewModel.voiceState == .listening {
                     Circle()
                         .stroke(
@@ -166,14 +186,12 @@ struct VoiceModeView: View {
                     .animation(.easeInOut(duration: 0.5), value: viewModel.voiceState)
             }
 
-            // Waveform
             WaveformView(
                 isActive: viewModel.voiceState == .listening || viewModel.voiceState == .speaking,
                 amplitude: viewModel.amplitude
             )
             .frame(height: 44)
 
-            // State-specific content
             stateContent
         }
     }
@@ -243,14 +261,11 @@ struct VoiceModeView: View {
 
     private var controlBar: some View {
         VStack(spacing: AppTheme.Spacing.md) {
-            // Main mic button
             HStack(spacing: AppTheme.Spacing.xxl) {
-                // Switch to text
                 Button {
-                    Task {
-                        await viewModel.endSession()
-                        onSwitchToText?()
-                    }
+                    onSessionUpdated?(viewModel.currentSession, viewModel.messages)
+                    dismiss()
+                    onSwitchToText?()
                 } label: {
                     VStack(spacing: AppTheme.Spacing.xs) {
                         Image(systemName: "keyboard")
@@ -265,7 +280,6 @@ struct VoiceModeView: View {
                     .foregroundStyle(AppTheme.textSecondary)
                 }
 
-                // Microphone button
                 Button {
                     handleMicTap()
                 } label: {
@@ -282,10 +296,10 @@ struct VoiceModeView: View {
                 }
                 .disabled(viewModel.voiceState == .processing)
 
-                // End session
                 Button {
                     Task {
                         await viewModel.endSession()
+                        onSessionUpdated?(viewModel.currentSession, viewModel.messages)
                         dismiss()
                     }
                 } label: {
@@ -344,7 +358,7 @@ struct VoiceModeView: View {
         case .listening:
             viewModel.stopListening()
         case .speaking:
-            viewModel.textToSpeechStop()
+            viewModel.stopSpeaking()
         case .paused:
             viewModel.resumeSession()
             viewModel.startListening()
@@ -354,16 +368,8 @@ struct VoiceModeView: View {
     }
 }
 
-// MARK: - ViewModel extension for view access
-
-extension VoiceViewModel {
-    func textToSpeechStop() {
-        voiceState = .idle
-    }
-}
-
-// MARK: - Preview
-
 #Preview {
     VoiceModeView(persona: .directChallenger)
+        .environment(AppState())
+        .environment(ServiceContainer())
 }

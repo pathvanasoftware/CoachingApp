@@ -234,6 +234,21 @@ struct ChatView: View {
             SubscriptionView(highlightedFeature: highlightedPremiumFeature)
                 .environment(appState)
         }
+        .fullScreenCover(isPresented: $viewModel.isVoiceMode) {
+            VoiceModeView(
+                persona: currentPersona,
+                existingSession: viewModel.currentSession,
+                existingMessages: viewModel.messages,
+                onSwitchToText: {
+                    viewModel.isVoiceMode = false
+                },
+                onSessionUpdated: { session, messages in
+                    applyVoiceSessionUpdate(session: session, messages: messages)
+                }
+            )
+            .environment(appState)
+            .environment(services)
+        }
         .task {
             // Wire real services from the environment before starting the session
             viewModel.chatService = services.chatService
@@ -250,6 +265,9 @@ struct ChatView: View {
         }
         .onChange(of: appState.subscriptionPlan) { _, newPlan in
             viewModel.hasSubscription = newPlan == .pro
+            if !newPlan.includesVoice, viewModel.isVoiceMode {
+                viewModel.isVoiceMode = false
+            }
             if !newPlan.supports(persona: appState.selectedPersona) {
                 appState.selectedPersona = .directChallenger
             }
@@ -302,6 +320,17 @@ struct ChatView: View {
     private func presentSubscription(feature: String) {
         highlightedPremiumFeature = feature
         showSubscriptionSheet = true
+    }
+
+    private func applyVoiceSessionUpdate(session: CoachingSession?, messages: [ChatMessage]) {
+        if let session {
+            viewModel.currentSession = session
+            appState.activeSession = session
+        }
+        if !messages.isEmpty {
+            viewModel.messages = messages
+            appState.activeSessionMessages = messages
+        }
     }
 
     // MARK: - Subviews
