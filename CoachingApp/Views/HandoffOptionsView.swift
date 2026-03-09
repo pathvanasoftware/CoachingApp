@@ -405,7 +405,7 @@ struct SubscriptionView: View {
                     .foregroundStyle(AppTheme.warning)
             }
 
-            Text("StoreKit is live in this screen. Products must exist in App Store Connect or a StoreKit config for purchases to complete.")
+            Text("StoreKit is live in this screen. The shared Debug scheme already uses the local Ascendra.storekit file, and production can switch to App Store Connect products.")
                 .font(AppFonts.caption)
                 .foregroundStyle(AppTheme.textSecondary)
         }
@@ -417,7 +417,7 @@ struct SubscriptionView: View {
                 .font(AppFonts.headline)
                 .foregroundStyle(AppTheme.textPrimary)
 
-            Text("Configure the monthly and yearly Pro products in App Store Connect or attach a StoreKit configuration file for local purchase testing.")
+            Text("If this screen is empty, verify that the shared scheme is running with Ascendra.storekit or that the same product IDs exist in App Store Connect.")
                 .font(AppFonts.subheadline)
                 .foregroundStyle(AppTheme.textSecondary)
 
