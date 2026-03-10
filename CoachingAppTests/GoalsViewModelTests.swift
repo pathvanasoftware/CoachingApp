@@ -30,7 +30,7 @@ final class GoalsViewModelTests: XCTestCase {
     // MARK: - Load Goals Tests
 
     func testLoadGoalsSuccess() async {
-        await sut.loadGoals()
+        await sut.loadGoals(userId: "test-user")
 
         XCTAssertFalse(sut.isLoading)
         XCTAssertNotNil(sut.goals)
