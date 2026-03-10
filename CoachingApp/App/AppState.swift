@@ -172,7 +172,8 @@ final class AppState {
         }
         if args.contains("--auto-login") {
             isAuthenticated = true
-            hasCompletedOnboarding = false
+            hasCompletedOnboarding = true
+            isLoading = false
             currentUserId = "screenshot-user"
             currentUserEmail = "screenshot@ascendra.app"
             currentUserName = "Demo User"
