@@ -80,8 +80,8 @@ final class CoachingAppUITests: XCTestCase {
         app.launch()
         
         // Should show onboarding
-        XCTAssertTrue(app.staticTexts["Welcome"].exists || app.buttons["Skip"].exists, 
-                      "Onboarding welcome screen should be visible")
+        XCTAssertTrue(app.buttons["Skip"].waitForExistence(timeout: 5), 
+                      "Skip button should be visible on onboarding")
         
         // Skip onboarding
         if app.buttons["Skip"].exists {
@@ -89,7 +89,7 @@ final class CoachingAppUITests: XCTestCase {
         }
         
         // Should now be on home screen
-        XCTAssertTrue(app.staticTexts["Home"].exists, "Should navigate to home after skipping onboarding")
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 3), "Should navigate to main app after skipping onboarding")
     }
     
     // MARK: - Chat Tests

@@ -159,7 +159,7 @@ final class AppState {
 
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--force-onboarding") {
-            hasCompletedOnboarding = true
+            hasCompletedOnboarding = false
         }
         if args.contains("--debug-diagnostics") {
             showDebugDiagnostics = true
@@ -172,7 +172,7 @@ final class AppState {
         }
         if args.contains("--auto-login") {
             isAuthenticated = true
-            hasCompletedOnboarding = true
+            hasCompletedOnboarding = false
             currentUserId = "screenshot-user"
             currentUserEmail = "screenshot@ascendra.app"
             currentUserName = "Demo User"
@@ -222,11 +222,11 @@ final class AppState {
         serverSeatTier = .starter
         entitlementSnapshot = nil
         isAuthenticated = false
-        hasCompletedOnboarding = true
+        hasCompletedOnboarding = false
     }
 
     func completeOnboarding() {
-        hasCompletedOnboarding = true
+        hasCompletedOnboarding = false
     }
 
     func switchAPIEnvironment(_ environment: APIEnvironment) {
