@@ -66,6 +66,14 @@ final class AppState {
         }
     }
 
+    private struct OnboardingStatusUpdate: Encodable {
+        let hasCompletedOnboarding: Bool
+
+        enum CodingKeys: String, CodingKey {
+            case hasCompletedOnboarding = "has_completed_onboarding"
+        }
+    }
+
     private let subscriptionClient = APIClient()
     private let analytics = AnalyticsService.shared
     private var transactionUpdatesTask: Task<Void, Never>?
@@ -227,7 +235,11 @@ final class AppState {
     }
 
     func completeOnboarding() {
-        hasCompletedOnboarding = false
+        hasCompletedOnboarding = true
+
+        Task {
+            await syncOnboardingStatusToBackendIfNeeded()
+        }
     }
 
     func switchAPIEnvironment(_ environment: APIEnvironment) {
@@ -412,6 +424,24 @@ final class AppState {
         } catch {
             print("[AppState] Failed to sync subscription tier to backend: \(error.localizedDescription)")
             analytics.track("subscription_tier_sync_failed", properties: [
+                "error": error.localizedDescription,
+            ])
+        }
+    }
+
+    @MainActor
+    private func syncOnboardingStatusToBackendIfNeeded() async {
+        guard isAuthenticated, currentUserId != nil, hasCompletedOnboarding else { return }
+
+        do {
+            let updatedUser: User = try await subscriptionClient.patch(
+                path: "/auth/me",
+                body: OnboardingStatusUpdate(hasCompletedOnboarding: true)
+            )
+            hasCompletedOnboarding = updatedUser.hasCompletedOnboarding
+        } catch {
+            print("[AppState] Failed to sync onboarding status to backend: \(error.localizedDescription)")
+            analytics.track("onboarding_status_sync_failed", properties: [
                 "error": error.localizedDescription,
             ])
         }
