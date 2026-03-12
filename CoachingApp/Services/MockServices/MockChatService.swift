@@ -359,7 +359,8 @@ final class MockChatService: ChatServiceProtocol, StreamingServiceProtocol, @unc
         requestId: String,
         message: String,
         persona: CoachingPersonaType,
-        coachingStyle: CoachingStyle? = nil
+        coachingStyle: CoachingStyle? = nil,
+        userRoleLevel: RoleLevel? = nil
     ) -> AsyncThrowingStream<String, Error> {
         // Store the user message (only for non-greeting calls; greeting uses empty message)
         if !message.isEmpty {

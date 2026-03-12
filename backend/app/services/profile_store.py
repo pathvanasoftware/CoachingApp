@@ -89,22 +89,25 @@ class ProfileStore:
             conn.commit()
 
     def update_role_level(self, user_id: str, role_level: str) -> None:
-        """Update only the role_level field."""
+        """Update only the role_level field. Creates profile row if it doesn't exist."""
         now = datetime.now(timezone.utc)
         with self._get_conn() as conn:
             with conn.cursor() as cur:
-                # Update both column and JSON for consistency
+                # Use INSERT ... ON CONFLICT to handle both new and existing users
                 cur.execute("""
-                    UPDATE coaching_profiles
-                    SET role_level = %s,
+                    INSERT INTO coaching_profiles (user_id, profile_json, role_level, updated_at)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (user_id)
+                    DO UPDATE SET
+                        role_level = EXCLUDED.role_level,
                         profile_json = jsonb_set(
                             COALESCE(profile_json, '{}'::jsonb),
                             '{role_level}',
                             %s::jsonb
                         ),
-                        updated_at = %s
-                    WHERE user_id = %s
-                """, (role_level, json.dumps(role_level), now, user_id))
+                        updated_at = EXCLUDED.updated_at
+                """, (user_id, json.dumps({"role_level": role_level}), role_level, now,
+                     json.dumps(role_level), now))
             conn.commit()
 
     def get_role_level(self, user_id: str) -> Optional[str]:

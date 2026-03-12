@@ -48,6 +48,10 @@ final class VoiceViewModel {
     var currentSession: CoachingSession?
     var selectedCoachingStyle: CoachingStyle = .auto
 
+    // MARK: - Dependencies
+
+    var appState: AppState?
+
     // MARK: - Private
 
     private let speechRecognition: SpeechRecognitionService
@@ -277,7 +281,8 @@ final class VoiceViewModel {
             requestId: userMessage.id,
             message: content,
             persona: persona,
-            coachingStyle: selectedCoachingStyle
+            coachingStyle: selectedCoachingStyle,
+            userRoleLevel: appState?.userRoleLevel
         )
 
         let assistantMessage = ChatMessage(

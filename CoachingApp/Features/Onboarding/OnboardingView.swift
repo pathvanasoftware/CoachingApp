@@ -13,7 +13,9 @@ struct OnboardingView: View {
             HStack {
                 Spacer()
                 Button("Skip") {
-                    viewModel.completeOnboarding()
+                    Task {
+                        await viewModel.completeOnboarding()
+                    }
                 }
                 .font(AppFonts.subheadline)
                 .foregroundStyle(AppTheme.primary)

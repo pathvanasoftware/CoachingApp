@@ -84,6 +84,7 @@ struct ChatScreen: View {
                 .presentationDragIndicator(.visible)
         }
         .task {
+            viewModel.appState = appState
             viewModel.selectedCoachingStyle = appState.selectedCoachingStyle
 
             // Start a new session when view appears

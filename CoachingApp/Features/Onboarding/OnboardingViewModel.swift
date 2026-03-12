@@ -78,7 +78,9 @@ final class OnboardingViewModel {
         guard canProceed else { return }
 
         if isLastStep {
-            completeOnboarding()
+            Task {
+                await completeOnboarding()
+            }
             return
         }
 
@@ -106,7 +108,9 @@ final class OnboardingViewModel {
     func skipGoal() {
         onboardingData.firstGoalTitle = ""
         onboardingData.firstGoalDescription = ""
-        completeOnboarding()
+        Task {
+            await completeOnboarding()
+        }
     }
 
     // MARK: - Complete Onboarding
@@ -155,10 +159,18 @@ final class OnboardingViewModel {
         // Call the new backend endpoint
         guard let userId = appState.currentUserId else { return }
 
-        var components = URLComponents(string: appState.apiEnvironment.baseURL)
-        components.path = "/auth/me/role-level"
-        components.queryItems = [URLQueryItem(name: "role_level", value: roleLevel.rawValue)]
-        guard let url = components.url else {
+        // Build URL correctly: APIEnvironment.baseURL already includes /api/v1
+        // We need to append /auth/me/role-level to it
+        let baseURLString = appState.apiEnvironment.baseURL
+        let urlString = baseURLString.hasSuffix("/api/v1")
+            ? baseURLString + "/auth/me/role-level"
+            : baseURLString + "/api/v1/auth/me/role-level"
+
+        guard var urlComponents = URLComponents(string: urlString) else {
+            throw URLError(.badURL)
+        }
+        urlComponents.queryItems = [URLQueryItem(name: "role_level", value: roleLevel.rawValue)]
+        guard let url = urlComponents.url else {
             throw URLError(.badURL)
         }
 
