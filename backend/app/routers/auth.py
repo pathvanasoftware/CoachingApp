@@ -17,6 +17,7 @@ from app.services.auth import (
     GOOGLE_REDIRECT_URI,
 )
 from app.services.entitlements import entitlement_service
+from app.services.profile_store import get_profile_store
 
 router = APIRouter()
 security = HTTPBearer()
@@ -223,7 +224,17 @@ async def get_me(user_id: str = Depends(get_current_user)):
     user = user_service.get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return user.to_dict()
+
+    user_dict = user.to_dict()
+
+    # Include role_level from profile if available
+    from app.services.profile_store import get_profile_store
+    profile_store = get_profile_store()
+    profile = profile_store.get_profile(user_id)
+    if profile and "role_level" in profile:
+        user_dict["role_level"] = profile["role_level"]
+
+    return user_dict
 
 
 @router.get("/entitlements")
@@ -246,6 +257,30 @@ async def update_me(request: UpdateMeRequest, user_id: str = Depends(get_current
     if not updated:
         raise HTTPException(status_code=500, detail="Failed to update user")
     return updated.to_dict()
+
+
+@router.patch("/me/role-level")
+async def update_role_level(
+    role_level: str,
+    user_id: str = Depends(get_current_user)
+):
+    """Update the user's role level for role-aware coaching.
+
+    Valid values: individual_contributor, manager, director, vp, c_suite
+    """
+    valid_levels = ["individual_contributor", "manager", "director", "vp", "c_suite"]
+    if role_level not in valid_levels:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid role_level. Must be one of: {', '.join(valid_levels)}"
+        )
+
+    profile_store = get_profile_store()
+    profile_store.update_role_level(user_id, role_level)
+
+    # Return updated profile with role_level
+    profile = profile_store.get_profile(user_id) or {}
+    return {"role_level": role_level, **profile}
 
 
 @router.post("/refresh")

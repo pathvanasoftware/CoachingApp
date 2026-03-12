@@ -8,7 +8,8 @@ protocol StreamingServiceProtocol: Sendable {
         requestId: String,
         message: String,
         persona: CoachingPersonaType,
-        coachingStyle: CoachingStyle?
+        coachingStyle: CoachingStyle?,
+        userRoleLevel: RoleLevel?
     ) -> AsyncThrowingStream<String, Error>
 }
 
@@ -20,6 +21,15 @@ private struct StreamingRequest: Codable {
     let message: String
     let persona: String
     let coachingStyle: String?
+    let userRoleLevel: String?
+    enum CodingKeys: String, CodingKey {
+        case sessionId
+        case requestId
+        case message
+        case persona
+        case coachingStyle
+        case userRoleLevel
+    }
 }
 
 // MARK: - Streaming Service
@@ -62,7 +72,8 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
         requestId: String,
         message: String,
         persona: CoachingPersonaType,
-        coachingStyle: CoachingStyle? = nil
+        coachingStyle: CoachingStyle? = nil,
+        userRoleLevel: RoleLevel? = nil
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
@@ -73,6 +84,7 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
                         message: message,
                         persona: persona,
                         coachingStyle: coachingStyle,
+                        userRoleLevel: userRoleLevel,
                         continuation: continuation
                     )
                 } catch {
@@ -94,6 +106,7 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
         message: String,
         persona: CoachingPersonaType,
         coachingStyle: CoachingStyle?,
+        userRoleLevel: RoleLevel?,
         continuation: AsyncThrowingStream<String, Error>.Continuation
     ) async throws {
         guard let url = URL(string: baseURL) else {
@@ -114,7 +127,8 @@ final class StreamingService: NSObject, StreamingServiceProtocol, @unchecked Sen
             requestId: requestId,
             message: message,
             persona: persona.rawValue,
-            coachingStyle: coachingStyle?.apiValue
+            coachingStyle: coachingStyle?.apiValue,
+            userRoleLevel: userRoleLevel?.rawValue
         )
         request.httpBody = try JSONEncoder().encode(body)
 

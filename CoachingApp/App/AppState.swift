@@ -106,6 +106,11 @@ final class AppState {
             UserDefaults.standard.set(selectedCoachingStyle.rawValue, forKey: DefaultsKey.coachingStyle)
         }
     }
+    var userRoleLevel: RoleLevel? {
+        didSet {
+            UserDefaults.standard.set(userRoleLevel?.rawValue, forKey: DefaultsKey.apiEnvironment + ".roleLevel")
+        }
+    }
     var availableSubscriptionProducts: [Product] = []
     var isLoadingSubscriptionProducts: Bool = false
     var isPurchasingSubscription: Bool = false
@@ -216,6 +221,7 @@ final class AppState {
         selectedPersona = subscriptionPlan.supports(persona: user.preferredPersona)
             ? user.preferredPersona
             : .directChallenger
+        userRoleLevel = user.roleLevel
         isAuthenticated = true
 
         Task {

@@ -1,5 +1,40 @@
 import Foundation
 
+enum RoleLevel: String, Codable, CaseIterable, Identifiable {
+    case individualContributor = "individual_contributor"
+    case manager = "manager"
+    case director = "director"
+    case vp = "vp"
+    case cSuite = "c_suite"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .individualContributor: return "Individual Contributor"
+        case .manager: return "Manager"
+        case .director: return "Director"
+        case .vp: return "VP / SVP"
+        case .cSuite: return "C-Suite / Founder"
+        }
+    }
+
+    var coachingFocus: [String] {
+        switch self {
+        case .individualContributor:
+            return ["Personal impact", "Skill development", "Visibility", "Influence without authority"]
+        case .manager:
+            return ["Team performance", "Direct reports", "Execution", "Managing up"]
+        case .director:
+            return ["Cross-functional alignment", "Manager-of-managers", "Strategic initiatives"]
+        case .vp:
+            return ["Business outcomes", "P&L responsibility", "Org strategy", "Executive presence"]
+        case .cSuite:
+            return ["Company strategy", "Board relations", "Industry positioning", "Culture & values"]
+        }
+    }
+}
+
 enum SubscriptionPlan: String, Codable, CaseIterable, Identifiable {
     case free
     case pro
@@ -80,8 +115,23 @@ struct User: Identifiable, Codable {
     var preferredPersona: CoachingPersonaType
     var preferredInputMode: InputMode
     var hasCompletedOnboarding: Bool
+    var roleLevel: RoleLevel?
     var createdAt: Date
     var updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case email
+        case fullName = "full_name"
+        case organizationId = "organization_id"
+        case seatTier = "seat_tier"
+        case preferredPersona = "preferred_persona"
+        case preferredInputMode = "preferred_input_mode"
+        case hasCompletedOnboarding = "has_completed_onboarding"
+        case roleLevel = "role_level"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
 
     init(
         id: String = UUID().uuidString,
@@ -92,6 +142,7 @@ struct User: Identifiable, Codable {
         preferredPersona: CoachingPersonaType = .directChallenger,
         preferredInputMode: InputMode = .text,
         hasCompletedOnboarding: Bool = false,
+        roleLevel: RoleLevel? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -103,6 +154,7 @@ struct User: Identifiable, Codable {
         self.preferredPersona = preferredPersona
         self.preferredInputMode = preferredInputMode
         self.hasCompletedOnboarding = hasCompletedOnboarding
+        self.roleLevel = roleLevel
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

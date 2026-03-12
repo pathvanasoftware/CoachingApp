@@ -696,6 +696,48 @@ def _detect_crisis(message: str) -> bool:
     m = message.lower()
     return any(k in m for k in keywords)
 
+
+def _get_role_context(role_level: Optional[str]) -> str:
+    """
+    Get role-aware coaching context.
+
+    This ADDS to existing guardrails (stage routing, inquiry-first contract),
+    not replaces them. Role context provides nuance to questions/recommendations
+    AFTER stage is determined.
+    """
+    if not role_level:
+        return ""
+
+    contexts = {
+        "individual_contributor": """
+User role level: Individual Contributor.
+Role-aware focus: Personal impact, skill development, building influence without authority, technical leadership.
+Adjust question scope to individual contributions and career progression.
+""",
+        "manager": """
+User role level: Manager.
+Role-aware focus: Team performance, direct report development, execution excellence, managing up and across.
+Balance coaching between individual growth and team leadership responsibilities.
+""",
+        "director": """
+User role level: Director.
+Role-aware focus: Multi-team coordination, managing managers, strategic initiatives, organizational capability.
+Questions should explore organizational dynamics and cross-functional alignment.
+""",
+        "vp": """
+User role level: VP/SVP.
+Role-aware focus: Business outcomes, P&L responsibility, organizational strategy, executive presence.
+Coaching should address strategic decision-making and leadership at scale.
+""",
+        "c_suite": """
+User role level: C-Suite/Founder.
+Role-aware focus: Company strategy, board relations, industry positioning, culture and organizational design.
+Address high-stakes decision framing and executive-level challenges.
+""",
+    }
+    return contexts.get(role_level, "")
+
+
 def _crisis_response() -> str:
     return (
         "I'm concerned about what you're sharing. Your wellbeing matters, "
@@ -718,6 +760,7 @@ async def get_coaching_response_claude(
     user_id: str = "anonymous",
     coaching_style: Optional[str] = None,
     context: Optional[str] = None,
+    user_role_level: Optional[str] = None,
 ) -> Dict:
     """
     Primary entry point for the three-model architecture.
@@ -817,10 +860,13 @@ async def get_coaching_response_claude(
 
     # ── Build system prompt ───────────────────────────────────────────────
     style_prompt = STYLE_PROMPTS.get(style_used, "")
+    role_context = _get_role_context(user_role_level)  # Role-aware context
+
     system = "\n\n".join(filter(None, [
         GROW_SYSTEM_PROMPT,
         INTERNAL_PERSONA_PROMPTS.get(persona_used),
         f"Coaching style this turn: {style_used}. {style_prompt}",
+        role_context,  # Role-aware context (added AFTER style, BEFORE stage-specific instructions)
         f"Enhanced with thought leader framework:\n{framework}" if (framework and stage != "diagnose") else None,
         f"Emotion detected: {emotion}. Goal alignment: {goal_link}.",
         f"Persistent profile: {json.dumps(profile, ensure_ascii=False)}",

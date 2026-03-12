@@ -111,20 +111,71 @@ final class OnboardingViewModel {
 
     // MARK: - Complete Onboarding
 
-    func completeOnboarding() {
+    func completeOnboarding() async {
         isCompleting = true
+        errorMessage = nil
 
-        // Apply onboarding selections to AppState
-        appState.selectedCoachingStyle = onboardingData.selectedCoachingStyle
+        do {
+            // Apply onboarding selections to AppState
+            appState.selectedCoachingStyle = onboardingData.selectedCoachingStyle
 
-        if !onboardingData.userName.isEmpty {
-            appState.currentUserName = onboardingData.userName
+            if !onboardingData.userName.isEmpty {
+                appState.currentUserName = onboardingData.userName
+            }
+
+            // Persist role level to backend if set
+            if let roleAnswer = onboardingData.userRole.isEmpty ? nil : onboardingData.userRole,
+               let roleLevel = mapRoleAnswerToLevel(roleAnswer) {
+                try await saveRoleLevel(roleLevel)
+                appState.userRoleLevel = roleLevel
+            }
+
+            // Mark onboarding as complete
+            appState.completeOnboarding()
+
+            isCompleting = false
+        } catch {
+            isCompleting = false
+            errorMessage = "Failed to complete onboarding: \(error.localizedDescription)"
+        }
+    }
+
+    private func mapRoleAnswerToLevel(_ answer: String) -> RoleLevel? {
+        let mapping: [String: RoleLevel] = [
+            "Individual Contributor / Senior IC": .individualContributor,
+            "Manager / Team Lead": .manager,
+            "Director / Senior Manager": .director,
+            "VP / SVP": .vp,
+            "C-Suite / Founder": .cSuite
+        ]
+        return mapping[answer]
+    }
+
+    private func saveRoleLevel(_ roleLevel: RoleLevel) async throws {
+        // Call the new backend endpoint
+        guard let userId = appState.currentUserId else { return }
+
+        var components = URLComponents(string: appState.apiEnvironment.baseURL)
+        components.path = "/auth/me/role-level"
+        components.queryItems = [URLQueryItem(name: "role_level", value: roleLevel.rawValue)]
+        guard let url = components.url else {
+            throw URLError(.badURL)
         }
 
-        // Mark onboarding as complete
-        appState.completeOnboarding()
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        isCompleting = false
+        if let token = KeychainService.loadAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
     }
 
     // MARK: - Assessment Helpers

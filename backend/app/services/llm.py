@@ -41,6 +41,7 @@ class CoachingRequest(BaseModel):
     context: Optional[str] = None
     coaching_style: Optional[str] = None
     user_id: Optional[str] = "anonymous"
+    user_role_level: Optional[str] = None
     request_id: Optional[str] = None
 
 
@@ -80,6 +81,7 @@ async def get_coaching_response(request: CoachingRequest) -> CoachingResponse:
         user_id=request.user_id or "anonymous",
         coaching_style=request.coaching_style,
         context=request.context,
+        user_role_level=request.user_role_level,
     )
 
     return CoachingResponse(

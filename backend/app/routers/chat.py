@@ -48,6 +48,7 @@ class ChatStreamRequest(BaseModel):
     coachingStyle: Optional[str] = None
     userId: Optional[str] = "anonymous"
     requestId: Optional[str] = None
+    userRoleLevel: Optional[str] = None
 
 
 class ProcessingResponse(BaseModel):
@@ -105,6 +106,7 @@ def _stream_signature(request: ChatStreamRequest) -> str:
         "persona": request.persona,
         "coaching_style": request.coachingStyle,
         "user_id": request.userId or "anonymous",
+        "user_role_level": request.userRoleLevel,
     }
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -338,6 +340,7 @@ async def chat_stream(
         context=f"session_id={request.sessionId}",
         coaching_style=request.coachingStyle,
         user_id=user_id,
+        user_role_level=request.userRoleLevel,
         request_id=request_id or None,
     )
 

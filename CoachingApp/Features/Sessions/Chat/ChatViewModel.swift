@@ -38,6 +38,7 @@ final class ChatViewModel {
 
     // MARK: - Dependencies
 
+    var appState: AppState?
     var chatService: ChatServiceProtocol
     var streamingService: StreamingServiceProtocol
     private let apiClient: APIClient
@@ -417,7 +418,8 @@ final class ChatViewModel {
             requestId: requestId,
             message: content,
             persona: session.persona,
-            coachingStyle: selectedCoachingStyle
+            coachingStyle: selectedCoachingStyle,
+            userRoleLevel: appState?.userRoleLevel
         )
 
         streamingTask = Task { @MainActor [weak self] in
