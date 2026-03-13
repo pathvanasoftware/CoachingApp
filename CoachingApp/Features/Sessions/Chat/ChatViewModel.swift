@@ -315,6 +315,10 @@ final class ChatViewModel {
     }
 
     private func openingCandidates(for session: CoachingSession) -> [String] {
+        if let personalized = personalizedOpeningCandidates(for: session) {
+            return personalized
+        }
+
         switch selectedCoachingStyle {
         case .directive:
             switch session.sessionType {
@@ -372,6 +376,46 @@ final class ChatViewModel {
                 return ["Which goal would you like to review, and what changed since your last check-in?", "Which goal needs attention first today, and what has shifted around it?"]
             }
         }
+    }
+
+    private func personalizedOpeningCandidates(for session: CoachingSession) -> [String]? {
+        guard let onboardingProfile = appState?.onboardingProfile else {
+            return nil
+        }
+
+        if session.sessionType == .goalReview,
+           let firstGoalTitle = onboardingProfile.trimmedFirstGoalTitle {
+            return [
+                "You set an early goal around \(firstGoalTitle). What has shifted since you first named it?",
+                "Let's revisit your goal to \(firstGoalTitle). Where do you feel momentum, and where are you stuck?"
+            ]
+        }
+
+        if session.sessionType == .deepDive,
+           let challenge = onboardingProfile.primaryChallenge {
+            return [
+                "In onboarding you flagged \(challenge). Where is that challenge showing up most sharply right now?",
+                "You called out \(challenge) early on. What is the hardest part of it at the moment?"
+            ]
+        }
+
+        if session.sessionType == .freeform,
+           let goalArea = onboardingProfile.goalArea {
+            return [
+                "You said you want to grow in \(goalArea). What would make this session meaningfully move that forward?",
+                "You pointed to \(goalArea) as a growth area. Where would a sharper answer or plan help most today?"
+            ]
+        }
+
+        if session.sessionType == .checkIn,
+           let experienceLevel = onboardingProfile.experienceLevel {
+            return [
+                "Given your \(experienceLevel) leadership background, what feels most important to get clear on today?",
+                "With your \(experienceLevel) leadership experience in mind, where would coaching be most useful right now?"
+            ]
+        }
+
+        return nil
     }
 
     private func openingQuickReplies(for sessionType: SessionType) -> [QuickReply] {

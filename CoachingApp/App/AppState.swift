@@ -48,6 +48,7 @@ final class AppState {
     private enum DefaultsKey {
         static let apiEnvironment = "com.coachingapp.apiEnvironment"
         static let coachingStyle = "com.pathvana.ascendra.coachingStyle"
+        static let onboardingProfile = "com.pathvana.ascendra.onboardingProfile"
         static let subscriptionPlan = "com.pathvana.ascendra.subscriptionPlan"
     }
 
@@ -111,6 +112,17 @@ final class AppState {
             UserDefaults.standard.set(userRoleLevel?.rawValue, forKey: DefaultsKey.apiEnvironment + ".roleLevel")
         }
     }
+    var onboardingProfile: OnboardingProfile? {
+        didSet {
+            if let onboardingProfile {
+                if let data = try? JSONEncoder().encode(onboardingProfile) {
+                    UserDefaults.standard.set(data, forKey: DefaultsKey.onboardingProfile)
+                }
+            } else {
+                UserDefaults.standard.removeObject(forKey: DefaultsKey.onboardingProfile)
+            }
+        }
+    }
     var availableSubscriptionProducts: [Product] = []
     var isLoadingSubscriptionProducts: Bool = false
     var isPurchasingSubscription: Bool = false
@@ -169,6 +181,10 @@ final class AppState {
            let plan = SubscriptionPlan(rawValue: savedPlan) {
             hasActiveStoreSubscription = plan == .pro
         }
+        if let savedOnboardingProfile = UserDefaults.standard.data(forKey: DefaultsKey.onboardingProfile),
+           let decodedProfile = try? JSONDecoder().decode(OnboardingProfile.self, from: savedOnboardingProfile) {
+            onboardingProfile = decodedProfile
+        }
 
         let args = ProcessInfo.processInfo.arguments
         if args.contains("--force-onboarding") {
@@ -222,6 +238,7 @@ final class AppState {
             ? user.preferredPersona
             : .directChallenger
         userRoleLevel = user.roleLevel
+        onboardingProfile = user.onboardingProfile
         isAuthenticated = true
 
         Task {
@@ -238,6 +255,7 @@ final class AppState {
         entitlementSnapshot = nil
         isAuthenticated = false
         hasCompletedOnboarding = false
+        onboardingProfile = nil
     }
 
     func completeOnboarding() {

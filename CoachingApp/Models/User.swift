@@ -116,6 +116,7 @@ struct User: Identifiable, Codable {
     var preferredInputMode: InputMode
     var hasCompletedOnboarding: Bool
     var roleLevel: RoleLevel?
+    var onboardingProfile: OnboardingProfile?
     var createdAt: Date
     var updatedAt: Date
 
@@ -129,6 +130,7 @@ struct User: Identifiable, Codable {
         case preferredInputMode = "preferred_input_mode"
         case hasCompletedOnboarding = "has_completed_onboarding"
         case roleLevel = "role_level"
+        case onboardingProfile = "onboarding_profile"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -143,6 +145,7 @@ struct User: Identifiable, Codable {
         preferredInputMode: InputMode = .text,
         hasCompletedOnboarding: Bool = false,
         roleLevel: RoleLevel? = nil,
+        onboardingProfile: OnboardingProfile? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -155,6 +158,7 @@ struct User: Identifiable, Codable {
         self.preferredInputMode = preferredInputMode
         self.hasCompletedOnboarding = hasCompletedOnboarding
         self.roleLevel = roleLevel
+        self.onboardingProfile = onboardingProfile
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

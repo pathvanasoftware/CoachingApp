@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Dict, Optional
 
 from app.services.auth import (
     user_service,
@@ -54,6 +54,15 @@ class UpdateMeRequest(BaseModel):
     preferred_persona: Optional[str] = None
     preferred_input_mode: Optional[str] = None
     has_completed_onboarding: Optional[bool] = None
+
+
+class OnboardingProfileRequest(BaseModel):
+    user_name: Optional[str] = None
+    selected_coaching_style: Optional[str] = None
+    first_goal_title: Optional[str] = None
+    first_goal_description: Optional[str] = None
+    assessment_answers: Dict[str, str] = {}
+    user_role: Optional[str] = None
 
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
@@ -233,6 +242,8 @@ async def get_me(user_id: str = Depends(get_current_user)):
     profile = profile_store.get_profile(user_id)
     if profile and "role_level" in profile:
         user_dict["role_level"] = profile["role_level"]
+    if profile and "onboarding_profile" in profile:
+        user_dict["onboarding_profile"] = profile["onboarding_profile"]
 
     return user_dict
 
@@ -281,6 +292,35 @@ async def update_role_level(
     # Return updated profile with role_level
     profile = profile_store.get_profile(user_id) or {}
     return {"role_level": role_level, **profile}
+
+
+@router.patch("/me/onboarding-profile")
+async def update_onboarding_profile(
+    request: OnboardingProfileRequest,
+    user_id: str = Depends(get_current_user)
+):
+    profile_store = get_profile_store()
+    profile = profile_store.get_profile(user_id) or {}
+
+    sanitized_answers = {
+        str(key): str(value).strip()
+        for key, value in (request.assessment_answers or {}).items()
+        if str(key).strip() and str(value).strip()
+    }
+
+    onboarding_profile = {
+        "user_name": request.user_name.strip() if request.user_name else None,
+        "selected_coaching_style": request.selected_coaching_style,
+        "first_goal_title": request.first_goal_title.strip() if request.first_goal_title else "",
+        "first_goal_description": request.first_goal_description.strip() if request.first_goal_description else "",
+        "assessment_answers": sanitized_answers,
+        "user_role": request.user_role.strip() if request.user_role else None,
+    }
+
+    profile["onboarding_profile"] = onboarding_profile
+    profile_store.save_profile(user_id, profile)
+
+    return {"onboarding_profile": onboarding_profile}
 
 
 @router.post("/refresh")

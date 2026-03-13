@@ -49,6 +49,7 @@ struct VoiceModeView: View {
             .padding(.bottom, AppTheme.Spacing.lg)
         }
         .task {
+            viewModel.appState = appState
             viewModel.chatService = services.chatService
             viewModel.streamingService = services.streamingService
             viewModel.selectedCoachingStyle = appState.selectedCoachingStyle

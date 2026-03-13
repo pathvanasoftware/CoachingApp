@@ -1,5 +1,43 @@
 import Foundation
 
+struct OnboardingProfile: Codable, Equatable {
+    var userName: String?
+    var selectedCoachingStyle: CoachingStyle
+    var firstGoalTitle: String
+    var firstGoalDescription: String
+    var assessmentAnswers: [String: String]
+    var userRole: String?
+
+    enum CodingKeys: String, CodingKey {
+        case userName = "user_name"
+        case selectedCoachingStyle = "selected_coaching_style"
+        case firstGoalTitle = "first_goal_title"
+        case firstGoalDescription = "first_goal_description"
+        case assessmentAnswers = "assessment_answers"
+        case userRole = "user_role"
+    }
+
+    var primaryChallenge: String? {
+        assessmentAnswers["challenge"]?.nilIfBlank
+    }
+
+    var goalArea: String? {
+        assessmentAnswers["goal_area"]?.nilIfBlank
+    }
+
+    var experienceLevel: String? {
+        assessmentAnswers["experience"]?.nilIfBlank
+    }
+
+    var preferredStyleAnswer: String? {
+        assessmentAnswers["coaching_style"]?.nilIfBlank
+    }
+
+    var trimmedFirstGoalTitle: String? {
+        firstGoalTitle.nilIfBlank
+    }
+}
+
 struct OnboardingData {
     var assessmentAnswers: [AssessmentAnswer] = []
     var selectedCoachingStyle: CoachingStyle = .auto
@@ -7,6 +45,21 @@ struct OnboardingData {
     var firstGoalDescription: String = ""
     var userName: String = ""
     var userRole: String = ""
+
+    var asProfile: OnboardingProfile {
+        let answerMap = Dictionary(
+            uniqueKeysWithValues: assessmentAnswers.map { ($0.questionId, $0.answer) }
+        )
+
+        return OnboardingProfile(
+            userName: userName.nilIfBlank,
+            selectedCoachingStyle: selectedCoachingStyle,
+            firstGoalTitle: firstGoalTitle.trimmingCharacters(in: .whitespacesAndNewlines),
+            firstGoalDescription: firstGoalDescription.trimmingCharacters(in: .whitespacesAndNewlines),
+            assessmentAnswers: answerMap,
+            userRole: userRole.nilIfBlank
+        )
+    }
 }
 
 struct AssessmentAnswer: Identifiable {
@@ -14,6 +67,13 @@ struct AssessmentAnswer: Identifiable {
     let questionId: String
     let question: String
     var answer: String
+}
+
+private extension String {
+    var nilIfBlank: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
 }
 
 struct AssessmentQuestion: Identifiable {

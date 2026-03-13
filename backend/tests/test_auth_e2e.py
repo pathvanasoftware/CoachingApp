@@ -22,11 +22,13 @@ def test_db_url():
 def clean_db(test_db_url):
     with psycopg.connect(test_db_url) as conn:
         with conn.cursor() as cur:
+            cur.execute("DELETE FROM coaching_profiles")
             cur.execute("DELETE FROM users")
         conn.commit()
     yield test_db_url
     with psycopg.connect(test_db_url) as conn:
         with conn.cursor() as cur:
+            cur.execute("DELETE FROM coaching_profiles")
             cur.execute("DELETE FROM users")
         conn.commit()
 
@@ -227,6 +229,44 @@ class TestAuthMe:
         assert response.status_code == 200
         body = response.json()
         assert body["seat_tier"] == "professional"
+
+    def test_update_onboarding_profile_and_get_me(self, client):
+        register_response = client.post(
+            "/api/auth/register",
+            json={
+                "email": "onboarding-profile@example.com",
+                "password": "password123",
+            },
+        )
+        token = register_response.json()["access_token"]
+
+        update_response = client.patch(
+            "/api/auth/me/onboarding-profile",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "user_name": "Taylor",
+                "selected_coaching_style": "strategic",
+                "first_goal_title": "Improve executive presence",
+                "first_goal_description": "Be sharper in leadership meetings",
+                "assessment_answers": {
+                    "challenge": "Managing up and stakeholder relationships",
+                    "goal_area": "Communication skills",
+                    "experience": "5-10 years",
+                },
+                "user_role": "Director / Senior Manager",
+            },
+        )
+        assert update_response.status_code == 200
+
+        response = client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["onboarding_profile"]["user_name"] == "Taylor"
+        assert body["onboarding_profile"]["selected_coaching_style"] == "strategic"
+        assert body["onboarding_profile"]["assessment_answers"]["challenge"] == "Managing up and stakeholder relationships"
 
     def test_get_entitlements(self, client):
         register_response = client.post(

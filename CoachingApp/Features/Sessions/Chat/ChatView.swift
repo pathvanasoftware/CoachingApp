@@ -251,6 +251,7 @@ struct ChatView: View {
         }
         .task {
             // Wire real services from the environment before starting the session
+            viewModel.appState = appState
             viewModel.chatService = services.chatService
             viewModel.streamingService = services.streamingService
             viewModel.selectedCoachingStyle = appState.selectedCoachingStyle

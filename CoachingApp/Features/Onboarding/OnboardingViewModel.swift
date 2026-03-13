@@ -122,7 +122,9 @@ final class OnboardingViewModel {
 
         // Apply onboarding selections locally before any network work so the
         // root app state can advance to the main experience immediately.
+        let onboardingProfile = onboardingData.asProfile
         appState.selectedCoachingStyle = onboardingData.selectedCoachingStyle
+        appState.onboardingProfile = onboardingProfile
 
         if !onboardingData.userName.isEmpty {
             appState.currentUserName = onboardingData.userName
@@ -137,6 +139,12 @@ final class OnboardingViewModel {
             } catch {
                 print("[OnboardingViewModel] Failed to persist role level: \(error.localizedDescription)")
             }
+        }
+
+        do {
+            try await saveOnboardingProfile(onboardingProfile)
+        } catch {
+            print("[OnboardingViewModel] Failed to persist onboarding profile: \(error.localizedDescription)")
         }
 
         appState.completeOnboarding()
@@ -182,6 +190,35 @@ final class OnboardingViewModel {
 
         let (_, response) = try await URLSession.shared.data(for: request)
 
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+    }
+
+    private func saveOnboardingProfile(_ profile: OnboardingProfile) async throws {
+        guard appState.currentUserId != nil else { return }
+
+        let baseURLString = appState.apiEnvironment.baseURL
+        let urlString = baseURLString.hasSuffix("/api/v1")
+            ? baseURLString + "/auth/me/onboarding-profile"
+            : baseURLString + "/api/v1/auth/me/onboarding-profile"
+
+        guard let url = URL(string: urlString) else {
+            throw URLError(.badURL)
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let token = KeychainService.loadAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        request.httpBody = try JSONEncoder().encode(profile)
+
+        let (_, response) = try await URLSession.shared.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse,
               (200...299).contains(httpResponse.statusCode) else {
             throw URLError(.badServerResponse)

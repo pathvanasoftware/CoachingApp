@@ -338,6 +338,7 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
 
             let inputRaw = (obj["preferred_input_mode"] as? String) ?? (obj["preferredInputMode"] as? String) ?? "text"
             let preferredInputMode = InputMode(rawValue: inputRaw) ?? .text
+            let onboardingProfile = parseOnboardingProfile(from: obj["onboarding_profile"] as? [String: Any] ?? obj["onboardingProfile"] as? [String: Any])
 
             return User(
                 id: id,
@@ -348,6 +349,7 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
                 preferredPersona: preferredPersona,
                 preferredInputMode: preferredInputMode,
                 hasCompletedOnboarding: (obj["has_completed_onboarding"] as? Bool) ?? (obj["hasCompletedOnboarding"] as? Bool) ?? false,
+                onboardingProfile: onboardingProfile,
                 createdAt: Date(),
                 updatedAt: Date()
             )
@@ -389,6 +391,33 @@ final class AuthService: AuthServiceProtocol, @unchecked Sendable {
             }
             throw error
         }
+    }
+
+    private func parseOnboardingProfile(from payload: [String: Any]?) -> OnboardingProfile? {
+        guard let payload else { return nil }
+
+        let selectedStyleRaw = (payload["selected_coaching_style"] as? String)
+            ?? (payload["selectedCoachingStyle"] as? String)
+            ?? CoachingStyle.auto.rawValue
+        let selectedStyle = CoachingStyle(rawValue: selectedStyleRaw) ?? .auto
+
+        var assessmentAnswers: [String: String] = [:]
+        if let rawAnswers = payload["assessment_answers"] as? [String: Any] ?? payload["assessmentAnswers"] as? [String: Any] {
+            for (key, value) in rawAnswers {
+                if let answer = value as? String, !answer.isEmpty {
+                    assessmentAnswers[key] = answer
+                }
+            }
+        }
+
+        return OnboardingProfile(
+            userName: (payload["user_name"] as? String) ?? (payload["userName"] as? String),
+            selectedCoachingStyle: selectedStyle,
+            firstGoalTitle: (payload["first_goal_title"] as? String) ?? (payload["firstGoalTitle"] as? String) ?? "",
+            firstGoalDescription: (payload["first_goal_description"] as? String) ?? (payload["firstGoalDescription"] as? String) ?? "",
+            assessmentAnswers: assessmentAnswers,
+            userRole: (payload["user_role"] as? String) ?? (payload["userRole"] as? String)
+        )
     }
 
     // MARK: - Refresh Session

@@ -886,7 +886,12 @@ async def get_coaching_response_claude(
         f"Stage routing: previous_stage={previous_stage or 'none'}, stage_reason={stage_reason}, topic_shift={str(topic_shift).lower()}, user_confused={str(user_confused).lower()}.",
         f"Turn diagnostics: user_turn_count={user_turn_count}, context_rich={str(context_rich).lower()}, enforce_inquiry_first={str(enforce_inquiry_first).lower()}.",
         "If enforce_inquiry_first is true: ask exactly one clarifying question and avoid frameworks/advice lists in this turn.",
-        build_context_packet(message, [{"role": h.get("role","user"), "content": h.get("content","")} for h in history], context),
+        build_context_packet(
+            message,
+            [{"role": h.get("role", "user"), "content": h.get("content", "")} for h in history],
+            context,
+            profile,
+        ),
         "Return ONLY valid JSON: {\"response\": string, \"quick_replies\": [string×4], \"suggested_actions\": [string]}. "
         "quick_replies must be 3-8 words, user-selectable, tailored to the message. No markdown outside JSON.",
         "response must be <=120 words and include at most one question mark total.",
