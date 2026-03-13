@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 
+@MainActor
 @Observable
 final class OnboardingViewModel {
 
@@ -119,29 +120,27 @@ final class OnboardingViewModel {
         isCompleting = true
         errorMessage = nil
 
-        do {
-            // Apply onboarding selections to AppState
-            appState.selectedCoachingStyle = onboardingData.selectedCoachingStyle
+        // Apply onboarding selections locally before any network work so the
+        // root app state can advance to the main experience immediately.
+        appState.selectedCoachingStyle = onboardingData.selectedCoachingStyle
 
-            if !onboardingData.userName.isEmpty {
-                appState.currentUserName = onboardingData.userName
-            }
-
-            // Persist role level to backend if set
-            if let roleAnswer = onboardingData.userRole.isEmpty ? nil : onboardingData.userRole,
-               let roleLevel = mapRoleAnswerToLevel(roleAnswer) {
-                try await saveRoleLevel(roleLevel)
-                appState.userRoleLevel = roleLevel
-            }
-
-            // Mark onboarding as complete
-            appState.completeOnboarding()
-
-            isCompleting = false
-        } catch {
-            isCompleting = false
-            errorMessage = "Failed to complete onboarding: \(error.localizedDescription)"
+        if !onboardingData.userName.isEmpty {
+            appState.currentUserName = onboardingData.userName
         }
+
+        if let roleAnswer = onboardingData.userRole.isEmpty ? nil : onboardingData.userRole,
+           let roleLevel = mapRoleAnswerToLevel(roleAnswer) {
+            appState.userRoleLevel = roleLevel
+
+            do {
+                try await saveRoleLevel(roleLevel)
+            } catch {
+                print("[OnboardingViewModel] Failed to persist role level: \(error.localizedDescription)")
+            }
+        }
+
+        appState.completeOnboarding()
+        isCompleting = false
     }
 
     private func mapRoleAnswerToLevel(_ answer: String) -> RoleLevel? {
@@ -156,8 +155,7 @@ final class OnboardingViewModel {
     }
 
     private func saveRoleLevel(_ roleLevel: RoleLevel) async throws {
-        // Call the new backend endpoint
-        guard let userId = appState.currentUserId else { return }
+        guard appState.currentUserId != nil else { return }
 
         // Build URL correctly: APIEnvironment.baseURL already includes /api/v1
         // We need to append /auth/me/role-level to it
