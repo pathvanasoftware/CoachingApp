@@ -93,7 +93,7 @@ struct CoachingStyleSelectionView: View {
         case .directive: return "bolt.fill"
         case .facilitative: return "questionmark.bubble.fill"
         case .supportive: return "heart.fill"
-        case .strategic: return "chessboard.fill"
+        case .strategic: return "square.grid.3x3.fill"
         }
     }
 
