@@ -327,6 +327,48 @@ def test_stage_rollback_on_topic_shift(tmp_path, monkeypatch):
     assert bs3.get("stage_reason") == "topic_shift"
 
 
+def test_diagnose_rewrite_manager_advocacy_uses_relevant_question(tmp_path, monkeypatch):
+    """Manager-advocacy inputs should not fall back to the generic avoidance question."""
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"You should confront your manager directly and lay out the case.", "quick_replies":["Do it now","Need wording","Too risky","Not ready"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    req = llm.CoachingRequest(message="My manager does not advocate for me", user_id="u-advocacy-1")
+    resp = asyncio.run(llm.get_coaching_response(req))
+
+    assert resp.response.count("?") == 1
+    assert "avoiding" not in resp.response.lower()
+    assert (
+        "advocacy" in resp.response.lower()
+        or "promotion decisions" in resp.response.lower()
+        or "visibility" in resp.response.lower()
+    )
+
+
+def test_manager_advocacy_extracts_stakeholder_influence_signal(tmp_path, monkeypatch):
+    """Manager-advocacy language should map to stakeholder influence, not just generic manager mention."""
+    from app.services import memory_store, llm_claude
+    monkeypatch.setattr(memory_store, "MEMORY_DIR", str(tmp_path))
+    _patch_no_anthropic(monkeypatch)
+
+    payload = '{"response":"Thanks for naming that. Where does the lack of advocacy show up most clearly for you right now?", "quick_replies":["Promotion","Stretch work","Meeting visibility","Feedback"]}'
+    monkeypatch.setattr(llm_claude, "_openai_complete", _make_openai_complete(payload))
+
+    req = llm.CoachingRequest(
+        message="My manager does not advocate for me",
+        user_id="u-advocacy-2",
+        context="session_id=s-advocacy",
+    )
+    resp = asyncio.run(llm.get_coaching_response(req))
+
+    routing = (resp.behavior_signals or {}).get("routing_signals", {})
+    assert routing.get("stakeholder") == "manager"
+    assert routing.get("outcome") == "stakeholder_influence"
+
+
 def test_inquiry_first_not_forced_when_context_rich(tmp_path, monkeypatch):
     """When context is rich, response is not forced into clarifying-question-only mode."""
     from app.services import memory_store, llm_claude

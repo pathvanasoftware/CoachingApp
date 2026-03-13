@@ -146,12 +146,19 @@ def _is_context_rich(message: str) -> bool:
 
 def _build_clarifying_question(message: str) -> str:
     m = (message or "").lower()
+    if re.search(r"\b(advocat\w*|champion\w*|sponsor(?:ship)?|overlooked|visibility)\b", m):
+        return (
+            "Where is the lack of advocacy hurting you most right now: "
+            "promotion decisions, stretch assignments, or visibility in key meetings?"
+        )
     if "performance" in m or "team" in m:
         return "Which part is slipping most right now: quality, speed, or ownership?"
     if "stuck" in m or "off" in m:
         return "What specific moment this week made you feel most stuck?"
-    if "conflict" in m or "manager" in m or "boss" in m:
-        return "What is the exact conversation you are avoiding right now?"
+    if "conflict" in m:
+        return "What happened most recently that made this feel like a conflict?"
+    if "manager" in m or "boss" in m:
+        return "What has your manager done or not done that makes you feel unsupported?"
     if "priority" in m or "overwhelm" in m or "busy" in m:
         return "If you could solve only one thing this week, what would create the biggest relief?"
     return "What is the single most important outcome you need from this situation this week?"
@@ -206,6 +213,7 @@ def _extract_topic_signature(message: str) -> List[str]:
         ("performance", r"\b(performance|underperformance|slipping|quality|kpi|metric)\b"),
         ("promotion", r"\b(promotion|raise|level up|career growth)\b"),
         ("conflict", r"\b(conflict|tension|pushback|friction)\b"),
+        ("advocacy", r"\b(advocat\w*|champion\w*|sponsor(?:ship)?|visibility|overlooked)\b"),
         ("burnout", r"\b(burnout|overwhelm|overwhelmed|stress|stressed)\b"),
         ("priority", r"\b(priority|prioritization|trade-off|focus)\b"),
         ("deadline", r"\b(deadline|by friday|timeline|due date|q[1-4]|quarter)\b"),
@@ -238,7 +246,7 @@ def _extract_conversation_signals(message: str) -> ConversationSignals:
     outcome = None
     for label, pattern in [
         ("trust", r"\btrust\b"),
-        ("stakeholder_influence", r"\b(convince|persuade|buy[\s-]?in|support|approve|back|sponsor|influence)\b"),
+        ("stakeholder_influence", r"\b(convince|persuade|buy[\s-]?in|support|approve|back|sponsor(?:ship)?|influence|advocat\w*|champion\w*)\b"),
         ("promotion", r"\b(promotion|raise|level up)\b"),
         ("alignment", r"\b(alignment|align)\b"),
         ("underperformance", r"\b(underperformance|performance|slipping|missed)\b"),
